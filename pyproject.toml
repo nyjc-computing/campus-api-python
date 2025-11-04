@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "campus-api-python"
+version = "0.1.0"
+description = "Campus API for Python projects"
+authors = ["NYJC Computing <nyjc.computing@nyjc.edu.sg>"]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+flask = "^2.0"
+campus-suite = {git = "https://github.com/nyjc-computing/campus.git", branch = "development"}
+
+[tool.pyright]
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md
+useLibraryCodeForTypes = true
+exclude = [".cache"]
+
+[tool.ruff]
+# https://beta.ruff.rs/docs/configuration/
+select = ['E', 'W', 'F', 'I', 'B', 'C4', 'ARG', 'SIM']
+ignore = ['W291', 'W292', 'W293']
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
