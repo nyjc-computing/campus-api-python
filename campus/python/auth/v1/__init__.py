@@ -3,7 +3,7 @@
 Campus Auth resource.
 """
 
-from ..interface import ResourceRoot
+from ...interface import ResourceRoot
 from . import (
     clients,
     credentials,
@@ -14,7 +14,7 @@ from . import (
 )
 
 
-class AuthV1(ResourceRoot):
+class AuthRoot(ResourceRoot):
     """Campus Auth resource."""
     path: str = "/auth/v1"
 

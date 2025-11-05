@@ -5,12 +5,13 @@ Client-side interface for authentication session resources.
 Implements the `Sessions` collection with provider-specific sessions
 and per-session resources used by the Flask routes in `routes/sessions`.
 """
+
 from datetime import datetime
 
 from campus.common import env, schema
 import campus.model
 
-from ..interface import JsonDict, Resource, ResourceCollection
+from ...interface import JsonDict, Resource, ResourceCollection
 
 
 class Sessions(ResourceCollection):

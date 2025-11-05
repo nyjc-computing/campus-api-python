@@ -7,9 +7,10 @@ mapping of key -> value. Supports keys(), item access, assignment and
 deletion. 404 responses for missing keys are translated to KeyError to match
 the server route expectations.
 """
+
 from typing import Any
 
-from ..interface import Resource, ResourceCollection
+from ...interface import Resource, ResourceCollection
 
 
 class Vaults(ResourceCollection):

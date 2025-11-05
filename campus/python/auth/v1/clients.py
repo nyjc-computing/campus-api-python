@@ -2,10 +2,11 @@
 
 Campus Auth Clients resource.
 """
+
 from campus.common import env
 import campus.model
 
-from ..interface import JsonDict, Resource, ResourceCollection
+from ...interface import JsonDict, Resource, ResourceCollection
 
 
 class Clients(ResourceCollection):

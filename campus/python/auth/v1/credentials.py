@@ -6,11 +6,11 @@ This mirrors the style used in `clients.py` and provides a
 `Credentials` collection which can be indexed by provider, then by
 user id to operate on credentials resources.
 """
-from typing import overload
+
 from campus.common import env
 import campus.model
 
-from ..interface import JsonDict, Resource, ResourceCollection
+from ...interface import JsonDict, Resource, ResourceCollection
 
 
 class Credentials(ResourceCollection):

@@ -9,7 +9,7 @@ accessing existing sessions by ID.
 from campus.common import env
 import campus.model
 
-from ..interface import JsonDict, Resource, ResourceCollection
+from ...interface import JsonDict, Resource, ResourceCollection
 
 
 class Logins(ResourceCollection):

@@ -6,9 +6,10 @@ This mirrors the style used in `clients.py` and `credentials.py` and
 implements the minimal methods used by the Flask routes: list, new,
 and per-user activate/delete/get.
 """
+
 import campus.model
 
-from ..interface import JsonDict, Resource, ResourceCollection
+from ...interface import Resource, ResourceCollection
 
 
 class Users(ResourceCollection):
