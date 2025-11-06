@@ -41,15 +41,19 @@ class Campus:
     def auth(self) -> AuthRoot:
         """Get the auth service resource."""
         if not hasattr(self, "_auth"):
-            match env.get("ENV", env.get("CAMPUS_ENV", "development")):
-                case "development":
-                    base_url = "https://campusauth-development.up.railway.app"
-                case "staging":
-                    base_url = "https://auth.campus.nyjc.dev"
-                case "production":
-                    base_url = "https://auth.campus.nyjc.app"
-                case _:
-                    raise ValueError("Invalid ENV value")
+            # Use relative URL if in deployed auth service
+            if env.get("DEPLOY") and env.DEPLOY.endswith(".auth"):
+                base_url = ""
+            else:
+                match env.get("ENV", env.get("CAMPUS_ENV", "development")):
+                    case "development":
+                        base_url = "https://campusauth-development.up.railway.app"
+                    case "staging":
+                        base_url = "https://auth.campus.nyjc.dev"
+                    case "production":
+                        base_url = "https://auth.campus.nyjc.app"
+                    case _:
+                        raise ValueError("Invalid ENV value")
             self._auth = AuthRoot(
                 json_client=CampusClient(base_url=base_url)
             )
@@ -59,5 +63,19 @@ class Campus:
     def api(self) -> ApiRoot:
         """Get the api service resource."""
         if not hasattr(self, "_api"):
-            self._api = ApiRoot()
+            if env.get("DEPLOY") and env.DEPLOY.endswith(".auth"):
+                base_url = ""
+            else:
+                match env.get("ENV", env.get("CAMPUS_ENV", "development")):
+                    case "development":
+                        base_url = "https://campusapi-development.up.railway.app"
+                    case "staging":
+                        base_url = "https://api.campus.nyjc.dev"
+                    case "production":
+                        base_url = "https://api.campus.nyjc.app"
+                    case _:
+                        raise ValueError("Invalid ENV value")
+            self._api = ApiRoot(
+                json_client=CampusClient(base_url=base_url)
+            )
         return self._api
