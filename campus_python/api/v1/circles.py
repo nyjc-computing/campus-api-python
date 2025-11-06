@@ -3,10 +3,9 @@
 Campus API circles resource (v1).
 """
 
-from campus.common import env
 import campus.model
 
-from ...interface import JsonDict, Resource, ResourceCollection
+from ...interface import Resource, ResourceCollection
 
 
 class Circles(ResourceCollection):
@@ -31,7 +30,8 @@ class Circles(ResourceCollection):
             *,
             name: str,
             description: str,
-            tag: str
+            tag: str,
+            parents: dict[str, int] | None = None,
     ) -> campus.model.Circle:
         resp = self.client.post(self.make_path(), json={
             "name": name,
@@ -43,6 +43,16 @@ class Circles(ResourceCollection):
     class Circle(Resource):
         """Single campus API circle resource."""
 
+        @property
+        def members(self) -> "Circles.Circle.CircleMembers":
+            """Get the members resource for this circle."""
+            return Circles.Circle.CircleMembers(parent=self)
+
+        def delete(self) -> None:
+            resp = self.client.delete(self.make_path())
+            resp.raise_for_status()
+            return None
+
         def get(self) -> campus.model.Circle:
             resp = self.client.get(self.make_path())
             resp.raise_for_status()
@@ -53,7 +63,27 @@ class Circles(ResourceCollection):
             resp.raise_for_status()
             return None
 
-        def delete(self) -> None:
-            resp = self.client.delete(self.make_path())
-            resp.raise_for_status()
-            return None
+        class CircleMembers(Resource):
+            """Campus API Circle Members resource."""
+            path = "members"
+
+            def list(self) -> list[dict[str, int]]:
+                resp = self.client.get(self.make_path())
+                resp.raise_for_status()
+                return resp.json()["members"]
+
+            def add(self, member_id: str, access_value: int) -> None:
+                resp = self.client.post(
+                    self.make_path(),
+                    json={"member_id": member_id, "access": access_value}
+                )
+                resp.raise_for_status()
+                return None
+
+            def remove(self, member_id: str) -> None:
+                resp = self.client.delete(
+                    self.make_path(),
+                    json={"member_id": member_id}
+                )
+                resp.raise_for_status()
+                return None
