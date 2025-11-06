@@ -104,7 +104,7 @@ vault = []
 type = "git"
 url = "https://github.com/nyjc-computing/campus.git"
 reference = "weekly"
-resolved_reference = "1bb9d0680d52b7ab39156873effa6a1fe77dbbb1"
+resolved_reference = "3f2cfdb6abd3addaa6333d6036ac235fdbb6ac3c"
 
 [[package]]
 name = "certifi"
