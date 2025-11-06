@@ -1,6 +1,6 @@
-"""campus.python.auth.logins
+"""campus.python.auth.v1.logins
 
-Client-side interface for login session resources.
+Campus Auth logins resource (v1).
 
 Provides a `Logins` collection for creating new login sessions and
 accessing existing sessions by ID.

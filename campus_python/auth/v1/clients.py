@@ -1,6 +1,6 @@
-"""campus.python.auth.clients
+"""campus.python.auth.v1.clients
 
-Campus Auth Clients resource.
+Campus Auth Clients resource (v1).
 """
 
 from campus.common import env

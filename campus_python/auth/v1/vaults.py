@@ -1,6 +1,6 @@
-"""campus.python.auth.vault
+"""campus.python.auth.v1.vaults
 
-Client-side interface for vault resources.
+Campus Auth vaults resource (v1).
 
 Provides a `Vaults` collection where each vault (by label) behaves like a
 mapping of key -> value. Supports keys(), item access, assignment and

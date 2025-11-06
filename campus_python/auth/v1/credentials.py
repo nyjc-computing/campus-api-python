@@ -1,6 +1,6 @@
-"""campus.python.auth.credentials
+"""campus.python.auth.v1.credentials
 
-Client-side interface for credentials resources.
+Campus Auth credentials resource (v1).
 
 This mirrors the style used in `clients.py` and provides a
 `Credentials` collection which can be indexed by provider, then by

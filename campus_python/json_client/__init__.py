@@ -62,7 +62,8 @@ class CampusClient(JsonClient):
     """Campus JSON client with default configuration.
 
     This client is pre-configured to handle JSON requests and responses.
-    It provides convenience methods for common HTTP methods with JSON payloads.
+    It provides convenience methods for common HTTP methods with JSON
+    payloads.
     """
 
     def __init__(

@@ -1,6 +1,6 @@
-"""campus.python.vault.user
+"""campus.python.auth.v1.users
 
-Client-side interface for Vault user resources.
+Campus Auth users resource (v1).
 
 This mirrors the style used in `clients.py` and `credentials.py` and
 implements the minimal methods used by the Flask routes: list, new,

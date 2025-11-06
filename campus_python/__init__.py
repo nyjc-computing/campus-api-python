@@ -6,8 +6,10 @@ Unified Campus client interface providing consistent access to all services.
 import logging
 
 from campus.common import env
+
 from .api.v1 import ApiRoot
 from .auth.v1 import AuthRoot
+from .json_client import CampusClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,7 +41,18 @@ class Campus:
     def auth(self) -> AuthRoot:
         """Get the auth service resource."""
         if not hasattr(self, "_auth"):
-            self._auth = AuthRoot()
+            match env.get("ENV", env.get("CAMPUS_ENV", "development")):
+                case "development":
+                    base_url = "https://campusauth-development.up.railway.app"
+                case "staging":
+                    base_url = "https://auth.campus.nyjc.dev"
+                case "production":
+                    base_url = "https://auth.campus.nyjc.app"
+                case _:
+                    raise ValueError("Invalid ENV value")
+            self._auth = AuthRoot(
+                json_client=CampusClient(base_url=base_url)
+            )
         return self._auth
 
     @property
