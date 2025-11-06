@@ -23,8 +23,8 @@ class ResourceRoot:
     _client: Optional[JsonClient] = None
     base_url: str
 
-    def __init__(self, client: Optional[JsonClient] = None):
-        self._client = client
+    def __init__(self, json_client: Optional[JsonClient] = None):
+        self._client = json_client
     
     @property
     def client(self) -> JsonClient:
@@ -57,9 +57,11 @@ class ResourceCollection:
     @property
     def client(self) -> JsonClient:
         """Get the JsonClient associated with this resource."""
-        if not self._client:
-            raise AttributeError(f"No client defined for {self}")
-        return self._client
+        if self._client:
+            return self._client
+        if self.root.client:
+            return self.root.client
+        raise AttributeError(f"No client defined for {self}")
 
     def make_path(self, path: str | None = None) -> str:
         """Create a full path for a sub-resource or action."""
@@ -97,13 +99,11 @@ class Resource:
     @property
     def client(self) -> JsonClient:
         """Get the JsonClient associated with this resource."""
-        client_instance = (
-            self._client
-            or (self.parent.client if self.parent else None)
-        )
-        if not client_instance:
-            raise AttributeError(f"No client defined for {self}")
-        return client_instance
+        if self._client:
+            return self._client
+        if self.parent and self.parent.client:
+            return self.parent.client
+        raise AttributeError(f"No client defined for {self}")
 
     def _process_response(self, response: JsonResponse) -> JsonResponse | Any:
         """Process response based on raw setting.
