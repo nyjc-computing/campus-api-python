@@ -103,7 +103,7 @@ class JsonClient(ABC):
     """This class describes the public interface required from Client classes,
     which are used to send JSON requests.
     """
-    base_url: str | None
+    base_url: str
     # pylint: disable=unnecessary-ellipsis
 
     @abstractmethod

@@ -21,11 +21,17 @@ class ResourceRoot:
     This class is used to group all top-level resources together.
     """
     _client: Optional[JsonClient] = None
-    base_url: str
     url_prefix: str
 
     def __init__(self, json_client: Optional[JsonClient] = None):
         self._client = json_client
+
+    @property
+    def base_url(self) -> str:
+        """Get the base URL for this resource root."""
+        if not self._client:
+            raise AttributeError("No client defined")
+        return self._client.base_url
     
     @property
     def client(self) -> JsonClient:
