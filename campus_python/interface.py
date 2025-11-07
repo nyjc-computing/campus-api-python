@@ -22,7 +22,7 @@ class ResourceRoot:
     """
     _client: Optional[JsonClient] = None
     base_url: str
-    url_prefix: str = ""
+    url_prefix: str
 
     def __init__(self, json_client: Optional[JsonClient] = None):
         self._client = json_client
