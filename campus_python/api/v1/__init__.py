@@ -11,7 +11,7 @@ from . import (
 
 class ApiRoot(ResourceRoot):
     """Campus API resource."""
-    path = "/api/v1"
+    url_prefix = "/api/v1"
 
     def __init__(self, json_client: JsonClient):
         self._json_client = json_client

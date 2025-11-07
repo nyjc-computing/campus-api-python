@@ -22,6 +22,7 @@ class ResourceRoot:
     """
     _client: Optional[JsonClient] = None
     base_url: str
+    url_prefix: str = ""
 
     def __init__(self, json_client: Optional[JsonClient] = None):
         self._client = json_client
@@ -34,6 +35,10 @@ class ResourceRoot:
                 f"No client defined for {self}"
             )
         return self._client
+
+    def make_url(self) -> str:
+        """Create a full path for the resource root."""
+        return f"{self.base_url}/{self.url_prefix.lstrip('/')}"
 
 
 class ResourceCollection:
@@ -66,8 +71,8 @@ class ResourceCollection:
     def make_path(self, path: str | None = None) -> str:
         """Create a full path for a sub-resource or action."""
         if path:
-            return f"{self.root.base_url}/{self.path}/{path.lstrip('/')}"
-        return f"{self.root.base_url}/{self.path}"
+            return f"{self.root.make_url()}/{self.path}/{path.lstrip('/')}"
+        return f"{self.root.make_url()}/{self.path}"
 
 
 class Resource:

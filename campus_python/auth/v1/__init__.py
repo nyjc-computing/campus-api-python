@@ -18,7 +18,7 @@ from . import (
 
 class AuthRoot(ResourceRoot):
     """Campus Auth resource."""
-    path: str = "/auth/v1"
+    url_prefix: str = "/auth/v1"
 
     def __init__(self, json_client: JsonClient):
         super().__init__(json_client=json_client)
