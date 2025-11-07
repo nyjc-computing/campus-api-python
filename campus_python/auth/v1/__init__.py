@@ -9,6 +9,7 @@ from . import (
     clients,
     credentials,
     logins,
+    root,
     sessions,
     users,
     vaults,
@@ -24,6 +25,7 @@ class AuthRoot(ResourceRoot):
         self._clients = None
         self._credentials = None
         self._logins = None
+        self._root = None
         self._sessions = None
         self._users = None
         self._vaults = None
@@ -48,6 +50,13 @@ class AuthRoot(ResourceRoot):
         if not self._logins:
             self._logins = logins.Logins(root=self)
         return self._logins
+
+    @property
+    def root(self) -> root.Root:
+        """Get the root resource."""
+        if not self._root:
+            self._root = root.Root(root=self)
+        return self._root
 
     @property
     def sessions(self) -> sessions.CampusSessions:
