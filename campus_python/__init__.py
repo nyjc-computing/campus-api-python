@@ -3,6 +3,11 @@
 Unified Campus client interface providing consistent access to all services.
 """
 
+__all__ = (
+    "Campus",
+    "errors",
+)
+
 import logging
 
 from campus.common import env
@@ -10,6 +15,7 @@ from campus.common import env
 from .api.v1 import ApiRoot
 from .auth.v1 import AuthRoot
 from .json_client import CampusClient
+from . import errors
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
