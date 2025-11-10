@@ -10,6 +10,7 @@ __all__ = [
     "get_client",
 ]
 
+import base64
 from typing import Any, Iterable, Mapping, MutableMapping, Self
 import requests
 
@@ -132,13 +133,19 @@ class CampusClient(JsonClient):
             token (str | None): Bearer token for Bearer Auth.
         Raises:
             ValueError: If neither Basic nor Bearer auth details are provided.
+
+        Note:
+            For Basic Auth, credentials are base64-encoded following RFC 7617.
         """
         if token is not None:
             self._session.headers["Authorization"] = "Bearer " + token
         elif client_id is not None and client_secret is not None:
-            self._session.headers["Authorization"] = (
-                f"Basic {client_id}:{client_secret}"
-            )
+            # Encode credentials in base64 following RFC 7617
+            credentials = f"{client_id}:{client_secret}"
+            encoded_credentials = base64.b64encode(
+                credentials.encode('utf-8')
+            ).decode('ascii')
+            self._session.headers["Authorization"] = f"Basic {encoded_credentials}"
         else:
             raise ValueError(
                 "Either token or both client_id and client_secret must be provided."
