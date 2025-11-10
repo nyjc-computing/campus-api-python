@@ -74,23 +74,36 @@ class CampusClient(JsonClient):
             headers: MutableMapping[str, str] | None = None,
             **kwargs: Any,
     ):
-        self.base_url = base_url
+        self.base_url = base_url or ""
         self._headers = dict(headers or {})
         # allow optional default timeout via kwargs
         self._timeout = kwargs.get("timeout", 10)
 
         match auth:
             case str():  # token
-                self._headers["Authorization"] = "Bearer " + auth
+                self.set_authorization(token=auth)
             case (client_id, client_secret):
                 # Keep the same behaviour as originally present; if encoding is
                 # desired callers can pass a pre-built header instead.
-                self._headers["Authorization"] = (
-                    f"Basic {client_id}:{client_secret}"
+                self.set_authorization(
+                    client_id=client_id,
+                    client_secret=client_secret
                 )
             case None:
-                pass
-
+                # Set client ID and secret from env
+                import os
+                client_id = os.getenv("CLIENT_ID")
+                client_secret = os.getenv("CLIENT_SECRET")
+                if client_id and client_secret:
+                    self.set_authorization(
+                        client_id=client_id,
+                        client_secret=client_secret
+                    )
+                else:
+                    raise OSError(
+                        "No authentication provided and CLIENT_ID or "
+                        "CLIENT_SECRET environment variables not set."
+                    )
         # Session to persist headers and connection pooling
         self._session = requests.Session()
         self._session.headers.update(self._headers)
@@ -103,6 +116,33 @@ class CampusClient(JsonClient):
         if not self.base_url.endswith("/") and not path.startswith("/"):
             return self.base_url + "/" + path
         return self.base_url + path
+
+    def set_authorization(
+            self,
+            *,
+            client_id: str | None = None,
+            client_secret: str | None = None,
+            token: str | None = None
+    ) -> None:
+        """Set the Authorization header for future requests.
+
+        Args:
+            client_id (str | None): Client ID for Basic Auth.
+            client_secret (str | None): Client Secret for Basic Auth.
+            token (str | None): Bearer token for Bearer Auth.
+        Raises:
+            ValueError: If neither Basic nor Bearer auth details are provided.
+        """
+        if token is not None:
+            self._session.headers["Authorization"] = "Bearer " + token
+        elif client_id is not None and client_secret is not None:
+            self._session.headers["Authorization"] = (
+                f"Basic {client_id}:{client_secret}"
+            )
+        else:
+            raise ValueError(
+                "Either token or both client_id and client_secret must be provided."
+            )
 
     def get(self: Self, path: str, query: JsonDict | None = None) -> JsonResponse:
         """Sends a GET request."""
