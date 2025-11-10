@@ -17,7 +17,7 @@ class Circles(ResourceCollection):
         return Circles.Circle(circle_id, parent=self)
 
     def list(self) -> list[campus.model.Circle]:
-        resp = self.client.get(self.make_url())
+        resp = self.client.get(self.make_path())
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()
         return [
@@ -33,7 +33,7 @@ class Circles(ResourceCollection):
             tag: str,
             parents: dict[str, int] | None = None,
     ) -> campus.model.Circle:
-        resp = self.client.post(self.make_url(), json={
+        resp = self.client.post(self.make_path(), json={
             "name": name,
             "description": description,
         })
@@ -49,17 +49,17 @@ class Circles(ResourceCollection):
             return Circles.Circle.CircleMembers(parent=self)
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_url())
+            resp = self.client.delete(self.make_path())
             resp.raise_for_status()
             return None
 
         def get(self) -> campus.model.Circle:
-            resp = self.client.get(self.make_url())
+            resp = self.client.get(self.make_path())
             resp.raise_for_status()
             return campus.model.Circle.from_resource(resp.json())
 
         def update(self, **updates) -> None:
-            resp = self.client.patch(self.make_url(), json=updates)
+            resp = self.client.patch(self.make_path(), json=updates)
             resp.raise_for_status()
             return None
 
@@ -68,13 +68,13 @@ class Circles(ResourceCollection):
             path = "members"
 
             def list(self) -> list[dict[str, int]]:
-                resp = self.client.get(self.make_url())
+                resp = self.client.get(self.make_path())
                 resp.raise_for_status()
                 return resp.json()["members"]
 
             def add(self, member_id: str, access_value: int) -> None:
                 resp = self.client.post(
-                    self.make_url(),
+                    self.make_path(),
                     json={"member_id": member_id, "access": access_value}
                 )
                 resp.raise_for_status()
@@ -82,7 +82,7 @@ class Circles(ResourceCollection):
 
             def remove(self, member_id: str) -> None:
                 resp = self.client.delete(
-                    self.make_url(),
+                    self.make_path(),
                     json={"member_id": member_id}
                 )
                 resp.raise_for_status()

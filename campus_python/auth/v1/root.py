@@ -36,10 +36,10 @@ class Root(ResourceCollection):
         }
         """
         if token:
-            resp = self.client.post(self.make_url(), json={"token": token})
+            resp = self.client.post(self.make_path(), json={"token": token})
         elif client_id and client_secret:
             resp = self.client.post(
-                self.make_url(),
+                self.make_path(),
                 json={"client_id": client_id, "client_secret": client_secret}
             )
         else:

@@ -27,7 +27,7 @@ class CampusSessions(ResourceCollection):
     def get(self, code: str) -> campus.model.AuthSession:
         """Get a session using authorization code."""
         resp = self.client.post(
-            self.make_url(),
+            self.make_path(),
             json={"code": code}
         )
         resp.raise_for_status()
@@ -54,7 +54,7 @@ class CampusSessions(ResourceCollection):
         }
         if user_id is not None:
             json_data["user_id"] = str(user_id)
-        resp = self.client.post(self.make_url(), json=json_data)
+        resp = self.client.post(self.make_path(), json=json_data)
         resp.raise_for_status()
         authsession = campus.model.AuthSession.from_resource(resp.json())
         flask.session[self._session_key] = authsession.id
@@ -71,7 +71,7 @@ class CampusSessions(ResourceCollection):
                 json_data["at_time"] = schema.DateTime(at_time)
             case None:
                 json_data["at_time"] = schema.DateTime.utcnow()
-        resp = self.client.post(self.make_url("sweep"), json=json_data)
+        resp = self.client.post(self.make_path("sweep"), json=json_data)
         resp.raise_for_status()
         return int(resp.json()["swept_count"])
 
@@ -87,19 +87,19 @@ class CampusSessions(ResourceCollection):
 
         def finalize(self) -> str:
             # DELETE /sessions/{provider}/{session_id} -> {"target": <url>}
-            resp = self.client.delete(self.make_url())
+            resp = self.client.delete(self.make_path())
             resp.raise_for_status()
             del flask.session[self.session_id]
             body = resp.json()
             return body["target"]
 
         def get(self) -> campus.model.AuthSession:
-            resp = self.client.get(self.make_url())
+            resp = self.client.get(self.make_path())
             resp.raise_for_status()
             return campus.model.AuthSession.from_resource(resp.json())
 
         def update(self, **updates) -> None:
             # Only user_id and authorization_code are expected by the API
-            resp = self.client.patch(self.make_url(), json=updates)
+            resp = self.client.patch(self.make_path(), json=updates)
             resp.raise_for_status()
             return None

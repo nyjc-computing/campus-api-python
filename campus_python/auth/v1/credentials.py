@@ -40,14 +40,14 @@ class Credentials(ResourceCollection):
 
         def get(self, token_id: str) -> campus.model.UserCredentials:
             resp = self.client.get(
-                self.make_url(),
+                self.make_path(),
                 query={"token_id": token_id}
             )
             resp.raise_for_status()
             return campus.model.UserCredentials.from_resource(resp.json())
 
         def list(self) -> list[campus.model.UserCredentials]:
-            resp = self.client.get(self.make_url())
+            resp = self.client.get(self.make_path())
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
             return [
@@ -61,7 +61,7 @@ class Credentials(ResourceCollection):
             def delete(self) -> None:
                 client_id = env.CLIENT_ID
                 resp = self.client.delete(
-                    self.make_url(),
+                    self.make_path(),
                     json={"client_id": client_id}
                 )
                 # Raise error if status code is not 2XX or 3XX
@@ -70,7 +70,7 @@ class Credentials(ResourceCollection):
             def get(self) -> campus.model.UserCredentials:
                 client_id = env.CLIENT_ID
                 resp = self.client.get(
-                    self.make_url(),
+                    self.make_path(),
                     query={"client_id": client_id}
                 )
                 # Raise error if status code is not 2XX or 3XX
@@ -92,6 +92,6 @@ class Credentials(ResourceCollection):
                     "client_id": client_id,
                     "token": token.to_resource()
                 }
-                resp = self.client.patch(self.make_url(), json=json_data)
+                resp = self.client.patch(self.make_path(), json=json_data)
                 # Raise error if status code is not 2XX or 3XX
                 resp.raise_for_status()

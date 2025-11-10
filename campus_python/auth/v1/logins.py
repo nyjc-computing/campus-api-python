@@ -42,7 +42,7 @@ class Logins(ResourceCollection):
         if device_id is not None:
             json_data["device_id"] = device_id
 
-        resp = self.client.post(self.make_url(), json=json_data)
+        resp = self.client.post(self.make_path(), json=json_data)
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()
         return campus.model.LoginSession.from_resource(resp.json())
@@ -51,19 +51,19 @@ class Logins(ResourceCollection):
         """A single login session resource."""
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_url())
+            resp = self.client.delete(self.make_path())
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
 
         def get(self) -> campus.model.LoginSession:
-            resp = self.client.get(self.make_url())
+            resp = self.client.get(self.make_path())
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
             return campus.model.LoginSession.from_resource(resp.json())
 
         def update(self, *, expiry_seconds: int) -> campus.model.LoginSession:
             resp = self.client.patch(
-                self.make_url(),
+                self.make_path(),
                 json={"expiry_seconds": expiry_seconds}
             )
             # Raise error if status code is not 2XX or 3XX
