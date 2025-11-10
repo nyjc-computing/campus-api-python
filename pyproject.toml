@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "campus-api-python"
-version = "0.1.4"
+version = "0.1.5"
 description = "Campus API for Python projects"
 authors = ["NYJC Computing <nyjc.computing@nyjc.edu.sg>"]
 
