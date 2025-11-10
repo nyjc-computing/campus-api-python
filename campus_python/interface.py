@@ -14,6 +14,9 @@ from typing import Any, Optional
 
 from .json_client import JsonClient, JsonDict, JsonResponse
 
+# Use char constant to avoid quoting-related syntax errors
+SLASH = "/"
+
 
 class ResourceRoot:
     """Root of all resources.
@@ -32,7 +35,7 @@ class ResourceRoot:
         if not self._client:
             raise AttributeError("No client defined")
         return self._client.base_url
-    
+
     @property
     def client(self) -> JsonClient:
         """Get the JsonClient associated with this resource root."""
@@ -42,9 +45,22 @@ class ResourceRoot:
             )
         return self._client
 
+    def make_path(self, part: str | None = None) -> str:
+        """Create a full path for the resource root or a sub-resource.
+
+        Args:
+            part (str | None): Optional sub-resource or action path.
+        Returns:
+            str: Full path for the resource root or sub-resource.
+        """
+        if part:
+            return f"/{self.url_prefix.lstrip(SLASH)}/{part.lstrip(SLASH)}"
+        else:
+            return f"/{self.url_prefix.lstrip(SLASH)}"
+
     def make_url(self) -> str:
         """Create a full path for the resource root."""
-        return f"{self.base_url}/{self.url_prefix.lstrip('/')}"
+        return f"{self.base_url}/{self.url_prefix.lstrip(SLASH)}"
 
 
 class ResourceCollection:
@@ -74,11 +90,16 @@ class ResourceCollection:
             return self.root.client
         raise AttributeError(f"No client defined for {self}")
 
-    def make_path(self, path: str | None = None) -> str:
+    def make_path(self, part: str | None = None) -> str:
         """Create a full path for a sub-resource or action."""
-        if path:
-            return f"{self.root.make_url()}/{self.path}/{path.lstrip('/')}"
-        return f"{self.root.make_url()}/{self.path}"
+        if part:
+            return f"/{self.path.lstrip(SLASH)}/{part.lstrip(SLASH)}"
+        else:
+            return f"/{self.path.lstrip(SLASH)}"
+
+    def make_url(self, part: str | None = None) -> str:
+        """Create a full URL for a sub-resource or action."""
+        return f"{self.root.make_url()}{self.make_path(part)}"
 
 
 class Resource:
@@ -99,7 +120,7 @@ class Resource:
     ):
         self._client = client
         self.parent = parent
-        self.path = f"{parent.path if parent else ''}/{'/'.join(parts)}"
+        self.path = parent.make_path(SLASH.join(parts))
 
     def __repr__(self) -> str:
         return f"Resource(client={self.client}, path={self.path})"
@@ -125,8 +146,12 @@ class Resource:
         response.raise_for_status()
         return response.json()
 
-    def make_path(self, path: str| None = None) -> str:
+    def make_path(self, part: str | None = None) -> str:
         """Create a full path for a sub-resource or action."""
-        if path:
-            return f"{self.path}/{path.lstrip('/')}"
-        return self.path
+        if part:
+            return f"/{self.path.lstrip(SLASH)}/{part.lstrip(SLASH)}"
+        return f"/{self.path.lstrip(SLASH)}"
+
+    def make_url(self, part: str | None = None) -> str:
+        """Create a full URL for a sub-resource or action."""
+        return f"{self.parent.make_url()}{self.make_path(part)}"
