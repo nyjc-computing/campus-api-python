@@ -78,6 +78,9 @@ class CampusClient(JsonClient):
         self._headers = dict(headers or {})
         # allow optional default timeout via kwargs
         self._timeout = kwargs.get("timeout", 10)
+        # Session to persist headers and connection pooling
+        self._session = requests.Session()
+        self._session.headers.update(self._headers)
 
         match auth:
             case str():  # token
@@ -104,9 +107,6 @@ class CampusClient(JsonClient):
                         "No authentication provided and CLIENT_ID or "
                         "CLIENT_SECRET environment variables not set."
                     )
-        # Session to persist headers and connection pooling
-        self._session = requests.Session()
-        self._session.headers.update(self._headers)
 
     def _build_url(self, path: str) -> str:
         if not self.base_url:
