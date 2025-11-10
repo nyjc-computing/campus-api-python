@@ -18,7 +18,7 @@ class Clients(ResourceCollection):
         return Clients.Client(client_id, parent=self)
 
     def list(self) -> list[campus.model.Client]:
-        resp = self.client.get(self.make_path())
+        resp = self.client.get(self.make_url())
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()
         return [
@@ -27,7 +27,7 @@ class Clients(ResourceCollection):
         ]
 
     def new(self, name: str, description: str) -> campus.model.Client:
-        resp = self.client.post(self.make_path(), json={
+        resp = self.client.post(self.make_url(), json={
             "name": name,
             "description": description,
         })
@@ -42,18 +42,18 @@ class Clients(ResourceCollection):
             return Clients.Client.ClientAccess("access", parent=self)
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_path())
+            resp = self.client.delete(self.make_url())
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
 
         def get(self) -> campus.model.Client:
-            resp = self.client.get(self.make_path())
+            resp = self.client.get(self.make_url())
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
             return campus.model.Client.from_resource(resp.json())
 
         def revoke(self) -> None:
-            resp = self.client.post(self.make_path("revoke"))
+            resp = self.client.post(self.make_url("revoke"))
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
 
@@ -63,7 +63,7 @@ class Clients(ResourceCollection):
                 json_data["name"] = name
             if description is not None:
                 json_data["description"] = description
-            resp = self.client.put(self.make_path(), json=json_data)
+            resp = self.client.put(self.make_url(), json=json_data)
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
             return campus.model.Client.from_resource(resp.json())
@@ -77,11 +77,11 @@ class Clients(ResourceCollection):
             ) -> JsonDict:
                 if vault:
                     resp = self.client.get(
-                        self.make_path(),
+                        self.make_url(),
                         query={"vault": vault}
                     )
                 else:
-                    resp = self.client.get(self.make_path())
+                    resp = self.client.get(self.make_url())
                 # Raise error if status code is not 2XX or 3XX
                 resp.raise_for_status()
                 return resp.json()
@@ -92,7 +92,7 @@ class Clients(ResourceCollection):
                     permission: int,
             ) -> JsonDict:
                 client_id = env.CLIENT_ID
-                resp = self.client.post(self.make_path("grant"), json={
+                resp = self.client.post(self.make_url("grant"), json={
                     "client_id": client_id,
                     "vault": vault,
                     "permission": permission,
@@ -107,7 +107,7 @@ class Clients(ResourceCollection):
                     permission: int,
             ) -> JsonDict:
                 client_id = env.CLIENT_ID
-                resp = self.client.post(self.make_path("revoke"), json={
+                resp = self.client.post(self.make_url("revoke"), json={
                     "client_id": client_id,
                     "vault": vault,
                     "permission": permission,

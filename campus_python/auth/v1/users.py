@@ -21,7 +21,7 @@ class Users(ResourceCollection):
         return Users.User(user_id, parent=self)
 
     def list(self) -> list[campus.model.User]:
-        resp = self.client.get(self.make_path())
+        resp = self.client.get(self.make_url())
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()
         return [
@@ -30,7 +30,7 @@ class Users(ResourceCollection):
         ]
 
     def new(self, *, email: str, name: str) -> campus.model.User:
-        resp = self.client.post(self.make_path(), json={
+        resp = self.client.post(self.make_url(), json={
             "email": email,
             "name": name,
         })
@@ -41,15 +41,15 @@ class Users(ResourceCollection):
         """Single vault user resource."""
 
         def activate(self) -> campus.model.User:
-            resp = self.client.post(self.make_path("activate"))
+            resp = self.client.post(self.make_url("activate"))
             resp.raise_for_status()
             return campus.model.User.from_resource(resp.json())
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_path())
+            resp = self.client.delete(self.make_url())
             resp.raise_for_status()
 
         def get(self) -> campus.model.User:
-            resp = self.client.get(self.make_path())
+            resp = self.client.get(self.make_url())
             resp.raise_for_status()
             return campus.model.User.from_resource(resp.json())

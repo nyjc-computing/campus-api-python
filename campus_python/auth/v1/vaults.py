@@ -24,20 +24,20 @@ class Vaults(ResourceCollection):
         """A single vault (label) exposing mapping-like access."""
 
         def keys(self) -> list[str]:
-            resp = self.client.get(self.make_path())
+            resp = self.client.get(self.make_url())
             resp.raise_for_status()
             body = resp.json()
             return body["keys"]
 
         def __delitem__(self, key: str) -> None:
-            resp = self.client.delete(self.make_path(key))
+            resp = self.client.delete(self.make_url(key))
             if resp.status_code == 404:
                 raise KeyError(key)
             resp.raise_for_status()
             return None
 
         def __getitem__(self, key: str) -> str:
-            resp = self.client.get(self.make_path(key))
+            resp = self.client.get(self.make_url(key))
             # translate 404 into KeyError for route compatibility
             if resp.status_code == 404:
                 raise KeyError(key)
@@ -47,6 +47,6 @@ class Vaults(ResourceCollection):
             return body["key"]
 
         def __setitem__(self, key: str, value: Any) -> None:
-            resp = self.client.post(self.make_path(key), json={"value": value})
+            resp = self.client.post(self.make_url(key), json={"value": value})
             resp.raise_for_status()
             return None
