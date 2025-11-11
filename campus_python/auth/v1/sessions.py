@@ -24,15 +24,11 @@ class CampusSessions(ResourceCollection):
         provider = self.path.split("/")[-1]
         return f"{provider}_session_id"
 
-    def __getitem__(
-            self,
-            session_id: str | None = None
-    ) -> "CampusSessions.Session":
-        session_id = session_id or flask.session[self._session_key]
-        assert session_id is not None, "No session ID found"
+    def __getitem__(self, session_id: str) -> "CampusSessions.Session":
+        session_id = flask.session[self._session_key]
         return CampusSessions.Session(session_id, parent=self)
 
-    def get(self, code: str) -> campus.model.AuthSession:
+    def from_code(self, code: str) -> campus.model.AuthSession:
         """Get a session using authorization code."""
         resp = self.client.post(
             self.make_path(),
@@ -40,6 +36,11 @@ class CampusSessions(ResourceCollection):
         )
         resp.raise_for_status()
         return campus.model.AuthSession.from_resource(resp.json())
+
+    def from_session(self) -> campus.model.AuthSession:
+        """Get a session from client-side session id."""
+        session_id = flask.session[self._session_key]
+        return CampusSessions.Session(session_id, parent=self).get()
 
     def has_session(self) -> bool:
         """Check if there is a session ID stored in the flask session."""

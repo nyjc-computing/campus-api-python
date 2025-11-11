@@ -31,6 +31,11 @@ class LoginSessions(ResourceCollection):
         assert session_id is not None, "No login session ID found"
         return LoginSessions.Login(session_id, parent=self)
 
+    def from_session(self) -> campus.model.LoginSession:
+        """Get a login session using the client-side session ID."""
+        session_id = flask.session[self._session_key]
+        return LoginSessions.Login(session_id, parent=self).get()
+
     def has_session(self) -> bool:
         """Check if there is a session ID stored in the flask session."""
         return self._session_key in flask.session

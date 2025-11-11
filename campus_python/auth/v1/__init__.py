@@ -125,7 +125,7 @@ class AuthRoot(ResourceRoot):
 
         Returns a redirect response to the target.
         """
-        auth_session = self.sessions.get(code=code)
+        auth_session = self.sessions.from_code(code=code)
         if auth_session.id != state:
             raise errors.AuthenticationError(
                 error_description="State parameter does not match session ID."
@@ -136,7 +136,7 @@ class AuthRoot(ResourceRoot):
             )
         target = self.sessions[auth_session.id].finalize()
         self.users[auth_session.user_id]
-        self.logins.new(
+        ls = self.logins.new(
             expiry_seconds=86400 * 30,  # 30 days
             user_id=auth_session.user_id,
             device_id=uid.generate_category_uid("device", length=16),
@@ -155,10 +155,10 @@ class AuthRoot(ResourceRoot):
     def push_context(self) -> None:
         """Push auth/login context to flask g."""
         if self.sessions.has_session():
-            auth_session = self.sessions[].get()
+            auth_session = self.sessions.from_session()
             if auth_session.user_id:
                 flask.g.user = self.users[auth_session.user_id].get()
         elif self.logins.has_session():
-            login_session = self.logins[].get()
+            login_session = self.logins.from_session()
             flask.g.user = self.users[login_session.user_id].get()
             flask.g.device = login_session.device_id
