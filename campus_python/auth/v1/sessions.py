@@ -40,7 +40,6 @@ class CampusSessions(ResourceCollection):
             user_id: str | None = None,
             redirect_uri: str,
             scopes: list[str],
-            state: str,
             target: str,
     ) -> campus.model.AuthSession:
         client_id = env.CLIENT_ID
@@ -49,13 +48,13 @@ class CampusSessions(ResourceCollection):
             "client_id": str(client_id),
             "redirect_uri": redirect_uri,
             "scopes": scopes,
-            "state": state,
             "target": target,
         }
         if user_id is not None:
             json_data["user_id"] = str(user_id)
         resp = self.client.post(self.make_path(), json=json_data)
         resp.raise_for_status()
+        # session_id is used as state parameter and stored in session
         authsession = campus.model.AuthSession.from_resource(resp.json())
         flask.session[self._session_key] = authsession.id
         return campus.model.AuthSession.from_resource(resp.json())
