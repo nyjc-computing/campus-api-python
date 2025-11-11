@@ -8,17 +8,32 @@ accessing existing sessions by ID.
 
 from campus.common import env
 import campus.model
+import flask
 
 from ...interface import JsonDict, Resource, ResourceCollection
 
 
-class Logins(ResourceCollection):
+class LoginSessions(ResourceCollection):
     """Campus Auth Logins resource."""
     path = "logins"
 
-    def __getitem__(self, session_id: str) -> "Logins.Login":
+    @property
+    def _session_key(self) -> str:
+        provider = self.path.split("/")[-1]
+        return f"{provider}_login_id"
+
+    def __getitem__(
+            self,
+            session_id: str | None = None
+    ) -> "LoginSessions.Login":
         """Get a login session resource by ID."""
-        return Logins.Login(session_id, parent=self)
+        session_id = session_id or flask.session[self._session_key]
+        assert session_id is not None, "No login session ID found"
+        return LoginSessions.Login(session_id, parent=self)
+
+    def has_session(self) -> bool:
+        """Check if there is a session ID stored in the flask session."""
+        return self._session_key in flask.session
 
     def new(
             self,
@@ -45,15 +60,22 @@ class Logins(ResourceCollection):
         resp = self.client.post(self.make_path(), json=json_data)
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()
+        loginsession = campus.model.LoginSession.from_resource(resp.json())
+        flask.session[self._session_key] = loginsession.id
         return campus.model.LoginSession.from_resource(resp.json())
 
     class Login(Resource):
         """A single login session resource."""
 
-        def delete(self) -> None:
+        @property
+        def session_id(self) -> str:
+            return self.path.split("/")[-1]
+
+        def revoke(self) -> None:
             resp = self.client.delete(self.make_path())
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
+            del flask.session[self.session_id]
 
         def get(self) -> campus.model.LoginSession:
             resp = self.client.get(self.make_path())
