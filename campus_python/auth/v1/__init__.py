@@ -149,7 +149,7 @@ class AuthRoot(ResourceRoot):
         flask.g.pop("user")
         flask.g.pop("device")
         if self.logins.has_session():
-            login_session = self.logins[].get()
+            login_session = self.logins.from_session()
             self.logins[login_session.id].revoke()
 
     def push_context(self) -> None:
