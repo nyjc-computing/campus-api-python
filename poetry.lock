@@ -89,6 +89,7 @@ develop = false
 
 [package.dependencies]
 bcrypt = "^4.2.1"
+campus-api-python = {git = "https://github.com/nyjc-computing/campus-api-python.git", branch = "main"}
 flask = "^3.0.0"
 gunicorn = "^21.2.0"
 psycopg2-binary = "^2.9.0"
@@ -104,7 +105,7 @@ vault = []
 type = "git"
 url = "https://github.com/nyjc-computing/campus.git"
 reference = "weekly"
-resolved_reference = "3f2cfdb6abd3addaa6333d6036ac235fdbb6ac3c"
+resolved_reference = "be52805b7997c89ef4ba3bae8e36ff3293026f9d"
 
 [[package]]
 name = "certifi"
