@@ -6,12 +6,14 @@ JSON client wrapper for Campus services.
 __all__ = [
     "JsonClient",
     "JsonResponse",
-    "CampusClient",
-    "get_client",
+    "CampusRequest",
 ]
 
 import base64
-from typing import Any, Iterable, Mapping, MutableMapping, Self
+from typing import Any, Mapping, Self, cast
+
+from campus.common import env
+import campus.model
 import requests
 
 from .interface import JsonClient, JsonDict, JsonResponse
@@ -59,20 +61,25 @@ class CampusResponse(JsonResponse):
         return 500 <= self.status_code < 600
 
 
-class CampusClient(JsonClient):
-    """Campus JSON client with default configuration.
+class CampusRequest(JsonClient):
+    """Campus JSON client
 
     This client is pre-configured to handle JSON requests and responses.
     It provides convenience methods for common HTTP methods with JSON
     payloads.
+
+    Note that the client requires authorization before it can make
+    requests. Use CampusRequest.set_basic_authorization(),
+    CampusRequest.set_bearer_authorization(), or
+    CampusRequest.for_user() to authorize the client, and
+    CampusRequest.reset_authorization() to reset to client credentials
     """
 
     def __init__(
             self,
             base_url: str | None,
             *,
-            auth: Iterable[str] | str | None = None,
-            headers: MutableMapping[str, str] | None = None,
+            headers: Mapping[str, str] | None = None,
             **kwargs: Any,
     ):
         self.base_url = base_url or ""
@@ -82,32 +89,13 @@ class CampusClient(JsonClient):
         # Session to persist headers and connection pooling
         self._session = requests.Session()
         self._session.headers.update(self._headers)
+        self.reset_authorization()
 
-        match auth:
-            case str():  # token
-                self.set_authorization(token=auth)
-            case (client_id, client_secret):
-                # Keep the same behaviour as originally present; if encoding is
-                # desired callers can pass a pre-built header instead.
-                self.set_authorization(
-                    client_id=client_id,
-                    client_secret=client_secret
-                )
-            case None:
-                # Set client ID and secret from env
-                import os
-                client_id = os.getenv("CLIENT_ID")
-                client_secret = os.getenv("CLIENT_SECRET")
-                if client_id and client_secret:
-                    self.set_authorization(
-                        client_id=client_id,
-                        client_secret=client_secret
-                    )
-                else:
-                    raise OSError(
-                        "No authentication provided and CLIENT_ID or "
-                        "CLIENT_SECRET environment variables not set."
-                    )
+    @property
+    def headers(self) -> campus.model.HttpHeader:
+        """Get the currently configured headers."""
+        headers = cast(Mapping[str, str], self._session.headers)
+        return campus.model.HttpHeader.from_header(headers)
 
     def _build_url(self, path: str) -> str:
         if not self.base_url:
@@ -118,40 +106,41 @@ class CampusClient(JsonClient):
             return self.base_url + "/" + path
         return self.base_url + path
 
-    def set_authorization(
-            self,
-            *,
-            client_id: str | None = None,
-            client_secret: str | None = None,
-            token: str | None = None
-    ) -> None:
-        """Set the Authorization header for future requests.
+    def reset_authorization(self) -> None:
+        """Reset authorization back to client credentials from env."""
+        env.require("CLIENT_ID", "CLIENT_SECRET")
+        self.set_basic_authorization(
+            client_id=env.CLIENT_ID,
+            secret=env.CLIENT_SECRET
+        )
+
+    def set_basic_authorization(self, client_id: str, secret: str) -> None:
+        """Set Basic Authorization header using a pre-encoded token.
 
         Args:
-            client_id (str | None): Client ID for Basic Auth.
-            client_secret (str | None): Client Secret for Basic Auth.
-            token (str | None): Bearer token for Bearer Auth.
-        Raises:
-            ValueError: If neither Basic nor Bearer auth details are provided.
-
-        Note:
-            For Basic Auth, credentials are base64-encoded following RFC 7617.
+            client_id (str): Client ID.
+            secret (str): Client Secret.
         """
-        if token is not None:
-            self._session.headers["Authorization"] = "Bearer " + token
-        elif client_id is not None and client_secret is not None:
-            # Encode credentials in base64 following RFC 7617
-            credentials = f"{client_id}:{client_secret}"
-            encoded_credentials = base64.b64encode(
-                credentials.encode('utf-8')
-            ).decode('ascii')
-            self._session.headers["Authorization"] = f"Basic {encoded_credentials}"
-        else:
-            raise ValueError(
-                "Either token or both client_id and client_secret must be provided."
-            )
+        credentials = f"{client_id}:{secret}"
+        # Encode credentials in base64 following RFC 7617
+        encoded_credentials = base64.b64encode(
+            credentials.encode('utf-8')
+        ).decode('ascii')
+        self._session.headers["Authorization"] = "Basic " + encoded_credentials
 
-    def get(self: Self, path: str, query: JsonDict | None = None) -> JsonResponse:
+    def set_bearer_authorization(self, token: str) -> None:
+        """Set Bearer Authorization header.
+
+        Args:
+            token (str): Bearer token.
+        """
+        self._session.headers["Authorization"] = "Bearer " + token
+
+    def get(
+            self: Self,
+            path: str,
+            query: JsonDict | None = None
+    ) -> JsonResponse:
         """Sends a GET request."""
         url = self._build_url(path)
         try:
@@ -202,19 +191,3 @@ class CampusClient(JsonClient):
         except requests.RequestException as exc:
             raise errors.NetworkError(error_description=str(exc)) from None
         return CampusResponse(resp)
-
-
-def get_client(
-        base_url: str | None = None,
-        *,
-        auth: Iterable[str] | str | None = None,
-        headers: Mapping[str, str] | None = None,
-        **kwargs: Any
-) -> CampusClient:
-    """Create a new CampusClient instance with default configuration.
-
-    Returns:
-        CampusClient: A new CampusClient instance.
-    """
-    # ensure headers is a mutable mapping (dict) to match CampusClient signature
-    return CampusClient(base_url, auth=auth, headers=dict(headers) if headers is not None else None, **kwargs)

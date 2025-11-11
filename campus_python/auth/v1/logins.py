@@ -10,6 +10,7 @@ from campus.common import env
 import campus.model
 import flask
 
+from ... import errors
 from ...interface import JsonDict, Resource, ResourceCollection
 
 
@@ -33,6 +34,10 @@ class LoginSessions(ResourceCollection):
 
     def from_session(self) -> campus.model.LoginSession:
         """Get a login session using the client-side session ID."""
+        if not self.has_session():
+            raise errors.AuthenticationError(
+                error_description="No login session found."
+            )
         session_id = flask.session[self._session_key]
         return LoginSessions.Login(session_id, parent=self).get()
 

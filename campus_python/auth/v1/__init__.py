@@ -3,11 +3,15 @@
 Campus Auth resource.
 """
 
+from typing import Literal
+
 import flask
 import requests
 import werkzeug
 
+from campus.common import env
 from campus.common.utils import uid
+import campus.model
 
 from ... import errors
 from ...interface import ResourceRoot
@@ -154,6 +158,8 @@ class AuthRoot(ResourceRoot):
 
     def push_context(self) -> None:
         """Push auth/login context to flask g."""
+        flask.g.user = None
+        flask.g.device = None
         if self.sessions.has_session():
             auth_session = self.sessions.from_session()
             if auth_session.user_id:
@@ -162,3 +168,33 @@ class AuthRoot(ResourceRoot):
             login_session = self.logins.from_session()
             flask.g.user = self.users[login_session.user_id].get()
             flask.g.device = login_session.device_id
+
+    def token(
+            self,
+            grant_type: Literal[
+                "client_credentials",
+                "refresh_token"
+            ],
+            *,
+            refresh_token: str | None = None,
+    ) -> campus.model.OAuthToken:
+        """Get OAuth token from the token endpoint."""
+        json_body: dict[str, str] = {
+            "grant_type": grant_type,
+        }
+        match grant_type:
+            case "client_credentials":
+                json_body["client_id"] = env.CLIENT_ID
+                json_body["client_secret"] = env.CLIENT_SECRET
+            case "refresh_token":
+                if not refresh_token:
+                    raise errors.AuthenticationError(
+                        error_description="Refresh token required for "
+                                          "refresh_token grant type."
+                    )
+                json_body["refresh_token"] = refresh_token
+
+        base_url = self.base_url + "/auth/token"
+        resp = self.client.post(base_url, json=json_body)
+        resp.raise_for_status()
+        return campus.model.OAuthToken.from_resource(resp.json())

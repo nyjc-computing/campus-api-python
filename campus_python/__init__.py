@@ -8,13 +8,16 @@ __all__ = (
     "errors",
 )
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 import logging
 
 from campus.common import env
+import campus.model
 
 from .api.v1 import ApiRoot
 from .auth.v1 import AuthRoot
-from .json_client import CampusClient
+from .json_client import CampusRequest
 from . import errors
 
 logging.basicConfig(level=logging.INFO)
@@ -61,7 +64,7 @@ class Campus:
                     case _:
                         raise ValueError("Invalid ENV value")
             self._auth = AuthRoot(
-                json_client=CampusClient(base_url=base_url)
+                json_client=CampusRequest(base_url=base_url)
             )
         return self._auth
 
@@ -82,6 +85,83 @@ class Campus:
                     case _:
                         raise ValueError("Invalid ENV value")
             self._api = ApiRoot(
-                json_client=CampusClient(base_url=base_url)
+                json_client=CampusRequest(base_url=base_url)
             )
         return self._api
+
+    def _get_token_from_session(
+            self,
+            force_refresh=False,
+            refresh_if_expired=True
+    ) -> campus.model.OAuthToken:
+        """Get the token from flask session."""
+        # flask session stores a session id
+        login_session = self.auth.logins.from_session()
+        creds_resource = self.auth.credentials["campus"][login_session.user_id]
+        user_creds = creds_resource.get()
+        if (
+                force_refresh
+                or refresh_if_expired and user_creds.token.is_expired()
+        ):
+            token = self.auth.token(
+                grant_type="refresh_token",
+                refresh_token=user_creds.token.refresh_token
+            )
+            self.auth.credentials["campus"][login_session.user_id].update(
+                token=token
+            )
+        return user_creds.token
+
+    def revoke_session(self) -> None:
+        """Revoke the current authorization token."""
+        self.api.client.reset_authorization()
+        self.auth.client.reset_authorization()
+
+    def use_token(self, token: campus.model.OAuthToken) -> None:
+        """Set Bearer Authorization header using the given token.
+
+        Args:
+            token (campus.model.Token): Token to use for authorization.
+        """
+        self.api.client.set_bearer_authorization(token.access_token)
+        self.auth.client.set_bearer_authorization(token.access_token)
+
+    @contextmanager
+    def with_app_session(self) -> Iterator["Campus"]:
+        """Context manager yielding CampusRequest with app credentials.
+
+        Usage:
+            with campus.with_app_session() as client:
+                # use client for requests
+
+        Yields:
+            CampusRequest: JSON client with app credentials set.
+        """
+        try:
+            token = self.auth.token(grant_type="client_credentials")
+            self.use_token(token)
+            yield self
+        except Exception:
+            raise
+        finally:
+            self.revoke_session()
+
+    @contextmanager
+    def with_user_session(self) -> Iterator["Campus"]:
+        """Context manager yielding CampusRequest with user credentials.
+
+        Usage:
+            with campus.with_user_session() as client:
+                # use client for requests
+
+        Yields:
+            CampusRequest: JSON client with user credentials set.
+        """
+        try:
+            token = self._get_token_from_session()
+            self.use_token(token)
+            yield self
+        except Exception:
+            raise
+        finally:
+            self.revoke_session()

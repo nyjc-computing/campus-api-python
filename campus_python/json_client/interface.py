@@ -100,8 +100,8 @@ class JsonResponse(ABC):
 
 
 class JsonClient(ABC):
-    """This class describes the public interface required from Client classes,
-    which are used to send JSON requests.
+    """This class describes the public interface required from Client
+    classes, which are used to send JSON requests.
     """
     base_url: str
     # pylint: disable=unnecessary-ellipsis
@@ -115,6 +115,27 @@ class JsonClient(ABC):
             headers: Mapping[str, str] | None = None,
             **kwargs: Any
     ): ...
+
+    @abstractmethod
+    def reset_authorization(self) -> None:
+        """Reset authorization back to client credentials from env."""
+
+    @abstractmethod
+    def set_basic_authorization(self, client_id: str, secret: str) -> None:
+        """Set Basic Authorization header using a pre-encoded token.
+
+        Args:
+            client_id (str): Client ID.
+            secret (str): Client Secret.
+        """
+
+    @abstractmethod
+    def set_bearer_authorization(self, token: str) -> None:
+        """Set Bearer Authorization header.
+
+        Args:
+            token (str): Bearer token.
+        """
 
     @abstractmethod
     def get(self: Self, path: str, query: JsonDict | None = None) -> JsonResponse:
