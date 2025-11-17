@@ -31,7 +31,7 @@ class CampusSessions(ResourceCollection):
     def from_code(self, code: str) -> campus.model.AuthSession:
         """Get a session using authorization code."""
         resp = self.client.post(
-            self.make_path(),
+            self.make_path("authorization_code"),
             json={"code": code}
         )
         resp.raise_for_status()
