@@ -98,8 +98,8 @@ class CampusRequest(JsonClient):
         return campus.model.HttpHeader.from_header(headers)
 
     def _build_url(self, path: str) -> str:
-        if not self.base_url:
-            return path
+        if not self.base_url:  # relative URL
+            return f"http://localhost:{env.get('PORT', '8080')}" + path
         if self.base_url.endswith("/") and path.startswith("/"):
             return self.base_url[:-1] + path
         if not self.base_url.endswith("/") and not path.startswith("/"):
