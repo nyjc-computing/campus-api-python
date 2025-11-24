@@ -49,7 +49,7 @@ class CampusSessions(ResourceCollection):
     def new(
             self,
             *,
-            expiry_seconds: int,
+            # expiry_seconds: int,
             user_id: str | None = None,
             redirect_uri: str,
             scopes: list[str],
@@ -57,7 +57,7 @@ class CampusSessions(ResourceCollection):
     ) -> campus.model.AuthSession:
         client_id = env.CLIENT_ID
         json_data: JsonDict = {
-            "expiry_seconds": expiry_seconds,
+            # "expiry_seconds": expiry_seconds,
             "client_id": str(client_id),
             "redirect_uri": redirect_uri,
             "scopes": scopes,
