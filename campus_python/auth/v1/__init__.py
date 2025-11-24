@@ -100,7 +100,6 @@ class AuthRoot(ResourceRoot):
         Returns a redirect response to the authorization endpoint.
         """
         auth_session = self.sessions.new(
-            expiry_seconds=600,  # 10 minutes
             redirect_uri=redirect_uri,
             scopes=["campus.profile"],
             target=target,
