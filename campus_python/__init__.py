@@ -33,7 +33,7 @@ class Campus:
     See the API Reference for usage examples.
     """
 
-    def __init__(self):
+    def __init__(self, timeout: int):
         """Initialize unified Campus client with all service clients.
 
         Credentials are automatically loaded from CLIENT_ID and CLIENT_SECRET
@@ -45,6 +45,7 @@ class Campus:
             raw: If True, methods return JsonResponse objects.
                  If False (default), methods call raise_for_status() and return JSON data.
         """
+        self.timeout = timeout
 
     @property
     def auth(self) -> AuthRoot:
@@ -64,7 +65,10 @@ class Campus:
                     case _:
                         raise ValueError("Invalid ENV value")
             self._auth = AuthRoot(
-                json_client=CampusRequest(base_url=base_url)
+                json_client=CampusRequest(
+                    base_url=base_url,
+                    timeout=self.timeout,
+                )
             )
         return self._auth
 
@@ -85,7 +89,10 @@ class Campus:
                     case _:
                         raise ValueError("Invalid ENV value")
             self._api = ApiRoot(
-                json_client=CampusRequest(base_url=base_url)
+                json_client=CampusRequest(
+                    base_url=base_url,
+                    timeout=self.timeout,
+                )
             )
         return self._api
 
