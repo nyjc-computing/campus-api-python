@@ -5,13 +5,12 @@ Campus Auth resource.
 
 from typing import Literal
 
+import campus.model
 import flask
 import requests
 import werkzeug
-
 from campus.common import env
 from campus.common.utils import uid
-import campus.model
 
 from ... import errors
 from ...interface import ResourceRoot
@@ -104,9 +103,9 @@ class AuthRoot(ResourceRoot):
             scopes=["campus.profile"],
             target=target,
         )
-        base_url = self.base_url + "/auth/authorize"
+        authorize_url = self.base_url + self.make_path("campus/authorize")
         resp = requests.get(
-            base_url,
+            authorize_url,
             {
                 "client_id": auth_session.client_id,
                 "response_type": "code",
@@ -114,6 +113,7 @@ class AuthRoot(ResourceRoot):
                 "scope": " ".join(auth_session.scopes),
                 "state": auth_session.id,
                 "hd": "nyjc.edu.sg",
+                "target": target,
             }
         )
         return flask.redirect(resp.url)
