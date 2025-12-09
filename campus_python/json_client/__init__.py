@@ -12,12 +12,12 @@ __all__ = [
 import base64
 from typing import Any, Mapping, Self, cast
 
-from campus.common import env
 import campus.model
 import requests
+from campus.common import env
 
-from .interface import JsonClient, JsonDict, JsonResponse
 from .. import errors
+from .interface import JsonClient, JsonDict, JsonResponse
 
 
 class CampusResponse(JsonResponse):

@@ -51,19 +51,30 @@ class Campus:
     def auth(self) -> AuthRoot:
         """Get the auth service resource."""
         if not hasattr(self, "_auth"):
-            # Use relative URL if in deployed auth service
-            if env.get("DEPLOY") and env.DEPLOY.endswith(".auth"):
-                base_url = ""
-            else:
-                match env.get("ENV", env.get("CAMPUS_ENV", "development")):
-                    case "development":
-                        base_url = "https://campusauth-development.up.railway.app"
-                    case "staging":
-                        base_url = "https://auth.campus.nyjc.dev"
-                    case "production":
-                        base_url = "https://auth.campus.nyjc.app"
-                    case _:
-                        raise ValueError("Invalid ENV value")
+            # Allow explicit override via environment variable
+            base_url = env.get("CAMPUS_AUTH_URL")
+            if not base_url:
+                # If HOSTNAME is set and we're in auth deployment, use it to construct full URL
+                # This handles the case where auth service needs to call its own API
+                hostname = env.get("HOSTNAME")
+                if hostname and env.get("DEPLOY") and env.DEPLOY.endswith(".auth"):
+                    # Ensure hostname has protocol
+                    if not hostname.startswith("http"):
+                        hostname = f"https://{hostname}"
+                    base_url = hostname
+                elif env.get("DEPLOY") and env.DEPLOY.endswith(".auth"):
+                    # Fallback to relative URL if no hostname
+                    base_url = ""
+                else:
+                    match env.get("ENV", env.get("CAMPUS_ENV", "development")):
+                        case "development":
+                            base_url = "https://campusauth-development.up.railway.app"
+                        case "staging":
+                            base_url = "https://auth.campus.nyjc.dev"
+                        case "production":
+                            base_url = "https://auth.campus.nyjc.app"
+                        case _:
+                            raise ValueError("Invalid ENV value")
             self._auth = AuthRoot(
                 json_client=CampusRequest(
                     base_url=base_url,
