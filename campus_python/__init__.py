@@ -28,7 +28,8 @@ class Campus:
     """Unified Campus client interface.
 
     Provides consistent access patterns across all Campus services.
-    Automatically loads credentials from CLIENT_ID and CLIENT_SECRET environment variables.
+    Automatically loads credentials from CLIENT_ID and CLIENT_SECRET
+    environment variables.
 
     See the API Reference for usage examples.
     """
@@ -36,14 +37,15 @@ class Campus:
     def __init__(self, timeout: int):
         """Initialize unified Campus client with all service clients.
 
-        Credentials are automatically loaded from CLIENT_ID and CLIENT_SECRET
-        environment variables. All service clients will be properly
-        authenticated if these environment variables are set.
+        Credentials are automatically loaded from CLIENT_ID and
+        CLIENT_SECRET environment variables. All service clients will be
+        properly authenticated if these environment variables are set.
 
         Args:
             override: Optional mapping of app names to JSON clients.
             raw: If True, methods return JsonResponse objects.
-                 If False (default), methods call raise_for_status() and return JSON data.
+                 If False (default), methods call raise_for_status() and
+                 return JSON data.
         """
         self.timeout = timeout
 
