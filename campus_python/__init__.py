@@ -8,17 +8,17 @@ __all__ = (
     "errors",
 )
 
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-import logging
 
-from campus.common import env
 import campus.model
+from campus.common import env
 
+from . import errors
 from .api.v1 import ApiRoot
 from .auth.v1 import AuthRoot
 from .json_client import CampusRequest
-from . import errors
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ class Campus:
     def api(self) -> ApiRoot:
         """Get the api service resource."""
         if not hasattr(self, "_api"):
-            if env.get("DEPLOY") and env.DEPLOY.endswith(".auth"):
+            if env.get("DEPLOY") and env.DEPLOY.endswith(".api"):
                 base_url = ""
             else:
                 match env.get("ENV", env.get("CAMPUS_ENV", "development")):
