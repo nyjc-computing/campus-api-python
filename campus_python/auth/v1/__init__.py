@@ -109,7 +109,7 @@ class AuthRoot(ResourceRoot):
         resp = requests.get(
             authorize_url,
             params={"target": target},
-            auth=(self.client.client_id, self.client.client_secret),
+            auth=(env.CLIENT_ID, env.CLIENT_SECRET),
         )
         return flask.redirect(resp.url)
 
