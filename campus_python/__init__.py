@@ -55,7 +55,7 @@ class Campus:
         if not hasattr(self, "_auth"):
             # Use relative URL if in deployed auth service
             if env.get("DEPLOY") and env.DEPLOY.endswith(".auth"):
-                base_url = ""
+                base_url = f"https://{env.HOSTNAME}"
             else:
                 match env.get("ENV", env.get("CAMPUS_ENV", "development")):
                     case "development":
@@ -79,7 +79,7 @@ class Campus:
         """Get the api service resource."""
         if not hasattr(self, "_api"):
             if env.get("DEPLOY") and env.DEPLOY.endswith(".api"):
-                base_url = ""
+                base_url = f"https://{env.HOSTNAME}"
             else:
                 match env.get("ENV", env.get("CAMPUS_ENV", "development")):
                     case "development":
