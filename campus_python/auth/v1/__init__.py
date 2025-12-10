@@ -104,17 +104,12 @@ class AuthRoot(ResourceRoot):
             target=target,
         )
         authorize_url = self.base_url + self.make_path("campus/authorize")
+        # Campus OAuth proxy only accepts 'target' parameter
+        # Session state is managed server-side via HTTP Basic Auth
         resp = requests.get(
             authorize_url,
-            {
-                "client_id": auth_session.client_id,
-                "response_type": "code",
-                "redirect_uri": redirect_uri,
-                "scope": " ".join(auth_session.scopes),
-                "state": auth_session.id,
-                "hd": "nyjc.edu.sg",
-                "target": target,
-            }
+            params={"target": target},
+            auth=(self.client.client_id, self.client.client_secret),
         )
         return flask.redirect(resp.url)
 
