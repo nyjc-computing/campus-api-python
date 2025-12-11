@@ -114,6 +114,7 @@ class AuthRoot(ResourceRoot):
         # Construct Campus OAuth Proxy URL with target parameter
         authorize_url = self.base_url + self.make_path("campus/authorize")
         params = {
+            "client_id": env.CLIENT_ID,
             "state": auth_session.id,
             "target": target,
         }
