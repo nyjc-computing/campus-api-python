@@ -91,8 +91,7 @@ class AuthRoot(ResourceRoot):
 
     def authorize(
             self,
-            redirect_uri: str,
-            target: str,
+            target: str,  # app URL
     ) -> werkzeug.Response:
         """Begin an authorization flow.
 
@@ -105,15 +104,16 @@ class AuthRoot(ResourceRoot):
         """
         from urllib.parse import urlencode
 
+        redirect_uri = self.base_url + self.make_path("/campus/callback")
         auth_session = self.sessions.new(
-            redirect_uri=redirect_uri,
+            redirect_uri=redirect_uri,  # unused but can't be empty
             scopes=["campus.profile"],
             target=target,
         )
 
         # Construct Campus OAuth Proxy URL with target parameter
         authorize_url = self.base_url + self.make_path("campus/authorize")
-        params = {"target": target}
+        params = {"state": auth_session.id}
         full_url = f"{authorize_url}?{urlencode(params)}"
 
         # Return redirect to preserve browser user agent and cookies
