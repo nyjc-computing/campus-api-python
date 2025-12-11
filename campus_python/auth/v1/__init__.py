@@ -113,7 +113,10 @@ class AuthRoot(ResourceRoot):
 
         # Construct Campus OAuth Proxy URL with target parameter
         authorize_url = self.base_url + self.make_path("campus/authorize")
-        params = {"state": auth_session.id}
+        params = {
+            "state": auth_session.id,
+            "target": target,
+        }
         full_url = f"{authorize_url}?{urlencode(params)}"
 
         # Return redirect to preserve browser user agent and cookies
