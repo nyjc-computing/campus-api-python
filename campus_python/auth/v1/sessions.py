@@ -53,16 +53,17 @@ class CampusSessions(ResourceCollection):
             user_id: str | None = None,
             redirect_uri: str,
             scopes: list[str],
-            target: str,
+            target: str | None = None,
     ) -> campus.model.AuthSession:
         client_id = env.CLIENT_ID
         json_data: JsonDict = {
             # "expiry_seconds": expiry_seconds,
-            "client_id": str(client_id),
+            "client_id": client_id,
             "redirect_uri": redirect_uri,
             "scopes": scopes,
-            "target": target,
         }
+        if target is not None:
+            json_data["target"] = target
         if user_id is not None:
             json_data["user_id"] = str(user_id)
         resp = self.client.post(self.make_path(), json=json_data)
