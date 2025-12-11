@@ -97,21 +97,27 @@ class AuthRoot(ResourceRoot):
         """Begin an authorization flow.
 
         Returns a redirect response to the authorization endpoint.
+
+        IMPORTANT: This must return a redirect response directly (not use
+        requests.get) to preserve the browser's user agent and cookies.
+        If we use requests, Google detects a server user agent and switches
+        to OAuth Lite flow which breaks in browsers (500 error).
         """
+        from urllib.parse import urlencode
+
         auth_session = self.sessions.new(
             redirect_uri=redirect_uri,
             scopes=["campus.profile"],
             target=target,
         )
+
+        # Construct Campus OAuth Proxy URL with target parameter
         authorize_url = self.base_url + self.make_path("campus/authorize")
-        # Campus OAuth proxy only accepts 'target' parameter
-        # Session state is managed server-side via HTTP Basic Auth
-        resp = requests.get(
-            authorize_url,
-            params={"target": target},
-            auth=(env.CLIENT_ID, env.CLIENT_SECRET),
-        )
-        return flask.redirect(resp.url)
+        params = {"target": target}
+        full_url = f"{authorize_url}?{urlencode(params)}"
+
+        # Return redirect to preserve browser user agent and cookies
+        return flask.redirect(full_url)
 
     def finalize(
             self,
