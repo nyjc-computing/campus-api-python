@@ -5,12 +5,12 @@ Campus Auth resource.
 
 from typing import Literal
 
-import campus.model
 import flask
-import requests
 import werkzeug
+
 from campus.common import env
 from campus.common.utils import uid
+import campus.model
 
 from ... import errors
 from ...interface import ResourceRoot
