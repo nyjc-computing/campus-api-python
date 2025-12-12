@@ -201,7 +201,7 @@ class AuthRoot(ResourceRoot):
             "client_id": env.CLIENT_ID,
             "client_secret": env.CLIENT_SECRET,
         }
-        base_url = self.base_url + "/auth/v1/token"
+        base_url = self.base_url + self.url_prefix + "/token"
         resp = self.client.post(base_url, json=json_body)
         resp.raise_for_status()
         return campus.model.OAuthToken.from_resource(resp.json())
@@ -320,7 +320,7 @@ class AuthRoot(ResourceRoot):
                     )
                 json_body["refresh_token"] = refresh_token
 
-        base_url = self.base_url + "/auth/token"
+        base_url = self.base_url + self.url_prefix + "/token"
         resp = self.client.post(base_url, json=json_body)
         resp.raise_for_status()
         return campus.model.OAuthToken.from_resource(resp.json())
