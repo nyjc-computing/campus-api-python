@@ -25,7 +25,7 @@ class CampusSessions(ResourceCollection):
         return f"{provider}_session_id"
 
     def __getitem__(self, session_id: str) -> "CampusSessions.Session":
-        session_id = flask.session[self._session_key]
+        # Use the provided session_id parameter, not Flask session
         return CampusSessions.Session(session_id, parent=self)
 
     def from_code(self, code: str) -> campus.model.AuthSession:
@@ -99,7 +99,8 @@ class CampusSessions(ResourceCollection):
             # DELETE /sessions/{provider}/{session_id} -> {"target": <url>}
             resp = self.client.delete(self.make_path())
             resp.raise_for_status()
-            del flask.session[self.session_id]
+            # Remove session ID from Flask session using correct key
+            del flask.session[self.parent._session_key]
             body = resp.json()
             return body["target"]
 
