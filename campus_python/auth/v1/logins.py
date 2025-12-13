@@ -28,8 +28,11 @@ class LoginSessions(ResourceCollection):
             session_id: str | None = None
     ) -> "LoginSessions.Login":
         """Get a login session resource by ID."""
-        session_id = session_id or flask.session[self._session_key]
-        assert session_id is not None, "No login session ID found"
+        session_id = session_id or flask.session.get(self._session_key)
+        if not session_id:
+            raise errors.AuthenticationError(
+                error_description="No login session ID found in session"
+            )
         return LoginSessions.Login(session_id, parent=self)
 
     def from_session(self) -> campus.model.LoginSession:
@@ -38,7 +41,11 @@ class LoginSessions(ResourceCollection):
             raise errors.AuthenticationError(
                 error_description="No login session found."
             )
-        session_id = flask.session[self._session_key]
+        session_id = flask.session.get(self._session_key)
+        if not session_id:
+            raise errors.AuthenticationError(
+                error_description="Login session ID is empty or invalid"
+            )
         return LoginSessions.Login(session_id, parent=self).get()
 
     def has_session(self) -> bool:
@@ -85,7 +92,7 @@ class LoginSessions(ResourceCollection):
             resp = self.client.delete(self.make_path())
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
-            del flask.session[self.session_id]
+            del flask.session[self.parent._session_key]  # type: ignore
 
         def get(self) -> campus.model.LoginSession:
             resp = self.client.get(self.make_path())
