@@ -16,11 +16,11 @@ from ...interface import JsonDict, Resource, ResourceCollection
 
 class LoginSessions(ResourceCollection):
     """Campus Auth Logins resource."""
-    path = "logins"
+    path = "logins/"
 
     @property
     def _session_key(self) -> str:
-        provider = self.path.split("/")[-1]
+        provider = self.path.rstrip("/").split("/")[-1]
         return f"{provider}_login_id"
 
     def __getitem__(
