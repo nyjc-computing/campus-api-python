@@ -46,7 +46,13 @@ class Campus:
             raw: If True, methods return JsonResponse objects.
                  If False (default), methods call raise_for_status() and
                  return JSON data.
+
+        Raises:
+            OSError: If CLIENT_ID or CLIENT_SECRET environment variables
+                are not set.
         """
+        # Validate credentials early to fail fast
+        env.require("CLIENT_ID", "CLIENT_SECRET")
         self.timeout = timeout
 
     @property
