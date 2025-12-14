@@ -159,7 +159,6 @@ class AuthRoot(ResourceRoot):
 
         # 5. Create login session
         ls = self.logins.new(
-            expiry_seconds=86400 * 30,  # 30 days
             user_id=auth_session.user_id,
             device_id=uid.generate_category_uid("device", length=16),
             agent_string=flask.request.headers.get("User-Agent", ""),

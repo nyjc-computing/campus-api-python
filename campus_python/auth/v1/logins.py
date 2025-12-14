@@ -55,7 +55,6 @@ class LoginSessions(ResourceCollection):
     def new(
             self,
             *,
-            expiry_seconds: int,
             user_id: str,
             device_id: str | None = None,
             agent_string: str,
@@ -66,7 +65,6 @@ class LoginSessions(ResourceCollection):
         """
         client_id = env.CLIENT_ID
         json_data: JsonDict = {
-            "expiry_seconds": expiry_seconds,
             "client_id": str(client_id),
             "user_id": str(user_id),
             "agent_string": agent_string,
