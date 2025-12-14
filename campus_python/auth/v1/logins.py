@@ -86,7 +86,7 @@ class LoginSessions(ResourceCollection):
 
         @property
         def session_id(self) -> str:
-            return self.path.split("/")[-1]
+            return self.path.rstrip("/").split("/")[-1]
 
         def revoke(self) -> None:
             resp = self.client.delete(self.make_path())
@@ -95,7 +95,7 @@ class LoginSessions(ResourceCollection):
             del flask.session[self.parent._session_key]  # type: ignore
 
         def get(self) -> campus.model.LoginSession:
-            resp = self.client.get(self.make_path())
+            resp = self.client.get(self.make_path(trailing_slash=True))
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
             return campus.model.LoginSession.from_resource(resp.json())
