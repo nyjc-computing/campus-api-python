@@ -149,14 +149,11 @@ class Resource:
         response.raise_for_status()
         return response.json()
 
-    def make_path(self, part: str | None = None, trailing_slash=False) -> str:
+    def make_path(self, part: str | None = None) -> str:
         """Create a full path for a sub-resource or action."""
-        full_path = "/" + f"{self.path.strip(SLASH)}"
         if part:
-            full_path = f"{full_path}/{part.strip(SLASH)}"
-        if trailing_slash and not full_path.endswith(SLASH):
-            full_path += SLASH
-        return full_path
+            return f"/{self.path.strip(SLASH)}/{part.strip(SLASH)}"
+        return f"/{self.path.lstrip(SLASH)}"
 
     def make_url(self, part: str | None = None) -> str:
         """Create a full URL for a sub-resource or action."""
