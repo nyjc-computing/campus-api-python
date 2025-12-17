@@ -21,7 +21,7 @@ class Credentials(ResourceCollection):
     - `creds["github"].get(token_id)` -> get by token id
     - `creds["github"][user_id].get(client_id)` -> get credentials for user
     """
-    path = "credentials"
+    path = "credentials/"
 
     def __getitem__(self, provider: str) -> "Credentials.Provider":
         """Get provider-level collection."""

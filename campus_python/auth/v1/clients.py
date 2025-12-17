@@ -11,7 +11,7 @@ from ...interface import JsonDict, Resource, ResourceCollection
 
 class Clients(ResourceCollection):
     """Campus Auth Clients resource."""
-    path = "clients"
+    path = "clients/"
 
     def __getitem__(self, client_id: str) -> Resource:
         """Get a specific client resource by ID."""

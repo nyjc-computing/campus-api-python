@@ -14,7 +14,7 @@ from ...interface import Resource, ResourceCollection
 
 class Users(ResourceCollection):
     """Vault Users resource."""
-    path = "users"
+    path = "users/"
 
     def __getitem__(self, user_id: str) -> "Users.User":
         """Get a specific user resource by ID."""

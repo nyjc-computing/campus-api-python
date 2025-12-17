@@ -17,7 +17,7 @@ from ... import errors
 
 class Root(ResourceCollection):
     """Campus Auth root resource."""
-    path = "root"
+    path = "root/"
 
     def authenticate(
             self,

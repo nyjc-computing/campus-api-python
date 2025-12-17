@@ -18,7 +18,7 @@ PROVIDER = "campus"
 
 class CampusSessions(ResourceCollection):
     """Campus Auth Sessions resource."""
-    path = f"sessions/{PROVIDER}"
+    path = f"sessions/{PROVIDER}/"
 
     @property
     def _session_key(self) -> str:

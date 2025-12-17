@@ -15,7 +15,7 @@ from ...interface import Resource, ResourceCollection
 
 class Vaults(ResourceCollection):
     """Campus Auth Vaults resource."""
-    path = "vaults"
+    path = "vaults/"
 
     def __getitem__(self, label: str) -> "Vaults.Vault":
         return Vaults.Vault(label, parent=self)
