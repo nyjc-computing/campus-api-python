@@ -98,7 +98,9 @@ class CampusSessions(ResourceCollection):
 
         def finalize(self) -> str:
             # DELETE /sessions/{provider}/{session_id} -> {"target": <url>}
-            resp = self.client.delete(self.make_path())
+            resp = self.client.delete(
+                self.make_path(end_slash=True)
+            )
             resp.raise_for_status()
             # Remove session ID from Flask session using correct key
             del flask.session[cast(CampusSessions, self.parent)._session_key]
@@ -106,12 +108,17 @@ class CampusSessions(ResourceCollection):
             return body["target"]
 
         def get(self) -> campus.model.AuthSession:
-            resp = self.client.get(self.make_path())
+            resp = self.client.get(
+                self.make_path(end_slash=True)
+            )
             resp.raise_for_status()
             return campus.model.AuthSession.from_resource(resp.json())
 
         def update(self, **updates) -> None:
             # Only user_id and authorization_code are expected by the API
-            resp = self.client.patch(self.make_path(), json=updates)
+            resp = self.client.patch(
+                self.make_path(end_slash=True),
+                json=updates
+            )
             resp.raise_for_status()
             return None
