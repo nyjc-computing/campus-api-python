@@ -157,12 +157,16 @@ class Resource:
     def make_path(self, part: str | None = None, end_slash=False) -> str:
         """Create a full path for a sub-resource or action."""
         if part:
-            return (
+            full_path = (
                 f"/{self.path.strip(SLASH)}"
                 f"/{part.strip(SLASH)}"
                 f"{SLASH if end_slash else ''}"
             )
-        return f"/{self.path.lstrip(SLASH)}"
+        else:
+            full_path = f"/{self.path.lstrip(SLASH)}"
+        if end_slash and not full_path.endswith(SLASH):
+            full_path += SLASH
+        return full_path
 
     def make_url(self, part: str | None = None) -> str:
         """Create a full URL for a sub-resource or action."""
