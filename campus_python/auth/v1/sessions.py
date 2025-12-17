@@ -4,6 +4,7 @@ Campus Auth sessions resource (v1).
 """
 
 from datetime import datetime
+from typing import cast
 
 import flask
 
@@ -100,7 +101,7 @@ class CampusSessions(ResourceCollection):
             resp = self.client.delete(self.make_path())
             resp.raise_for_status()
             # Remove session ID from Flask session using correct key
-            del flask.session[self.parent._session_key]
+            del flask.session[cast(CampusSessions, self.parent)._session_key]
             body = resp.json()
             return body["target"]
 
