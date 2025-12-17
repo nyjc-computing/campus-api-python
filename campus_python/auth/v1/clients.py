@@ -13,7 +13,7 @@ class Clients(ResourceCollection):
     """Campus Auth Clients resource."""
     path = "clients/"
 
-    def __getitem__(self, client_id: str) -> Resource:
+    def __getitem__(self, client_id: str) -> "Clients.Client":
         """Get a specific client resource by ID."""
         return Clients.Client(client_id, parent=self)
 
