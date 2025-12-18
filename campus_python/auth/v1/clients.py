@@ -37,9 +37,17 @@ class Clients(ResourceCollection):
 
     class Client(Resource):
         """Campus Auth Client resource."""
+
         @property
         def access(self) -> "Clients.Client.ClientAccess":
             return Clients.Client.ClientAccess("access", parent=self)
+
+        @property
+        def client_id(self) -> str:
+            """The client_id of the resource was passed in as a path
+            parameter, and is extracted using this property alias.
+            """
+            return self.path.strip("/")
 
         def delete(self) -> None:
             resp = self.client.delete(self.make_path())
@@ -91,9 +99,7 @@ class Clients(ResourceCollection):
                     vault: str,
                     permission: int,
             ) -> JsonDict:
-                client_id = env.CLIENT_ID
                 resp = self.client.post(self.make_path("grant"), json={
-                    "client_id": client_id,
                     "vault": vault,
                     "permission": permission,
                 })
@@ -106,9 +112,7 @@ class Clients(ResourceCollection):
                     vault: str,
                     permission: int,
             ) -> JsonDict:
-                client_id = env.CLIENT_ID
                 resp = self.client.post(self.make_path("revoke"), json={
-                    "client_id": client_id,
                     "vault": vault,
                     "permission": permission,
                 })
