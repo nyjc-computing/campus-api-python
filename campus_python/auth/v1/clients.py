@@ -119,3 +119,16 @@ class Clients(ResourceCollection):
                 # Raise error if status code is not 2XX or 3XX
                 resp.raise_for_status()
                 return resp.json()
+
+            def update(
+                    self,
+                    vault: str,
+                    permission: int,
+            ) -> JsonDict:
+                resp = self.client.patch(self.make_path(end_slash=True), json={
+                    "vault": vault,
+                    "permission": permission,
+                })
+                # Raise error if status code is not 2XX or 3XX
+                resp.raise_for_status()
+                return resp.json()
