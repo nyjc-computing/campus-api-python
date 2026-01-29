@@ -6,6 +6,7 @@ Campus API resource.
 from ...interface import ResourceRoot
 from ...json_client.interface import JsonClient
 from . import (
+    assignments,
     circles,
 )
 
@@ -16,7 +17,18 @@ class ApiRoot(ResourceRoot):
     def __init__(self, json_client: JsonClient):
         self._json_client = json_client
         self._clients = None
+        self._assignments = None
         self._circles = None
+
+    @property
+    def assignments(self) -> assignments.Assignments:
+        """Get the assignments resource."""
+        if not self._assignments:
+            self._assignments = assignments.Assignments(
+                self._json_client,
+                root=self
+            )
+        return self._assignments
 
     @property
     def circles(self) -> circles.Circles:
