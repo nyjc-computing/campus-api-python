@@ -8,6 +8,7 @@ from ...json_client.interface import JsonClient
 from . import (
     assignments,
     circles,
+    submissions,
 )
 
 class ApiRoot(ResourceRoot):
@@ -19,6 +20,7 @@ class ApiRoot(ResourceRoot):
         self._clients = None
         self._assignments = None
         self._circles = None
+        self._submissions = None
 
     @property
     def assignments(self) -> assignments.Assignments:
@@ -39,3 +41,13 @@ class ApiRoot(ResourceRoot):
                 root=self
             )
         return self._circles
+
+    @property
+    def submissions(self) -> submissions.Submissions:
+        """Get the submissions resource."""
+        if not self._submissions:
+            self._submissions = submissions.Submissions(
+                self._json_client,
+                root=self
+            )
+        return self._submissions
