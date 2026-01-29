@@ -10,7 +10,7 @@ from ...interface import Resource, ResourceCollection
 
 class Assignments(ResourceCollection):
     """Campus API Assignments resource."""
-    path = "assignments/"
+    path = "assignments"
 
     def __getitem__(self, assignment_id: str) -> "Assignments.Assignment":
         """Get a specific assignment resource by ID."""
@@ -68,6 +68,7 @@ class Assignments(ResourceCollection):
         def delete(self) -> None:
             resp = self.client.delete(self.make_path())
             resp.raise_for_status()
+            return None
 
         def get(self) -> campus.model.Assignment:
             resp = self.client.get(self.make_path())
@@ -77,6 +78,7 @@ class Assignments(ResourceCollection):
         def update(self, **updates) -> None:
             resp = self.client.patch(self.make_path(), json=updates)
             resp.raise_for_status()
+            return None
 
         class Links(Resource):
             """Campus API Assignment Links resource."""
@@ -98,3 +100,4 @@ class Assignments(ResourceCollection):
 
                 resp = self.client.post(self.make_path(), json=payload)
                 resp.raise_for_status()
+                return None
