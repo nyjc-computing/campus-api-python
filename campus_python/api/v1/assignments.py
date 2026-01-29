@@ -10,7 +10,7 @@ from ...interface import Resource, ResourceCollection
 
 class Assignments(ResourceCollection):
     """Campus API Assignments resource."""
-    path = "assignments"
+    path = "assignments/"
 
     def __getitem__(self, assignment_id: str) -> "Assignments.Assignment":
         """Get a specific assignment resource by ID."""
@@ -41,21 +41,10 @@ class Assignments(ResourceCollection):
             self,
             *,
             title: str,
-            description: str = "",
+            description: str | None = None,
             questions: list[dict] | None = None,
             classroom_links: list[dict] | None = None,
     ) -> campus.model.Assignment:
-        """Create a new assignment.
-
-        Args:
-            title: Assignment title
-            description: Assignment description
-            questions: List of question dictionaries
-            classroom_links: List of Classroom link dictionaries
-
-        Returns:
-            Created Assignment object
-        """
         payload = {"title": title}
         if description is not None:
             payload["description"] = description
@@ -77,51 +66,17 @@ class Assignments(ResourceCollection):
             return Assignments.Assignment.Links(parent=self)
 
         def delete(self) -> None:
-            """Delete this assignment."""
             resp = self.client.delete(self.make_path())
             resp.raise_for_status()
-            return None
 
         def get(self) -> campus.model.Assignment:
-            """Get this assignment."""
             resp = self.client.get(self.make_path())
             resp.raise_for_status()
             return campus.model.Assignment.from_resource(resp.json())
 
-        def update(
-                self,
-                *,
-                title: str | None = None,
-                description: str | None = None,
-                questions: list[dict] | None = None,
-                classroom_links: list[dict] | None = None,
-        ) -> None:
-            """Update this assignment.
-
-            All parameters are optional. Only provided fields will be updated.
-
-            Args:
-                title: New title
-                description: New description
-                questions: New list of questions
-                classroom_links: New list of classroom links
-            """
-            payload = {}
-            if title is not None:
-                payload["title"] = title
-            if description is not None:
-                payload["description"] = description
-            if questions is not None:
-                payload["questions"] = questions
-            if classroom_links is not None:
-                payload["classroom_links"] = classroom_links
-
-            if not payload:
-                raise ValueError("At least one field must be provided for update")
-
-            resp = self.client.patch(self.make_path(), json=payload)
+        def update(self, **updates) -> None:
+            resp = self.client.patch(self.make_path(), json=updates)
             resp.raise_for_status()
-            return None
 
         class Links(Resource):
             """Campus API Assignment Links resource."""
@@ -134,13 +89,6 @@ class Assignments(ResourceCollection):
                     coursework_id: str,
                     attachment_id: str | None = None,
             ) -> None:
-                """Add a Google Classroom link to this assignment.
-
-                Args:
-                    course_id: Google Classroom course ID
-                    coursework_id: Google Classroom coursework ID
-                    attachment_id: Google Classroom attachment ID (optional)
-                """
                 payload = {
                     "course_id": course_id,
                     "coursework_id": coursework_id,
@@ -150,4 +98,3 @@ class Assignments(ResourceCollection):
 
                 resp = self.client.post(self.make_path(), json=payload)
                 resp.raise_for_status()
-                return None
