@@ -66,6 +66,8 @@ class Campus:
                 match env.get("ENV", env.get("CAMPUS_ENV", "development")):
                     case "development":
                         base_url = "https://campusauth-development.up.railway.app"
+                    case "testing":
+                        base_url = "https://campusauth-development.up.railway.app"
                     case "staging":
                         base_url = "https://auth.campus.nyjc.dev"
                     case "production":
@@ -89,6 +91,8 @@ class Campus:
             else:
                 match env.get("ENV", env.get("CAMPUS_ENV", "development")):
                     case "development":
+                        base_url = "https://campusapi-development.up.railway.app"
+                    case "testing":
                         base_url = "https://campusapi-development.up.railway.app"
                     case "staging":
                         base_url = "https://api.campus.nyjc.dev"
