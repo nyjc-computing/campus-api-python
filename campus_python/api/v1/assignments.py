@@ -41,9 +41,9 @@ class Assignments(ResourceCollection):
             self,
             *,
             title: str,
-            description: str | None = None,
-            questions: list[dict] | None = None,
-            classroom_links: list[dict] | None = None,
+            description: "str | None" = None,
+            questions: "list[dict] | None" = None,
+            classroom_links: "list[dict] | None" = None,
     ) -> campus.model.Assignment:
         payload = {"title": title}
         if description is not None:
