@@ -67,7 +67,7 @@ class Campus:
                     case "development":
                         base_url = "https://campusauth-development.up.railway.app"
                     case "testing":
-                        base_url = "https://campusauth-development.up.railway.app"
+                        base_url = f"https://{env.HOSTNAME}"
                     case "staging":
                         base_url = "https://auth.campus.nyjc.dev"
                     case "production":
@@ -93,7 +93,7 @@ class Campus:
                     case "development":
                         base_url = "https://campusapi-development.up.railway.app"
                     case "testing":
-                        base_url = "https://campusapi-development.up.railway.app"
+                        base_url = f"https://{env.HOSTNAME}"
                     case "staging":
                         base_url = "https://api.campus.nyjc.dev"
                     case "production":
