@@ -16,7 +16,7 @@ class Circles(ResourceCollection):
         """Get a specific circle resource by ID."""
         return Circles.Circle(circle_id, parent=self)
 
-    def list(self) -> list[campus.model.Circle]:
+    def list(self) -> "list[campus.model.Circle]":
         resp = self.client.get(self.make_path())
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()
@@ -67,7 +67,7 @@ class Circles(ResourceCollection):
             """Campus API Circle Members resource."""
             path = "members"
 
-            def list(self) -> list[dict[str, int]]:
+            def list(self) -> "list[dict[str, int]]":
                 resp = self.client.get(self.make_path())
                 resp.raise_for_status()
                 return resp.json()["members"]

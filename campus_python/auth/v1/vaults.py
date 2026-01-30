@@ -23,7 +23,7 @@ class Vaults(ResourceCollection):
     class Vault(Resource):
         """A single vault (label) exposing mapping-like access."""
 
-        def keys(self) -> list[str]:
+        def keys(self) -> "list[str]":
             resp = self.client.get(self.make_path())
             resp.raise_for_status()
             body = resp.json()

@@ -16,7 +16,7 @@ class Assignments(ResourceCollection):
         """Get a specific assignment resource by ID."""
         return Assignments.Assignment(assignment_id, parent=self)
 
-    def list(self, *, created_by: str | None = None) -> list[campus.model.Assignment]:
+    def list(self, *, created_by: "str | None" = None) -> "list[campus.model.Assignment]":
         """List all assignments matching filter requirements.
 
         Args:

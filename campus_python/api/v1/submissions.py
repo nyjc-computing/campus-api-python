@@ -19,10 +19,10 @@ class Submissions(ResourceCollection):
     def list(
             self,
             *,
-            assignment_id: str | None = None,
-            student_id: str | None = None,
-            course_id: str | None = None,
-    ) -> list[campus.model.Submission]:
+            assignment_id: "str | None" = None,
+            student_id: "str | None" = None,
+            course_id: "str | None" = None,
+    ) -> "list[campus.model.Submission]":
         """List all submissions matching filter requirements.
 
         Args:
@@ -48,7 +48,7 @@ class Submissions(ResourceCollection):
             for item in resp.json()["data"]
         ]
 
-    def by_assignment(self, assignment_id: str) -> list[campus.model.Submission]:
+    def by_assignment(self, assignment_id: str) -> "list[campus.model.Submission]":
         """List submissions for a specific assignment.
 
         Args:
@@ -65,7 +65,7 @@ class Submissions(ResourceCollection):
             for item in resp.json()["data"]
         ]
 
-    def by_student(self, student_id: str) -> list[campus.model.Submission]:
+    def by_student(self, student_id: str) -> "list[campus.model.Submission]":
         """List submissions from a specific student.
 
         Args:
@@ -88,7 +88,7 @@ class Submissions(ResourceCollection):
             assignment_id: str,
             student_id: str,
             course_id: str,
-            responses: list[dict] | None = None,
+            responses: "list[dict] | None" = None,
     ) -> campus.model.Submission:
         """Create a new submission.
 
@@ -141,9 +141,9 @@ class Submissions(ResourceCollection):
         def update(
                 self,
                 *,
-                responses: list[dict] | None = None,
-                feedback: list[dict] | None = None,
-                submitted_at: str | None = None,
+                responses: "list[dict] | None" = None,
+                feedback: "list[dict] | None" = None,
+                submitted_at: "str | None" = None,
         ) -> None:
             """Update this submission.
 

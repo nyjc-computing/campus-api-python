@@ -20,7 +20,7 @@ class Users(ResourceCollection):
         """Get a specific user resource by ID."""
         return Users.User(user_id, parent=self)
 
-    def list(self) -> list[campus.model.User]:
+    def list(self) -> "list[campus.model.User]":
         resp = self.client.get(self.make_path())
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()

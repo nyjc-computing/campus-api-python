@@ -46,7 +46,7 @@ class Credentials(ResourceCollection):
             resp.raise_for_status()
             return campus.model.UserCredentials.from_resource(resp.json())
 
-        def list(self) -> list[campus.model.UserCredentials]:
+        def list(self) -> "list[campus.model.UserCredentials]":
             resp = self.client.get(self.make_path())
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
@@ -79,7 +79,7 @@ class Credentials(ResourceCollection):
 
             def new(
                     self,
-                    scopes: list[str],
+                    scopes: "list[str]",
                     expiry_seconds: int,
             ) -> campus.model.UserCredentials:
                 raise NotImplementedError(

@@ -17,7 +17,7 @@ class Clients(ResourceCollection):
         """Get a specific client resource by ID."""
         return Clients.Client(client_id, parent=self)
 
-    def list(self) -> list[campus.model.Client]:
+    def list(self) -> "list[campus.model.Client]":
         resp = self.client.get(self.make_path())
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()

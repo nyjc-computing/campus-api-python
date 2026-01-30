@@ -53,7 +53,7 @@ class CampusSessions(ResourceCollection):
             # expiry_seconds: int,
             user_id: str | None = None,
             redirect_uri: str,
-            scopes: list[str],
+            scopes: "list[str]",
             target: str | None = None,
     ) -> campus.model.AuthSession:
         client_id = env.CLIENT_ID
