@@ -9,6 +9,7 @@ from . import (
     assignments,
     circles,
     submissions,
+    timetable,
 )
 
 class ApiRoot(ResourceRoot):
@@ -51,3 +52,13 @@ class ApiRoot(ResourceRoot):
                 root=self
             )
         return self._submissions
+
+    @property
+    def timetable(self) -> timetable.Timetable:
+        """Get the timetable resource."""
+        if not self._timetable:
+            self._timetable = timetable.Timetable(
+                self._json_client,
+                root=self
+            )
+        return self._timetable
