@@ -2,7 +2,9 @@
 
 Common error types used across Campus API for Python.
 
-Reference: campus/api/docs/api-error-spec.md
+Reference:
+- campus/api/docs/api-error-spec.md
+- campus/auth/docs/auth-error-spec.md
 """
 
 from dataclasses import dataclass, field
@@ -69,6 +71,25 @@ class APIError(Exception):
         self.details = details or {}
         self.errors = errors
         self.notes = notes
+
+    @property
+    def oauth_error(self) -> str | None:
+        """Get the OAuth protocol error string from details.
+
+        Returns the OAuth error string (e.g., "invalid_client", "invalid_grant")
+        if present in the error details. Used for auth endpoint errors.
+
+        Reference: campus/auth/docs/auth-error-spec.md
+        """
+        return self.details.get("oauth_error") if self.details else None
+
+    @property
+    def oauth_error_description(self) -> str | None:
+        """Get the OAuth error description from details.
+
+        Returns the OAuth-specific error description if present.
+        """
+        return self.details.get("oauth_error_description") if self.details else None
 
     def __init_subclass__(cls) -> None:
         cls._registered_errors[cls.status_code] = cls
