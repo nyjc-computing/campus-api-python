@@ -89,13 +89,18 @@ class JsonResponse(ABC):
 
         error = errors.APIError.with_status_code(status_code, response_data)
         if error:
-            # Attach some helpful notes if the APIError implementation supports it
+            # Attach notes for debugging (headers, body)
+            # Try the notes attribute first (new APIError)
             try:
-                error.add_note(f"Headers: {self.headers}")
-                error.add_note(f"Body: {body}")
-            except Exception:
-                # add_note may not exist; ignore if it doesn't
-                pass
+                error.notes = {"headers": dict(self.headers), "body": body}
+            except AttributeError:
+                # Fall back to add_note for older implementations
+                try:
+                    error.add_note(f"Headers: {self.headers}")
+                    error.add_note(f"Body: {body}")
+                except Exception:
+                    # add_note may not exist; ignore if it doesn't
+                    pass
             raise error from None
 
 
