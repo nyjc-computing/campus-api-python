@@ -19,6 +19,7 @@ from . import (
     clients,
     credentials,
     logins,
+    oauth,
     root,
     sessions,
     users,
@@ -35,6 +36,7 @@ class AuthRoot(ResourceRoot):
         self._clients = None
         self._credentials = None
         self._logins = None
+        self._oauth = None
         self._root = None
         self._sessions = None
         self._users = None
@@ -60,6 +62,13 @@ class AuthRoot(ResourceRoot):
         if not self._logins:
             self._logins = logins.LoginSessions(root=self)
         return self._logins
+
+    @property
+    def oauth(self) -> oauth.OAuth:
+        """Get the OAuth resource for device authorization flow."""
+        if not self._oauth:
+            self._oauth = oauth.OAuth(root=self)
+        return self._oauth
 
     @property
     def root(self) -> root.Root:
