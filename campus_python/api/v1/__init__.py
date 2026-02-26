@@ -54,10 +54,10 @@ class ApiRoot(ResourceRoot):
         return self._submissions
 
     @property
-    def timetable(self) -> timetable.Timetable:
+    def timetable(self) -> timetable.Timetables:
         """Get the timetable resource."""
         if not self._timetable:
-            self._timetable = timetable.Timetable(
+            self._timetable = timetable.Timetables(
                 self._json_client,
                 root=self
             )

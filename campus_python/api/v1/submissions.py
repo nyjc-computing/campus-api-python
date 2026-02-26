@@ -3,6 +3,8 @@
 Campus API submissions resource (v1).
 """
 
+from typing import Any
+
 import campus.model
 
 from ...interface import Resource, ResourceCollection
@@ -33,15 +35,15 @@ class Submissions(ResourceCollection):
         Returns:
             List of Submission objects
         """
-        params = {}
+        query = {}
         if assignment_id:
-            params["assignment_id"] = assignment_id
+            query["assignment_id"] = assignment_id
         if student_id:
-            params["student_id"] = student_id
+            query["student_id"] = student_id
         if course_id:
-            params["course_id"] = course_id
+            query["course_id"] = course_id
 
-        resp = self.client.get(self.make_path(), params=params)
+        resp = self.client.get(self.make_path(), query=query)
         resp.raise_for_status()
         return [
             campus.model.Submission.from_resource(item)
@@ -101,7 +103,7 @@ class Submissions(ResourceCollection):
         Returns:
             Created Submission object
         """
-        payload = {
+        payload: dict[str, Any] = {
             "assignment_id": assignment_id,
             "student_id": student_id,
             "course_id": course_id,
