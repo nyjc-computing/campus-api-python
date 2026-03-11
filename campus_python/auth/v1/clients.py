@@ -60,10 +60,16 @@ class Clients(ResourceCollection):
             resp.raise_for_status()
             return campus.model.Client.from_resource(resp.json())
 
-        def revoke(self) -> None:
+        def revoke(self) -> str:
+            """Revoke the client secret and return the new one.
+
+            Returns:
+                The newly generated client secret.
+            """
             resp = self.client.post(self.make_path("revoke"))
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
+            return resp.json()["secret"]
 
         def update(self, name: str | None = None, description: str | None = None) -> campus.model.Client:
             json_data = {}
