@@ -111,6 +111,9 @@ class Timetables(ResourceCollection):
             """Get the metadata for this timetable."""
             timetable = self.metadata.get()
             # entries = self.entries.list()
+            # timetable.entries = entries
+            # venues = self.venues.list()
+            # timetable.venues = venues
             return timetable
 
         class Entries(Resource):
@@ -136,3 +139,12 @@ class Timetables(ResourceCollection):
                 resp.raise_for_status()
                 return campus.model.Timetable.from_resource(resp.json())
 
+        # class Venues(Resource):
+        #     """Venues for a single timetable."""
+        #     path = "venues"
+
+        #     def list(self) -> "list[campus.model.TimetableVenue]":
+        #         """List all venues for this timetable."""
+        #         resp = self.client.get(self.make_path())
+        #         resp.raise_for_status()
+        #         return resp.json()["venues"]
