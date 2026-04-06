@@ -113,19 +113,20 @@ class AuthRoot(ResourceRoot):
         """
         from urllib.parse import urlencode
 
-        redirect_uri = self.base_url + self.make_path("/campus/callback")
+        # Use the app's own callback URL instead of going through campus proxy
+        redirect_uri = target
+
         auth_session = self.sessions.new(
-            redirect_uri=redirect_uri,  # unused but can't be empty
+            redirect_uri=redirect_uri,
             scopes=["campus.profile"],
             target=target,
         )
 
-        # Construct Campus OAuth Proxy URL with target parameter
-        authorize_url = self.base_url + self.make_path("campus/authorize")
+        # Construct Campus OAuth Provider URL (using provider directly, not proxy)
+        authorize_url = self.base_url + self.make_path("authorize")
         params = {
             "client_id": env.CLIENT_ID,
             "state": auth_session.id,
-            "target": target,
         }
         full_url = f"{authorize_url}?{urlencode(params)}"
 
