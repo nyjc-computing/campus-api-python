@@ -126,6 +126,8 @@ class AuthRoot(ResourceRoot):
         authorize_url = self.base_url + self.make_path("authorize")
         params = {
             "client_id": env.CLIENT_ID,
+            "response_type": "code",  # OAuth2 authorization code flow
+            "redirect_uri": redirect_uri,  # Callback URL after auth
             "state": auth_session.id,
         }
         full_url = f"{authorize_url}?{urlencode(params)}"
