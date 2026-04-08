@@ -92,6 +92,10 @@ class APIError(Exception):
         return self.details.get("oauth_error_description") if self.details else None
 
     def __init_subclass__(cls) -> None:
+        """Automatically register subclasses in the _registered_errors dict.
+
+        This enables mapping from HTTP status codes to specific error classes for automatic error handling based on status code.
+        """
         cls._registered_errors[cls.status_code] = cls
 
     @classmethod
@@ -202,6 +206,15 @@ class APIError(Exception):
         return instance
 
 
+# APIError subclasses are organized by status code instead of alphabetically
+
+
+class BadRequestError(APIError):
+    """Raised when request validation fails."""
+    status_code = 400
+    error = "invalid_request"
+
+
 class AuthenticationError(APIError):
     """Raised when client is unauthenticated or authentication fails."""
     status_code = 401
@@ -214,58 +227,16 @@ class AccessDeniedError(APIError):
     error = "access_denied"
 
 
-class ConflictError(APIError):
-    """Raised when a conflict occurs."""
-    status_code = 409
-    error = "conflict_error"
-
-
 class NotFoundError(APIError):
     """Raised when a requested resource is not found."""
     status_code = 404
     error = "not_found"
 
 
-class BadRequestError(APIError):
-    """Raised when request validation fails."""
-    status_code = 400
-    error = "invalid_request"
-
-
-class MalformedResponseError(APIError):
-    """Raised when the API response is malformed."""
-    status_code = 502
-    error = "malformed_response"
-
-
-class NetworkError(APIError):
-    """Raised when network communication fails."""
-    status_code = 500
-    error = "network_error"
-
-
-class NotImplementedError(APIError):
-    """Raised when the endpoint is not yet implemented."""
-    status_code = 501
-    error = "not_implemented"
-
-
-class RateLimitExceededError(APIError):
-    """Raised when rate limits are exceeded."""
-    status_code = 429
-    error = "too_many_requests"
-
-
-class ServerError(APIError):
-    """Raised when the server encounters an error."""
-    status_code = 500
-    error = "server_error"
-
-
-class UnavailableError(APIError):
-    """Raised when the service is unavailable."""
-    status_code = 503
-    error = "service_unavailable"
+class ConflictError(APIError):
+    """Raised when a conflict occurs."""
+    status_code = 409
+    error = "conflict_error"
 
 
 class ValidationError(APIError):
@@ -294,3 +265,33 @@ class ValidationError(APIError):
             List of FieldError objects for the specified field
         """
         return [e for e in self.field_errors if e.field == field_name]
+
+
+class RateLimitExceededError(APIError):
+    """Raised when rate limits are exceeded."""
+    status_code = 429
+    error = "too_many_requests"
+
+
+class ServerError(APIError):
+    """Raised when the server encounters an error."""
+    status_code = 500
+    error = "server_error"
+
+
+class NotImplementedError(APIError):
+    """Raised when the endpoint is not yet implemented."""
+    status_code = 501
+    error = "not_implemented"
+
+
+class MalformedResponseError(APIError):
+    """Raised when the API response is malformed."""
+    status_code = 502
+    error = "malformed_response"
+
+
+class UnavailableError(APIError):
+    """Raised when the service is unavailable."""
+    status_code = 503
+    error = "service_unavailable"
