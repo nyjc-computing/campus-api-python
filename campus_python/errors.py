@@ -92,6 +92,10 @@ class APIError(Exception):
         return self.details.get("oauth_error_description") if self.details else None
 
     def __init_subclass__(cls) -> None:
+        """Automatically register subclasses in the _registered_errors dict.
+
+        This enables mapping from HTTP status codes to specific error classes for automatic error handling based on status code.
+        """
         cls._registered_errors[cls.status_code] = cls
 
     @classmethod
