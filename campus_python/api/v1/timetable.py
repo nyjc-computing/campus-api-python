@@ -94,6 +94,21 @@ class Timetables(ResourceCollection):
         )
         resp.raise_for_status()
 
+    def new(self, metadata: dict, data: dict) -> dict:
+        """Create a new timetable.
+
+        Args:
+            metadata: Metadata for the timetable (e.g., start_date, end_date)
+            data: Timetable data (e.g., entries)
+
+        Returns:
+            The created timetable resource
+
+        Raises:
+            NotImplementedError: Not yet implemented
+        """
+        raise NotImplementedError("TODO: Student to implement")
+
     class Timetable(Resource):
         """A single timetable with start date."""
 
@@ -139,12 +154,15 @@ class Timetables(ResourceCollection):
                 resp.raise_for_status()
                 return campus.model.Timetable.from_resource(resp.json())
 
-        # class Venues(Resource):
-        #     """Venues for a single timetable."""
-        #     path = "venues"
+            def update(self, **kwargs) -> None:
+                """Update the metadata for this timetable.
 
-        #     def list(self) -> "list[campus.model.TimetableVenue]":
-        #         """List all venues for this timetable."""
-        #         resp = self.client.get(self.make_path())
-        #         resp.raise_for_status()
-        #         return resp.json()["venues"]
+                Args:
+                    **kwargs: Fields to update (e.g., start_date, end_date)
+
+                Raises:
+                    NotImplementedError: Not yet implemented
+                """
+                raise NotImplementedError("TODO: Student to implement")
+
+

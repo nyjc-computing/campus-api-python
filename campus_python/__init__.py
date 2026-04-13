@@ -28,32 +28,35 @@ class Campus:
     """Unified Campus client interface.
 
     Provides consistent access patterns across all Campus services.
-    Automatically loads credentials from CLIENT_ID and CLIENT_SECRET
-    environment variables.
+
+    Modes:
+    - mode="server" (default): For server-to-server communication (e.g., campus.api).
+      Requires CLIENT_ID and CLIENT_SECRET environment variables.
+    - mode="device": For public clients (e.g., CLI) that don't have secrets.
+      No credentials required; only public OAuth endpoints are accessible.
 
     See the API Reference for usage examples.
     """
 
-    def __init__(self, timeout: int):
+    def __init__(self, timeout: int, mode: str = "server"):
         """Initialize unified Campus client with all service clients.
 
-        Credentials are automatically loaded from CLIENT_ID and
-        CLIENT_SECRET environment variables. All service clients will be
-        properly authenticated if these environment variables are set.
-
         Args:
-            override: Optional mapping of app names to JSON clients.
-            raw: If True, methods return JsonResponse objects.
-                 If False (default), methods call raise_for_status() and
-                 return JSON data.
+            timeout: Request timeout in seconds.
+            mode: Client mode - "server" (default) or "device".
 
         Raises:
-            OSError: If CLIENT_ID or CLIENT_SECRET environment variables
-                are not set.
+            OSError: If mode="server" and CLIENT_ID or CLIENT_SECRET
+                environment variables are not set.
         """
-        # Validate credentials early to fail fast
-        env.require("CLIENT_ID", "CLIENT_SECRET")
         self.timeout = timeout
+        self._mode = mode
+
+        # Server mode requires credentials
+        if mode == "server":
+            env.require("CLIENT_ID", "CLIENT_SECRET")
+        elif mode != "device":
+            raise ValueError(f"Invalid mode: {mode}. Must be 'server' or 'device'")
 
     @property
     def auth(self) -> AuthRoot:
