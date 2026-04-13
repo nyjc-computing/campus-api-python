@@ -126,6 +126,9 @@ class Timetables(ResourceCollection):
             """Get the metadata for this timetable."""
             timetable = self.metadata.get()
             # entries = self.entries.list()
+            # timetable.entries = entries
+            # venues = self.venues.list()
+            # timetable.venues = venues
             return timetable
 
         class Entries(Resource):
