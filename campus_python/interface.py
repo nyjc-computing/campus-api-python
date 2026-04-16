@@ -80,11 +80,6 @@ class ResourceCollection:
     ):
         self._client = client
         self.root = root
-        # Validate path to ensure trailing slashes
-        if not self.path.endswith("/"):
-            raise ValueError(
-                f"{self.path}: ResourceCollection path must end with '/'"
-            )
 
     @property
     def client(self) -> JsonClient:
