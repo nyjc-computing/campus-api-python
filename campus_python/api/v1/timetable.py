@@ -137,7 +137,7 @@ class Timetables(ResourceCollection):
 
             def list(self) -> "list[campus.model.TimetableEntry]":
                 """List all entries for this timetable."""
-                resp = self.client.get(self.make_path())
+                resp = self.client.get(self.make_path(end_slash=True))
                 resp.raise_for_status()
                 return [
                     campus.model.TimetableEntry.from_resource(item)
@@ -150,7 +150,7 @@ class Timetables(ResourceCollection):
 
             def get(self) -> campus.model.Timetable:
                 """Get the metadata for this timetable."""
-                resp = self.client.get(self.make_path())
+                resp = self.client.get(self.make_path(end_slash=True))
                 resp.raise_for_status()
                 return campus.model.Timetable.from_resource(resp.json())
 
