@@ -22,6 +22,7 @@ class ApiRoot(ResourceRoot):
         self._assignments = None
         self._circles = None
         self._submissions = None
+        self._timetables = None
 
     @property
     def assignments(self) -> assignments.Assignments:
@@ -56,9 +57,9 @@ class ApiRoot(ResourceRoot):
     @property
     def timetable(self) -> timetable.Timetables:
         """Get the timetable resource."""
-        if not self._timetable:
-            self._timetable = timetable.Timetables(
+        if not self._timetables:
+            self._timetables = timetable.Timetables(
                 self._json_client,
                 root=self
             )
-        return self._timetable
+        return self._timetables
