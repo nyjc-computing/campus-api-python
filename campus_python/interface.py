@@ -91,14 +91,17 @@ class ResourceCollection:
         raise AttributeError(f"No client defined for {self}")
 
     def make_path(self, part: str | None = None) -> str:
-        """Create a full path for a sub-resource or action."""
+        """Create a full path for a resource collection.
+
+        Resource collection paths always end in a /.
+        """
         if part:
             return (
-                f"/{self.root.make_path(self.path).lstrip(SLASH).rstrip(SLASH)}"
-                f"/{part.lstrip(SLASH)}"
+                f"/{self.root.make_path(self.path).strip(SLASH)}"
+                f"/{part.strip(SLASH)/}"
             )
         else:
-            return f"/{self.root.make_path(self.path).lstrip(SLASH)}"
+            return f"/{self.root.make_path(self.path).strip(SLASH)/}"
 
     def make_url(self, part: str | None = None) -> str:
         """Create a full URL for a sub-resource or action."""
