@@ -129,12 +129,12 @@ class Timetables(ResourceCollection):
 
         def get(self) -> campus.model.Timetable:
             """Get the metadata for this timetable."""
-                resp = self.client.get(
-                     self.make_path(end_slash=True),
-                    json={},
-                )
-                resp.raise_for_status()
-                return resp.json()
+            resp = self.client.get(
+                self.make_path(end_slash=True),
+                json={},
+            )
+            resp.raise_for_status()
+            return resp.json()
 
         class Entries(Resource):
             """Entries for a single timetable."""
@@ -172,5 +172,3 @@ class Timetables(ResourceCollection):
                     NotImplementedError: Not yet implemented
                 """
                 raise NotImplementedError("TODO: Student to implement")
-
-
