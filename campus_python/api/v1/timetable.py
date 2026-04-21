@@ -130,8 +130,8 @@ class Timetables(ResourceCollection):
         def get(self) -> campus.model.Timetable:
             """Get the metadata for this timetable."""
             resp = self.client.get(
-                self.make_path(end_slash=True),
-                json={},
+                self.make_path(end_slash=True)
+                # json={},
             )
             resp.raise_for_status()
             return resp.json()
