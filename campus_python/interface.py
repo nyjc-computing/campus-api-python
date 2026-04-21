@@ -98,10 +98,10 @@ class ResourceCollection:
         if part:
             return (
                 f"/{self.root.make_path(self.path).strip(SLASH)}"
-                f"/{part.strip(SLASH)/}"
+                f"/{part.strip(SLASH)}/"
             )
         else:
-            return f"/{self.root.make_path(self.path).strip(SLASH)/}"
+            return f"/{self.root.make_path(self.path).strip(SLASH)}/"
 
     def make_url(self, part: str | None = None) -> str:
         """Create a full URL for a sub-resource or action."""
