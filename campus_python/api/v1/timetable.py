@@ -54,9 +54,9 @@ class Timetables(ResourceCollection):
     timeslots = TIMESLOTS
     weekdays = WEEKDAYS
 
-    def __getitem__(self, timtable_id: str) -> "Timetables.Timetable":
+    def __getitem__(self, timetable_id: str) -> "Timetables.Timetable":
         """Get a specific timetable resource by ID."""
-        return Timetables.Timetable(timtable_id, parent=self)
+        return Timetables.Timetable(timetable_id, parent=self)
 
     def get_current(self) -> str:
         """Get the timetable ID of current timetable."""
