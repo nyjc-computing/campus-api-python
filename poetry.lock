@@ -130,7 +130,7 @@ develop = false
 [package.dependencies]
 bcrypt = "^4.2.1"
 boto3 = "^1.35.0"
-campus-api-python = {path = "../campus-api-python"}
+campus-api-python = {git = "https://github.com/nyjc-computing/campus-api-python.git", branch = "main"}
 flask = "^3.0.0"
 gunicorn = "^21.2.0"
 psycopg2-binary = "^2.9.0"
@@ -139,8 +139,10 @@ requests = "^2.32.4"
 werkzeug = "^3.0.0"
 
 [package.source]
-type = "directory"
-url = "../campus"
+type = "git"
+url = "https://github.com/nyjc-computing/campus.git"
+reference = "weekly"
+resolved_reference = "4b60c81d86179b1a0dc5a934b32d29c00dc0b3d3"
 
 [[package]]
 name = "certifi"
@@ -816,4 +818,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "cabbb74820707b64bf1edb5b3f64dbd23dc3828b4e4c6e19e9a262892a888e67"
+content-hash = "5dd7b5a17eded019a678bd4e927f3154b4166cbe261906e1d21b882e1f874619"
