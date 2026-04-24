@@ -28,38 +28,26 @@ class ApiRoot(ResourceRoot):
     def assignments(self) -> assignments.Assignments:
         """Get the assignments resource."""
         if not self._assignments:
-            self._assignments = assignments.Assignments(
-                self._json_client,
-                root=self
-            )
+            self._assignments = assignments.Assignments(root=self)
         return self._assignments
 
     @property
     def circles(self) -> circles.Circles:
         """Get the circles resource."""
         if not self._circles:
-            self._circles = circles.Circles(
-                self._json_client,
-                root=self
-            )
+            self._circles = circles.Circles(root=self)
         return self._circles
 
     @property
     def submissions(self) -> submissions.Submissions:
         """Get the submissions resource."""
         if not self._submissions:
-            self._submissions = submissions.Submissions(
-                self._json_client,
-                root=self
-            )
+            self._submissions = submissions.Submissions(root=self)
         return self._submissions
 
     @property
     def timetable(self) -> timetable.Timetables:
         """Get the timetable resource."""
         if not self._timetables:
-            self._timetables = timetable.Timetables(
-                self._json_client,
-                root=self
-            )
+            self._timetables = timetable.Timetables(root=self)
         return self._timetables
