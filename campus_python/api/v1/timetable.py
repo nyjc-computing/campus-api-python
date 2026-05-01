@@ -54,9 +54,9 @@ class Timetables(ResourceCollection):
     timeslots = TIMESLOTS
     weekdays = WEEKDAYS
 
-    def __getitem__(self, timtable_id: str) -> "Timetables.Timetable":
+    def __getitem__(self, timetable_id: str) -> "Timetables.Timetable":
         """Get a specific timetable resource by ID."""
-        return Timetables.Timetable(timtable_id, parent=self)
+        return Timetables.Timetable(timetable_id, parent=self)
 
     def get_current(self) -> str:
         """Get the timetable ID of current timetable."""
@@ -103,11 +103,16 @@ class Timetables(ResourceCollection):
 
         Returns:
             The created timetable resource
-
-        Raises:
-            NotImplementedError: Not yet implemented
         """
-        raise NotImplementedError("TODO: Student to implement")
+        resp = self.client.post(
+            self.make_path(),
+            json={
+                "metadata": metadata,
+                "data": data
+            }
+        )
+        resp.raise_for_status()
+        return resp.json()
 
     class Timetable(Resource):
         """A single timetable with start date."""
@@ -124,19 +129,19 @@ class Timetables(ResourceCollection):
 
         def get(self) -> campus.model.Timetable:
             """Get the metadata for this timetable."""
-            timetable = self.metadata.get()
-            # entries = self.entries.list()
-            # timetable.entries = entries
-            # venues = self.venues.list()
-            # timetable.venues = venues
-            return timetable
+            resp = self.client.get(
+                self.make_path(end_slash=True)
+                # json={},
+            )
+            resp.raise_for_status()
+            return resp.json()
 
         class Entries(Resource):
             """Entries for a single timetable."""
             path = "entries"
 
             def list(self) -> "list[campus.model.TimetableEntry]":
-                """List all entries for this timetable."""
+                """Return a list of all entries for this timetable."""
                 resp = self.client.get(self.make_path(end_slash=True))
                 resp.raise_for_status()
                 return [
@@ -148,8 +153,11 @@ class Timetables(ResourceCollection):
             """Metadata for a single timetable."""
             path = "metadata"
 
-            def get(self) -> campus.model.Timetable:
-                """Get the metadata for this timetable."""
+            def get(self) -> campus.model.TimetableMetadata:
+                """Get the metadata for this timetable.
+
+                This does not include timetable entries.
+                """
                 resp = self.client.get(self.make_path(end_slash=True))
                 resp.raise_for_status()
                 return campus.model.Timetable.from_resource(resp.json())
@@ -164,5 +172,3 @@ class Timetables(ResourceCollection):
                     NotImplementedError: Not yet implemented
                 """
                 raise NotImplementedError("TODO: Student to implement")
-
-

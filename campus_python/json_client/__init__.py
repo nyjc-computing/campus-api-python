@@ -153,7 +153,7 @@ class CampusRequest(JsonClient):
             else:
                 resp = self._session.get(url, timeout=self._timeout)
         except requests.RequestException as exc:
-            raise errors.NetworkError(error_description=str(exc)) from None
+            raise errors.ServerError(error_description=str(exc)) from None
         return CampusResponse(resp)
 
     def post(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
@@ -162,7 +162,7 @@ class CampusRequest(JsonClient):
         try:
             resp = self._session.post(url, json=json, timeout=self._timeout)
         except requests.RequestException as exc:
-            raise errors.NetworkError(error_description=str(exc)) from None
+            raise errors.ServerError(error_description=str(exc)) from None
         return CampusResponse(resp)
 
     def put(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
@@ -171,7 +171,7 @@ class CampusRequest(JsonClient):
         try:
             resp = self._session.put(url, json=json, timeout=self._timeout)
         except requests.RequestException as exc:
-            raise errors.NetworkError(error_description=str(exc)) from None
+            raise errors.ServerError(error_description=str(exc)) from None
         return CampusResponse(resp)
 
     def delete(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
@@ -180,7 +180,7 @@ class CampusRequest(JsonClient):
         try:
             resp = self._session.delete(url, json=json, timeout=self._timeout)
         except requests.RequestException as exc:
-            raise errors.NetworkError(error_description=str(exc)) from None
+            raise errors.ServerError(error_description=str(exc)) from None
         return CampusResponse(resp)
 
     def patch(self: Self, path: str, json: Any = None) -> JsonResponse:
@@ -189,5 +189,5 @@ class CampusRequest(JsonClient):
         try:
             resp = self._session.patch(url, json=json, timeout=self._timeout)
         except requests.RequestException as exc:
-            raise errors.NetworkError(error_description=str(exc)) from None
+            raise errors.ServerError(error_description=str(exc)) from None
         return CampusResponse(resp)
