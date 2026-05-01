@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "campus-api-python"
-version = "0.1.53"
+version = "0.1.60"
 description = "Campus API for Python projects"
 authors = ["NYJC Computing <nyjc.computing@nyjc.edu.sg>"]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.12"
+python = ">=3.11,<3.13"
 flask = "^3.0.0"
 campus-suite = {git = "https://github.com/nyjc-computing/campus.git", branch = "weekly"}
 

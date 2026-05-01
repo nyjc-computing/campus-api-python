@@ -17,7 +17,7 @@ The Campus API Python library is a comprehensive client for interacting with the
 
 ## Tech Stack
 
-- **Language:** Python 3.11
+- **Language:** Python 3.11 and 3.12
 - **Package Management:** Poetry
 - **Dependencies:**
   - `flask` - Web framework (for integration)
@@ -28,9 +28,11 @@ The Campus API Python library is a comprehensive client for interacting with the
 
 ### Prerequisites
 
-- Python 3.11
+- Python 3.11 or 3.12
 - Poetry
 - Access to Campus development environment (for server mode)
+
+This library is intended to support both Python 3.11 and Python 3.12.
 
 ### Installation
 
@@ -134,6 +136,8 @@ Run the test suite:
 ```bash
 poetry run pytest
 ```
+
+GitHub Actions runs the unit tests against both Python 3.11 and Python 3.12.
 
 Unit tests are located in `tests/unit/`.
 
