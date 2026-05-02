@@ -10,7 +10,7 @@ from ...interface import Resource, ResourceCollection
 
 class Circles(ResourceCollection):
     """Campus API Circles resource."""
-    path = "circles"
+    path = "circles/"
 
     def __getitem__(self, circle_id: str) -> "Circles.Circle":
         """Get a specific circle resource by ID."""
