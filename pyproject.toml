@@ -9,6 +9,9 @@ python = ">=3.11,<3.14"
 flask = "^3.0.0"
 campus-suite = {git = "https://github.com/nyjc-computing/campus.git", branch = "weekly"}
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.2"
+
 [[tool.poetry.packages]]
 include = "campus_python"
 
