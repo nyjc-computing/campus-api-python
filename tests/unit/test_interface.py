@@ -13,7 +13,11 @@ class TestResourceRootMakePath(unittest.TestCase):
         self.mock_client.base_url = "https://api.example.com"
 
     def test_make_path_without_part(self):
-        """Test make_path() returns correct path without part."""
+        """Test make_path() returns correct path without part.
+
+        Resource roots don't need trailing slashes in url_prefix, but the
+        implementation should handle them correctly.
+        """
         root = ResourceRoot(self.mock_client)
         root.url_prefix = "api/v1"
         self.assertEqual(root.make_path(), "/api/v1")
@@ -43,17 +47,24 @@ class TestResourceRootMakePath(unittest.TestCase):
         self.assertEqual(root.make_path("/users"), "/api/v1/users")
 
     def test_make_path_with_trailing_slash_in_prefix(self):
-        """Test make_path() with trailing slash in url_prefix."""
+        """Test make_path() with trailing slash in url_prefix.
+
+        Resource roots can have trailing slashes which are preserved.
+        """
         root = ResourceRoot(self.mock_client)
         root.url_prefix = "api/v1/"
         # Trailing slash in prefix is preserved
         self.assertEqual(root.make_path(), "/api/v1/")
 
     def test_make_path_with_trailing_slash_in_part(self):
-        """Test make_path() with trailing slash in part."""
+        """Test make_path() with trailing slash in part.
+
+        This tests adding a collection path which should have trailing slash
+        according to API schema.
+        """
         root = ResourceRoot(self.mock_client)
         root.url_prefix = "api/v1"
-        # Trailing slash in part is preserved
+        # Trailing slash in part is preserved (collection path)
         self.assertEqual(root.make_path("users/"), "/api/v1/users/")
 
 
@@ -103,16 +114,22 @@ class TestResourceCollectionMakePath(unittest.TestCase):
         self.root.url_prefix = "api/v1"
 
     def test_make_path_without_part(self):
-        """Test make_path() returns correct path without part."""
+        """Test make_path() returns correct path without part.
+
+        According to API schema, collections always have trailing slashes.
+        """
         collection = ResourceCollection(self.mock_client, root=self.root)
         collection.path = "users"
-        self.assertEqual(collection.make_path(), "/api/v1/users")
+        self.assertEqual(collection.make_path(), "/api/v1/users/")
 
     def test_make_path_with_part(self):
-        """Test make_path() returns correct path with part."""
+        """Test make_path() returns correct path with part.
+
+        According to API schema, single resources in collections have trailing slashes.
+        """
         collection = ResourceCollection(self.mock_client, root=self.root)
         collection.path = "users"
-        self.assertEqual(collection.make_path("123"), "/api/v1/users/123")
+        self.assertEqual(collection.make_path("123"), "/api/v1/users/123/")
 
     def test_make_path_strips_leading_slash_from_path(self):
         """Test make_path() strips leading slash from collection path."""
@@ -127,18 +144,24 @@ class TestResourceCollectionMakePath(unittest.TestCase):
         self.assertEqual(collection.make_path("/123"), "/api/v1/users/123")
 
     def test_make_path_strips_trailing_slash_from_root_path(self):
-        """Test make_path() strips trailing slash from root path before adding part."""
+        """Test make_path() preserves trailing slash from collection path.
+
+        According to API schema, collection paths should have trailing slashes.
+        """
         collection = ResourceCollection(self.mock_client, root=self.root)
         collection.path = "users/"
-        # The implementation strips trailing slashes from the root path
-        self.assertEqual(collection.make_path("123"), "/api/v1/users/123")
+        # Collection paths with trailing slashes are preserved and normalized
+        self.assertEqual(collection.make_path("123"), "/api/v1/users/123/")
 
     def test_make_path_with_nested_path(self):
-        """Test make_path() with nested collection path."""
+        """Test make_path() with nested collection path.
+
+        According to API schema, all collection paths have trailing slashes.
+        """
         collection = ResourceCollection(self.mock_client, root=self.root)
         collection.path = "users/groups"
-        self.assertEqual(collection.make_path(), "/api/v1/users/groups")
-        self.assertEqual(collection.make_path("456"), "/api/v1/users/groups/456")
+        self.assertEqual(collection.make_path(), "/api/v1/users/groups/")
+        self.assertEqual(collection.make_path("456"), "/api/v1/users/groups/456/")
 
 
 class TestResourceCollectionMakeUrl(unittest.TestCase):
@@ -183,12 +206,28 @@ class TestResourceMakePath(unittest.TestCase):
         self.collection.path = "users"
 
     def test_make_path_without_part(self):
-        """Test make_path() returns correct path without part."""
+        """Test make_path() returns correct path without part.
+
+        Default behavior for single resources (no trailing slash).
+        Use end_slash=True for API schema compliance.
+        """
         resource = Resource("123", parent=self.collection)
         self.assertEqual(resource.make_path(), "/api/v1/users/123")
 
+    def test_make_path_without_part_with_trailing_slash(self):
+        """Test make_path() with end_slash=True follows API schema.
+
+        According to API schema, single resources should have trailing slashes.
+        """
+        resource = Resource("123", parent=self.collection)
+        self.assertEqual(resource.make_path(end_slash=True), "/api/v1/users/123/")
+
     def test_make_path_with_part(self):
-        """Test make_path() returns correct path with part."""
+        """Test make_path() returns correct path with part.
+
+        This tests dead-end subresources/actions which should NOT have trailing slashes
+        according to API schema.
+        """
         resource = Resource("123", parent=self.collection)
         self.assertEqual(resource.make_path("profile"), "/api/v1/users/123/profile")
 
