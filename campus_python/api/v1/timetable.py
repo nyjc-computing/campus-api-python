@@ -3,6 +3,8 @@
 Campus API timetable resource (v1).
 """
 
+import typing
+
 import campus.model
 
 from ...interface import Resource, ResourceCollection
@@ -113,6 +115,22 @@ class Timetables(ResourceCollection):
         )
         resp.raise_for_status()
         return resp.json()
+
+    def list(self, **filters: typing.Any) -> "list[campus.model.TimetableMetadata]":
+        """List timetables matching the provided filters.
+
+        Args:
+            **filters: Arbitrary filter parameters applied to the query.
+
+        Returns:
+            list[campus.model.TimetableMetadata]: Matching timetable metadata objects.
+        """
+        resp = self.client.get(self.make_path(), query=filters if filters else None)
+        resp.raise_for_status()
+        return [
+            campus.model.TimetableMetadata.from_resource(item)
+            for item in resp.json()
+        ]
 
     class Timetable(Resource):
         """A single timetable with start date."""
