@@ -32,7 +32,7 @@ class CampusSessions(ResourceCollection):
     def from_code(self, code: str) -> campus.model.AuthSession:
         """Get a session using authorization code."""
         resp = self.client.post(
-            self.make_path("authorization_code"),
+            self.make_path("authorization_code", end_slash=False),
             json={"code": code}
         )
         resp.raise_for_status()
@@ -85,7 +85,7 @@ class CampusSessions(ResourceCollection):
                 json_data["at_time"] = schema.DateTime(at_time)
             case None:
                 json_data["at_time"] = schema.DateTime.utcnow()
-        resp = self.client.post(self.make_path("sweep"), json=json_data)
+        resp = self.client.post(self.make_path("sweep", end_slash=False), json=json_data)
         resp.raise_for_status()
         return int(resp.json()["swept_count"])
 

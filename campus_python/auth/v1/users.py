@@ -41,7 +41,7 @@ class Users(ResourceCollection):
         """Single vault user resource."""
 
         def activate(self) -> campus.model.User:
-            resp = self.client.post(self.make_path("activate"))
+            resp = self.client.post(self.make_path("activate", end_slash=False))
             resp.raise_for_status()
             return campus.model.User.from_resource(resp.json())
 

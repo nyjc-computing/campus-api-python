@@ -66,7 +66,7 @@ class Clients(ResourceCollection):
             Returns:
                 The newly generated client secret.
             """
-            resp = self.client.post(self.make_path("revoke"))
+            resp = self.client.post(self.make_path("revoke", end_slash=False))
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
             return resp.json()["secret"]
@@ -105,7 +105,7 @@ class Clients(ResourceCollection):
                     vault: str,
                     permission: int,
             ) -> JsonDict:
-                resp = self.client.post(self.make_path("grant"), json={
+                resp = self.client.post(self.make_path("grant", end_slash=False), json={
                     "vault": vault,
                     "permission": permission,
                 })
@@ -118,7 +118,7 @@ class Clients(ResourceCollection):
                     vault: str,
                     permission: int,
             ) -> JsonDict:
-                resp = self.client.post(self.make_path("revoke"), json={
+                resp = self.client.post(self.make_path("revoke", end_slash=False), json={
                     "vault": vault,
                     "permission": permission,
                 })
