@@ -173,7 +173,7 @@ class Submissions(ResourceCollection):
 
         def submit(self) -> None:
             """Finalize/submit this submission (marks submitted_at timestamp)."""
-            path = f"{self.make_path()}/submit"
+            path = self.make_path("submit", end_slash=False)
             resp = self.client.post(path)
             resp.raise_for_status()
             return None

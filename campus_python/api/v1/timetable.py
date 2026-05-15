@@ -62,13 +62,13 @@ class Timetables(ResourceCollection):
 
     def get_current(self) -> str:
         """Get the timetable ID of current timetable."""
-        resp = self.client.get(self.make_path("current"))
+        resp = self.client.get(self.make_path("current", end_slash=False))
         resp.raise_for_status()
         return resp.json()["value"]
 
     def get_next(self) -> str:
         """Get the timetable ID of next timetable."""
-        resp = self.client.get(self.make_path("next"))
+        resp = self.client.get(self.make_path("next", end_slash=False))
         resp.raise_for_status()
         return resp.json()["value"]
 
@@ -79,7 +79,7 @@ class Timetables(ResourceCollection):
             timetable_id: ID of the timetable to set as current
         """
         resp = self.client.put(
-            self.make_path("current"),
+            self.make_path("current", end_slash=False),
             json={"value": timetable_id}
         )
         resp.raise_for_status()
@@ -91,7 +91,7 @@ class Timetables(ResourceCollection):
             timetable_id: ID of the timetable to set as next
         """
         resp = self.client.put(
-            self.make_path("next"),
+            self.make_path("next", end_slash=False),
             json={"value": timetable_id}
         )
         resp.raise_for_status()
