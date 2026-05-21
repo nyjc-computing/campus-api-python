@@ -3,7 +3,6 @@
 Campus Auth Clients resource (v1).
 """
 
-from campus.common import env
 import campus.model
 
 from ...interface import JsonDict, Resource, ResourceCollection
@@ -26,11 +25,31 @@ class Clients(ResourceCollection):
             for item in resp.json()["clients"]
         ]
 
-    def new(self, name: str, description: str) -> campus.model.Client:
-        resp = self.client.post(self.make_path(), json={
+    def new(
+            self,
+            name: str,
+            description: str,
+            is_public: bool = False,
+            redirect_uris: list[str] | None = None
+    ) -> campus.model.Client:
+        """Create a new client.
+
+        Args:
+            name: Client name
+            description: Client description
+            is_public: True for public clients (CLI/mobile apps) without secrets
+            redirect_uris: OAuth redirect URIs for public clients
+
+        Returns:
+            The created Client
+        """
+        json_data = {
             "name": name,
             "description": description,
-        })
+            "is_public": is_public,
+            "redirect_uris": redirect_uris or []
+        }
+        resp = self.client.post(self.make_path(), json=json_data)
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()
         return campus.model.Client.from_resource(resp.json())
@@ -71,12 +90,29 @@ class Clients(ResourceCollection):
             resp.raise_for_status()
             return resp.json()["secret"]
 
-        def update(self, name: str | None = None, description: str | None = None) -> campus.model.Client:
+        def update(
+                self,
+                name: str | None = None,
+                description: str | None = None,
+                redirect_uris: list[str] | None = None
+        ) -> campus.model.Client:
+            """Update the client.
+
+            Args:
+                name: New client name
+                description: New client description
+                redirect_uris: New OAuth redirect URIs
+
+            Returns:
+                The updated Client
+            """
             json_data = {}
             if name is not None:
                 json_data["name"] = name
             if description is not None:
                 json_data["description"] = description
+            if redirect_uris is not None:
+                json_data["redirect_uris"] = redirect_uris
             resp = self.client.put(self.make_path(), json=json_data)
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
