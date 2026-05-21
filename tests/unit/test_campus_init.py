@@ -83,6 +83,26 @@ class TestCampusInitialization(unittest.TestCase):
 
         # If we got here without an exception, the fail-fast check is broken
 
+    def test_campus_init_device_mode_no_credentials(self):
+        """Test that Campus.__init__() succeeds in device mode without credentials."""
+        # Device mode should NOT require CLIENT_ID or CLIENT_SECRET
+        campus = campus_python.Campus(timeout=60, mode="device")
+
+        # Verify mode is set correctly
+        self.assertEqual(campus._mode, "device")
+
+    def test_campus_init_device_mode_with_credentials_ignored(self):
+        """Test that credentials are ignored in device mode."""
+        # Set credentials (they should be ignored in device mode)
+        os.environ['CLIENT_ID'] = 'test-client-id'
+        os.environ['CLIENT_SECRET'] = 'test-client-secret'
+
+        # Should succeed without using credentials
+        campus = campus_python.Campus(timeout=60, mode="device")
+
+        # Verify mode is set correctly
+        self.assertEqual(campus._mode, "device")
+
 
 if __name__ == "__main__":
     unittest.main()

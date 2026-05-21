@@ -81,6 +81,7 @@ class Campus:
                 json_client=CampusRequest(
                     base_url=base_url,
                     timeout=self.timeout,
+                    mode=self._mode,
                 )
             )
         return self._auth
@@ -107,6 +108,7 @@ class Campus:
                 json_client=CampusRequest(
                     base_url=base_url,
                     timeout=self.timeout,
+                    mode=self._mode,
                 )
             )
         return self._api
