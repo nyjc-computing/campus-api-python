@@ -79,6 +79,7 @@ class CampusRequest(JsonClient):
             self,
             base_url: str | None,
             *,
+            mode: str = "server",
             headers: Mapping[str, str] | None = None,
             **kwargs: Any,
     ):
@@ -89,7 +90,10 @@ class CampusRequest(JsonClient):
         # Session to persist headers and connection pooling
         self._session = requests.Session()
         self._session.headers.update(self._headers)
-        self.reset_authorization()
+        # Only set client credentials in server mode
+        # Device mode starts without auth (Bearer token will be set later)
+        if mode == "server":
+            self.reset_authorization()
 
     @property
     def headers(self) -> campus.model.HttpHeader:

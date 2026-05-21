@@ -107,8 +107,42 @@ campus-api-python/
 
 ## Authentication Modes
 
-- **Server Mode:** For server-to-server communication. Requires `CLIENT_ID` and `CLIENT_SECRET` environment variables.
-- **Device Mode:** For public clients (e.g., CLI tools). No credentials required; limited to public endpoints.
+### Server Mode
+
+For server-to-server communication. Uses Basic authentication with OAuth client credentials.
+
+**Required Environment Variables:**
+- `CLIENT_ID` - OAuth client ID from Campus auth
+- `CLIENT_SECRET` - OAuth client secret from Campus auth
+
+**Example:**
+```python
+from campus_python import Campus
+
+# Server mode (default) - requires CLIENT_ID and CLIENT_SECRET
+client = Campus(timeout=30, mode="server")
+```
+
+### Device Mode
+
+For public clients (e.g., CLI tools) that authenticate users via OAuth device flow. Does not require client credentials. Instead, you set Bearer token authentication after obtaining an access token.
+
+**No Environment Variables Required**
+
+**Example:**
+```python
+from campus_python import Campus
+
+# Device mode - no credentials required
+client = Campus(timeout=30, mode="device")
+
+# After obtaining an OAuth access token (via device flow)
+access_token = "your-access-token"
+client.api.client.set_bearer_authorization(access_token)
+client.auth.client.set_bearer_authorization(access_token)
+
+# Now you can make authenticated requests
+```
 
 ## Environment Variables
 
