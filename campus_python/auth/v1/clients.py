@@ -2,6 +2,7 @@
 
 Campus Auth Clients resource (v1).
 """
+from __future__ import annotations
 
 import campus.model
 
