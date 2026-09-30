@@ -114,7 +114,7 @@ class Clients(ResourceCollection):
                 json_data["description"] = description
             if redirect_uris is not None:
                 json_data["redirect_uris"] = redirect_uris
-            resp = self.client.put(self.make_path(), json=json_data)
+            resp = self.client.patch(self.make_path(), json=json_data)
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
             return campus.model.Client.from_resource(resp.json())
