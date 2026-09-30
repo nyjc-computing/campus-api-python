@@ -138,12 +138,12 @@ class Timetables(ResourceCollection):
         @property
         def entries(self) -> "Timetables.Timetable.Entries":
             """Get the entries resource for this timetable."""
-            return Timetables.Timetable.Entries(parent=self)
+            return Timetables.Timetable.Entries("entries", parent=self)
 
         @property
         def metadata(self) -> "Timetables.Timetable.Metadata":
             """Get the metadata resource for this timetable."""
-            return Timetables.Timetable.Metadata(parent=self)
+            return Timetables.Timetable.Metadata("metadata", parent=self)
 
         def get(self) -> campus.model.Timetable:
             """Get the metadata for this timetable."""
@@ -160,7 +160,7 @@ class Timetables(ResourceCollection):
 
             def list(self) -> "list[campus.model.TimetableEntry]":
                 """Return a list of all entries for this timetable."""
-                resp = self.client.get(self.make_path(end_slash=True))
+                resp = self.client.get(self.make_path())
                 resp.raise_for_status()
                 return [
                     campus.model.TimetableEntry.from_resource(item)
@@ -176,7 +176,7 @@ class Timetables(ResourceCollection):
 
                 This does not include timetable entries.
                 """
-                resp = self.client.get(self.make_path(end_slash=True))
+                resp = self.client.get(self.make_path())
                 resp.raise_for_status()
                 return campus.model.Timetable.from_resource(resp.json())
 

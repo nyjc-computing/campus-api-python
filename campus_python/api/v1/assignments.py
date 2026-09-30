@@ -29,7 +29,7 @@ class Assignments(ResourceCollection):
         if created_by:
             params["created_by"] = created_by
 
-        resp = self.client.get(self.make_path(), params=params)
+        resp = self.client.get(self.make_path(), query=params)
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()
         return [
@@ -63,7 +63,7 @@ class Assignments(ResourceCollection):
         @property
         def links(self) -> "Assignments.Assignment.Links":
             """Get the links resource for this assignment."""
-            return Assignments.Assignment.Links(parent=self)
+            return Assignments.Assignment.Links("links", parent=self)
 
         def delete(self) -> None:
             resp = self.client.delete(self.make_path())
