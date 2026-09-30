@@ -11,9 +11,11 @@ PR:
   campus names;
 - GET /credentials/... resources nest the token with both `scope`
   (string) and `scopes` (list) during the compat window;
-- PATCH /credentials/... bodies must stay within the keys the server's
-  OAuthToken(**payload) validation accepts: the `scope` string alias is
-  rejected (VALIDATION_FAILED), so User.update() strips it.
+- PATCH /credentials/... bodies are validated server-side via
+  OAuthToken.from_resource() (campus #656), which accepts the
+  dual-emitted `scope` string alias, legacy `expiry_seconds`, and bags
+  unknown provider keys into provider_fields; User.update() sends the
+  full to_resource() output.
 """
 
 import os
@@ -111,8 +113,9 @@ class TestCredentialsResourceDeserialization(unittest.TestCase):
 
 
 class TestCredentialsUpdatePatchBody(unittest.TestCase):
-    """User.update() must send a body the server's OAuthToken(**payload)
-    validation accepts (campus/auth/routes/credentials.py)."""
+    """User.update() must send a body the server's
+    OAuthToken.from_resource() validation accepts
+    (campus/auth/routes/credentials.py, campus #656)."""
 
     def setUp(self):
         self.auth, self.client = make_auth()
@@ -130,26 +133,39 @@ class TestCredentialsUpdatePatchBody(unittest.TestCase):
         args, kwargs = self.client.patch.call_args
         self.assertEqual(args[0], "/auth/v1/credentials/campus/user1")
         self.assertEqual(kwargs["json"]["client_id"], "cid123")
-        expected_token = self.token.to_resource()
-        expected_token.pop("scope", None)
-        self.assertEqual(kwargs["json"]["token"], expected_token)
+        self.assertEqual(kwargs["json"]["token"], self.token.to_resource())
 
     def test_patch_body_passes_server_validation(self):
-        """The sent token payload must construct via OAuthToken(**payload).
+        """The sent token payload must pass OAuthToken.from_resource().
 
-        Mirrors the server-side validation, which rejects the RFC 6749
-        `scope` string alias emitted by to_resource() with 422
-        VALIDATION_FAILED (campus #650 dual emission).
+        Mirrors the server-side validation (campus #656), which accepts
+        the RFC 6749 `scope` string alias dual-emitted by to_resource()
+        alongside `scopes` (campus #650).
         """
         with patch.dict(os.environ, {"CLIENT_ID": "cid123"}):
             self.auth.credentials["campus"]["user1"].update(self.token)
         body = self.client.patch.call_args.kwargs["json"]
         sent_token = body["token"]
-        self.assertNotIn("scope", sent_token)
+        self.assertIn("scope", sent_token)
         self.assertIn("scopes", sent_token)
-        validated = campus.model.OAuthToken(**sent_token)
+        validated = campus.model.OAuthToken.from_resource(sent_token)
         self.assertEqual(validated.id, "tok123")
+        self.assertEqual(validated.scopes, ["campus.profile", "campus.identities"])
         self.assertEqual(validated.scope, "campus.profile campus.identities")
+
+    def test_scope_only_payload_passes_server_validation(self):
+        """A scope-only payload — the token resource shape expected once
+        the campus #648 deprecation window closes — also passes the
+        server's from_resource() validation."""
+        scope_only = {
+            "access_token": "tok456",
+            "expires_in": 3600,
+            "scope": "campus.profile",
+        }
+        validated = campus.model.OAuthToken.from_resource(scope_only)
+        self.assertEqual(validated.id, "tok456")
+        self.assertEqual(validated.scopes, ["campus.profile"])
+        self.assertEqual(validated.scope, "campus.profile")
 
 
 if __name__ == "__main__":
