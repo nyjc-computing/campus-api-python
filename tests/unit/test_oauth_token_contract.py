@@ -1,0 +1,156 @@
+"""Contract tests for OAuth token flows against the RFC 6749-compliant
+OAuthToken interface (campus issue #648, PRs #650/#654; client issue #40).
+
+campus #650 aligned OAuthToken with RFC 6749 token semantics. These tests
+pin the wire shapes exchanged with the dev API (campus-suite, branch
+weekly) so the client stays compatible until campus lands its deprecation
+PR:
+
+- POST /auth/v1/token responses carry standard RFC keys (access_token,
+  token_type, expires_in, scope) which OAuthToken.from_resource maps to
+  campus names;
+- GET /credentials/... resources nest the token with both `scope`
+  (string) and `scopes` (list) during the compat window;
+- PATCH /credentials/... bodies must stay within the keys the server's
+  OAuthToken(**payload) validation accepts: the `scope` string alias is
+  rejected (VALIDATION_FAILED), so User.update() strips it.
+"""
+
+import os
+import unittest
+from unittest.mock import Mock, patch
+
+import campus.model
+
+from campus_python.auth.v1 import AuthRoot
+
+# Exact token-endpoint response shape emitted by campus weekly
+# (device-code grant in campus/auth/routes/oauth.py; client_credentials
+# and refresh_token grants are equivalent RFC payloads).
+RFC_TOKEN_PAYLOAD = {
+    "access_token": "tok123",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "refresh_token": "rt123",
+    "scope": "campus.profile campus.identities",
+}
+
+# Exact credentials-resource shape emitted by campus weekly
+# (UserCredentials.to_resource() with its nested OAuthToken token).
+CREDENTIALS_RESOURCE = {
+    "id": "cred1",
+    "created_at": "2026-09-30T06:31:24.582763+00:00",
+    "provider": "campus",
+    "client_id": "cid123",
+    "user_id": "user1",
+    "token": {
+        "id": "tok123",
+        "created_at": "2026-09-30T06:31:24.582763+00:00",
+        "expires_at": "2026-09-30T07:31:24.582763+00:00",
+        "expires_in": 3600,
+        "token_type": "Bearer",
+        "refresh_token": "rt123",
+        "refresh_token_expires_at": None,
+        "scopes": ["campus.profile", "campus.identities"],
+        "scope": "campus.profile campus.identities",
+    },
+}
+
+
+def make_auth() -> tuple[AuthRoot, Mock]:
+    """Create an AuthRoot backed by a mock JSON client."""
+    client = Mock()
+    return AuthRoot(json_client=client), client
+
+
+class TestTokenEndpointDeserialization(unittest.TestCase):
+    """auth.token() / _exchange_code_for_token() consume RFC payloads."""
+
+    def test_rfc_token_payload_deserializes(self):
+        token = campus.model.OAuthToken.from_resource(RFC_TOKEN_PAYLOAD)
+        self.assertEqual(token.id, "tok123")
+        self.assertEqual(token.access_token, token.id)
+        self.assertEqual(token.token_type, "Bearer")
+        self.assertEqual(token.expires_in, 3600)
+        self.assertEqual(token.scopes, ["campus.profile", "campus.identities"])
+        self.assertEqual(token.scope, "campus.profile campus.identities")
+        self.assertEqual(token.refresh_token, "rt123")
+
+    def test_token_type_is_case_normalised(self):
+        payload = dict(RFC_TOKEN_PAYLOAD, token_type="bearer")
+        token = campus.model.OAuthToken.from_resource(payload)
+        self.assertEqual(token.token_type, "Bearer")
+
+    def test_legacy_token_resource_deserializes(self):
+        """Records without the new fields still construct (compat window)."""
+        token = campus.model.OAuthToken.from_resource({
+            "id": "tok-legacy",
+            "created_at": "2026-09-30T00:00:00Z",
+            "expires_at": "2026-09-30T01:00:00Z",
+            "scopes": ["campus.profile"],
+        })
+        self.assertEqual(token.id, "tok-legacy")
+        self.assertEqual(token.token_type, "Bearer")
+        self.assertEqual(token.expires_in, 3600)
+        self.assertEqual(token.scopes, ["campus.profile"])
+
+
+class TestCredentialsResourceDeserialization(unittest.TestCase):
+    """UserCredentials.from_resource() must consume the nested token."""
+
+    def test_nested_token_deserializes(self):
+        creds = campus.model.UserCredentials.from_resource(CREDENTIALS_RESOURCE)
+        self.assertEqual(creds.provider, "campus")
+        self.assertEqual(creds.user_id, "user1")
+        self.assertIsInstance(creds.token, campus.model.OAuthToken)
+        self.assertEqual(creds.token.id, "tok123")
+        self.assertEqual(creds.token.token_type, "Bearer")
+        self.assertEqual(creds.token.expires_in, 3600)
+        self.assertEqual(creds.token.scopes, ["campus.profile", "campus.identities"])
+        self.assertEqual(creds.token.scope, "campus.profile campus.identities")
+
+
+class TestCredentialsUpdatePatchBody(unittest.TestCase):
+    """User.update() must send a body the server's OAuthToken(**payload)
+    validation accepts (campus/auth/routes/credentials.py)."""
+
+    def setUp(self):
+        self.auth, self.client = make_auth()
+        self.token = campus.model.OAuthToken(
+            id="tok123",
+            expires_in=3600,
+            scopes=["campus.profile", "campus.identities"],
+            refresh_token="rt123",
+        )
+
+    def test_update_patches_credentials_endpoint(self):
+        with patch.dict(os.environ, {"CLIENT_ID": "cid123"}):
+            self.auth.credentials["campus"]["user1"].update(self.token)
+        self.client.patch.assert_called_once()
+        args, kwargs = self.client.patch.call_args
+        self.assertEqual(args[0], "/auth/v1/credentials/campus/user1")
+        self.assertEqual(kwargs["json"]["client_id"], "cid123")
+        expected_token = self.token.to_resource()
+        expected_token.pop("scope", None)
+        self.assertEqual(kwargs["json"]["token"], expected_token)
+
+    def test_patch_body_passes_server_validation(self):
+        """The sent token payload must construct via OAuthToken(**payload).
+
+        Mirrors the server-side validation, which rejects the RFC 6749
+        `scope` string alias emitted by to_resource() with 422
+        VALIDATION_FAILED (campus #650 dual emission).
+        """
+        with patch.dict(os.environ, {"CLIENT_ID": "cid123"}):
+            self.auth.credentials["campus"]["user1"].update(self.token)
+        body = self.client.patch.call_args.kwargs["json"]
+        sent_token = body["token"]
+        self.assertNotIn("scope", sent_token)
+        self.assertIn("scopes", sent_token)
+        validated = campus.model.OAuthToken(**sent_token)
+        self.assertEqual(validated.id, "tok123")
+        self.assertEqual(validated.scope, "campus.profile campus.identities")
+
+
+if __name__ == "__main__":
+    unittest.main()
