@@ -14,9 +14,12 @@ PR:
   from_resource still accepts legacy `scopes` lists;
 - PATCH /credentials/... bodies are validated server-side via
   OAuthToken.from_resource() (campus #656), which maps the RFC 6749
-  `scope` string to `scopes`, accepts legacy `expiry_seconds`, and bags
-  unknown provider keys into provider_fields; User.update() sends the
-  full to_resource() output.
+  `scope` string to `scopes` and bags unknown provider keys into
+  provider_fields; User.update() sends the full to_resource() output;
+- the legacy `expiry_seconds` alias is fully removed (campus #659,
+  #648 checklist item 2): the constructor rejects the kwarg and
+  payloads whose only expiry information is `expiry_seconds` fail
+  validation — `expires_in` is the only accepted form.
 """
 
 import os
@@ -167,6 +170,26 @@ class TestCredentialsUpdatePatchBody(unittest.TestCase):
         self.assertEqual(validated.id, "tok456")
         self.assertEqual(validated.scopes, ["campus.profile"])
         self.assertEqual(validated.scope, "campus.profile")
+
+
+class TestExpirySecondsAliasRemoved(unittest.TestCase):
+    """The legacy `expiry_seconds` alias is gone (campus #659, closing
+    #648 checklist item 2). The client has no call sites; these pins
+    guard against it creeping back in either direction."""
+
+    def test_constructor_rejects_expiry_seconds_kwarg(self):
+        with self.assertRaises(TypeError):
+            campus.model.OAuthToken(id="tok-1", expiry_seconds=60)
+
+    def test_payload_with_only_expiry_seconds_fails_validation(self):
+        """Mirrors the server-side validation: a payload whose only
+        expiry information is the removed legacy key cannot construct,
+        so the server answers 422 VALIDATION_FAILED."""
+        with self.assertRaises(ValueError):
+            campus.model.OAuthToken.from_resource({
+                "access_token": "tok-2",
+                "expiry_seconds": 60,
+            })
 
 
 if __name__ == "__main__":
