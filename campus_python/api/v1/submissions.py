@@ -121,12 +121,12 @@ class Submissions(ResourceCollection):
         @property
         def responses(self) -> "Submissions.Submission.Responses":
             """Get the responses resource for this submission."""
-            return Submissions.Submission.Responses(parent=self)
+            return Submissions.Submission.Responses("responses", parent=self)
 
         @property
         def feedback(self) -> "Submissions.Submission.Feedback":
             """Get the feedback resource for this submission."""
-            return Submissions.Submission.Feedback(parent=self)
+            return Submissions.Submission.Feedback("feedback", parent=self)
 
         def delete(self) -> None:
             """Delete this submission."""

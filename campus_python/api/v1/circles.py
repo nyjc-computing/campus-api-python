@@ -46,7 +46,7 @@ class Circles(ResourceCollection):
         @property
         def members(self) -> "Circles.Circle.CircleMembers":
             """Get the members resource for this circle."""
-            return Circles.Circle.CircleMembers(parent=self)
+            return Circles.Circle.CircleMembers("members", parent=self)
 
         def delete(self) -> None:
             resp = self.client.delete(self.make_path())
