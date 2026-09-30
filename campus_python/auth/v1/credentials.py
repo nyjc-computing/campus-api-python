@@ -80,7 +80,7 @@ class Credentials(ResourceCollection):
             def new(
                     self,
                     scopes: "list[str]",
-                    expiry_seconds: int,
+                    expires_in: int,
             ) -> campus.model.UserCredentials:
                 raise NotImplementedError(
                     "Method not expected to be called on API"

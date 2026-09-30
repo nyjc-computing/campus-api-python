@@ -9,11 +9,12 @@ PR:
 - POST /auth/v1/token responses carry standard RFC keys (access_token,
   token_type, expires_in, scope) which OAuthToken.from_resource maps to
   campus names;
-- GET /credentials/... resources nest the token with both `scope`
-  (string) and `scopes` (list) during the compat window;
+- GET /credentials/... resources nest the token carrying the RFC 6749
+  `scope` string only (scope-only emission since campus #657);
+  from_resource still accepts legacy `scopes` lists;
 - PATCH /credentials/... bodies are validated server-side via
-  OAuthToken.from_resource() (campus #656), which accepts the
-  dual-emitted `scope` string alias, legacy `expiry_seconds`, and bags
+  OAuthToken.from_resource() (campus #656), which maps the RFC 6749
+  `scope` string to `scopes`, accepts legacy `expiry_seconds`, and bags
   unknown provider keys into provider_fields; User.update() sends the
   full to_resource() output.
 """
@@ -38,7 +39,8 @@ RFC_TOKEN_PAYLOAD = {
 }
 
 # Exact credentials-resource shape emitted by campus weekly
-# (UserCredentials.to_resource() with its nested OAuthToken token).
+# (UserCredentials.to_resource() with its nested OAuthToken token;
+# scope-only token emission since campus #657).
 CREDENTIALS_RESOURCE = {
     "id": "cred1",
     "created_at": "2026-09-30T06:31:24.582763+00:00",
@@ -53,7 +55,6 @@ CREDENTIALS_RESOURCE = {
         "token_type": "Bearer",
         "refresh_token": "rt123",
         "refresh_token_expires_at": None,
-        "scopes": ["campus.profile", "campus.identities"],
         "scope": "campus.profile campus.identities",
     },
 }
@@ -138,16 +139,16 @@ class TestCredentialsUpdatePatchBody(unittest.TestCase):
     def test_patch_body_passes_server_validation(self):
         """The sent token payload must pass OAuthToken.from_resource().
 
-        Mirrors the server-side validation (campus #656), which accepts
-        the RFC 6749 `scope` string alias dual-emitted by to_resource()
-        alongside `scopes` (campus #650).
+        Mirrors the server-side validation (campus #656). Token
+        resources emit `scope` only since campus #657 (deprecation
+        checklist item 4); from_resource maps it back to `scopes`.
         """
         with patch.dict(os.environ, {"CLIENT_ID": "cid123"}):
             self.auth.credentials["campus"]["user1"].update(self.token)
         body = self.client.patch.call_args.kwargs["json"]
         sent_token = body["token"]
         self.assertIn("scope", sent_token)
-        self.assertIn("scopes", sent_token)
+        self.assertNotIn("scopes", sent_token)
         validated = campus.model.OAuthToken.from_resource(sent_token)
         self.assertEqual(validated.id, "tok123")
         self.assertEqual(validated.scopes, ["campus.profile", "campus.identities"])
