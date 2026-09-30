@@ -88,15 +88,9 @@ class Credentials(ResourceCollection):
 
             def update(self, token: campus.model.OAuthToken) -> None:
                 client_id = env.CLIENT_ID
-                token_payload = token.to_resource()
-                # The endpoint validates the body via OAuthToken(**payload),
-                # which does not accept the RFC 6749 `scope` string alias
-                # that to_resource() emits alongside `scopes` (campus #648
-                # compat window); `scopes` carries the same information.
-                token_payload.pop("scope", None)
                 json_data: JsonDict = {
                     "client_id": client_id,
-                    "token": token_payload
+                    "token": token.to_resource()
                 }
                 resp = self.client.patch(self.make_path(), json=json_data)
                 # Raise error if status code is not 2XX or 3XX
