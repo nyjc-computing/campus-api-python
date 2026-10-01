@@ -3,6 +3,7 @@
 Campus Auth resource.
 """
 
+import logging
 from typing import Literal
 
 import flask
@@ -25,6 +26,8 @@ from . import (
     users,
     vaults,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AuthRoot(ResourceRoot):
@@ -218,12 +221,28 @@ class AuthRoot(ResourceRoot):
         return campus.model.OAuthToken.from_resource(resp.json())
 
     def logout(self) -> None:
-        """Logout the current user by revoking their login session."""
-        flask.g.pop("user")
-        flask.g.pop("device")
-        if self.logins.has_session():
+        """Logout the current user by revoking their login session.
+
+        Remote revocation is best-effort: the login session may already be
+        gone server-side (expired, swept, or the client's auth service
+        session cookie lost across app workers), but the local session
+        state is always cleared so the user is signed out locally
+        regardless of the revocation outcome.
+        """
+        flask.g.pop("user", None)
+        flask.g.pop("device", None)
+        if not self.logins.has_session():
+            return
+        try:
             login_session = self.logins.from_session()
             self.logins[login_session.id].revoke()
+        except Exception as err:
+            logger.warning(
+                "Login session revocation failed (continuing with local "
+                "logout): %s", err
+            )
+            if self.logins._session_key in flask.session:
+                del flask.session[self.logins._session_key]
 
     def get_token(self) -> campus.model.OAuthToken:
         """Convenience method to get access token for a user.
