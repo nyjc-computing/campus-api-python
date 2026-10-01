@@ -9,6 +9,7 @@ __all__ = (
 )
 
 import logging
+import warnings
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -23,6 +24,49 @@ from .json_client import CampusRequest
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Development Railway deployments, used when no explicit URL is configured
+AUTH_DEVELOPMENT_URL = "https://campusauth-development.up.railway.app"
+API_DEVELOPMENT_URL = "https://campusapi-development.up.railway.app"
+
+
+def _resolve_base_url(service: str, url_var: str, development_url: str) -> str:
+    """Resolve the base URL for a Campus service.
+
+    Precedence:
+        1. Explicit URL config: the `url_var` environment variable
+           (CAMPUS_AUTH_URL / CAMPUS_API_URL).
+        2. ENV-based defaults: development Railway deployments,
+           staging and production domains.
+
+    Emits a DeprecationWarning if the environment would previously have
+    produced a HOSTNAME-derived URL (a DEPLOY service suffix or
+    ENV/CAMPUS_ENV=testing); those deployments must set `url_var`
+    explicitly or accept the ENV-based default (issue #52).
+    """
+    explicit_url = env.get(url_var)
+    if explicit_url:
+        return explicit_url
+
+    campus_env = env.get("ENV", env.get("CAMPUS_ENV", "development"))
+    if env.get("DEPLOY", "").endswith(f".{service}") or campus_env == "testing":
+        warnings.warn(
+            f"HOSTNAME-derived {service} base URLs are deprecated and no "
+            f"longer used; set {url_var} to configure the {service} base "
+            "URL explicitly.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
+    match campus_env:
+        case "development" | "testing":
+            return development_url
+        case "staging":
+            return f"https://{service}.campus.nyjc.dev"
+        case "production":
+            return f"https://{service}.campus.nyjc.app"
+        case _:
+            raise ValueError("Invalid ENV value")
+
 
 class Campus:
     """Unified Campus client interface.
@@ -34,6 +78,10 @@ class Campus:
       Requires CLIENT_ID and CLIENT_SECRET environment variables.
     - mode="device": For public clients (e.g., CLI) that don't have secrets.
       No credentials required; only public OAuth endpoints are accessible.
+
+    Service base URLs are resolved per service (auth, api) in this order:
+    1. Explicit URL config: CAMPUS_AUTH_URL / CAMPUS_API_URL env vars.
+    2. ENV/CAMPUS_ENV defaults: development (Railway), staging, production.
 
     See the API Reference for usage examples.
     """
@@ -62,21 +110,9 @@ class Campus:
     def auth(self) -> AuthRoot:
         """Get the auth service resource."""
         if not hasattr(self, "_auth"):
-            # Use relative URL if in deployed auth service
-            if env.get("DEPLOY") and env.DEPLOY.endswith(".auth"):
-                base_url = f"https://{env.HOSTNAME}"
-            else:
-                match env.get("ENV", env.get("CAMPUS_ENV", "development")):
-                    case "development":
-                        base_url = "https://campusauth-development.up.railway.app"
-                    case "testing":
-                        base_url = f"https://{env.HOSTNAME}"
-                    case "staging":
-                        base_url = "https://auth.campus.nyjc.dev"
-                    case "production":
-                        base_url = "https://auth.campus.nyjc.app"
-                    case _:
-                        raise ValueError("Invalid ENV value")
+            base_url = _resolve_base_url(
+                "auth", "CAMPUS_AUTH_URL", AUTH_DEVELOPMENT_URL
+            )
             self._auth = AuthRoot(
                 json_client=CampusRequest(
                     base_url=base_url,
@@ -90,20 +126,9 @@ class Campus:
     def api(self) -> ApiRoot:
         """Get the api service resource."""
         if not hasattr(self, "_api"):
-            if env.get("DEPLOY") and env.DEPLOY.endswith(".api"):
-                base_url = f"https://{env.HOSTNAME}"
-            else:
-                match env.get("ENV", env.get("CAMPUS_ENV", "development")):
-                    case "development":
-                        base_url = "https://campusapi-development.up.railway.app"
-                    case "testing":
-                        base_url = f"https://{env.HOSTNAME}"
-                    case "staging":
-                        base_url = "https://api.campus.nyjc.dev"
-                    case "production":
-                        base_url = "https://api.campus.nyjc.app"
-                    case _:
-                        raise ValueError("Invalid ENV value")
+            base_url = _resolve_base_url(
+                "api", "CAMPUS_API_URL", API_DEVELOPMENT_URL
+            )
             self._api = ApiRoot(
                 json_client=CampusRequest(
                     base_url=base_url,

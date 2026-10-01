@@ -144,12 +144,30 @@ client.auth.client.set_bearer_authorization(access_token)
 # Now you can make authenticated requests
 ```
 
+## Service Base URLs
+
+Each service client (`campus.auth`, `campus.api`) resolves its base URL in this order:
+
+1. **Explicit URL config** — the `CAMPUS_AUTH_URL` / `CAMPUS_API_URL` environment variable, if set. Use this for local testing deployments and custom endpoints (e.g. `CAMPUS_AUTH_URL=http://localhost:5000`).
+2. **ENV-based defaults** — selected by `ENV` (or `CAMPUS_ENV`):
+
+| ENV value | auth | api |
+|-----------|------|-----|
+| `development` (default) | `https://campusauth-development.up.railway.app` | `https://campusapi-development.up.railway.app` |
+| `staging` | `https://auth.campus.nyjc.dev` | `https://api.campus.nyjc.dev` |
+| `production` | `https://auth.campus.nyjc.app` | `https://api.campus.nyjc.app` |
+
+> **Deprecated (issue #52):** base URLs are no longer derived from the `HOSTNAME` environment variable. Deployments that relied on the `DEPLOY` service suffix (e.g. `campus.auth`) or `ENV=testing` to produce `https://{HOSTNAME}` URLs now get a `DeprecationWarning` and the ENV-based default instead — set `CAMPUS_AUTH_URL` / `CAMPUS_API_URL` explicitly to point the client at those deployments.
+
 ## Environment Variables
 
 | Variable | Required | Mode | Description |
 |----------|----------|------|-------------|
 | `CLIENT_ID` | Yes | Server | OAuth client ID from Campus auth |
 | `CLIENT_SECRET` | Yes | Server | OAuth client secret from Campus auth |
+| `CAMPUS_AUTH_URL` | No | All | Auth service base URL (overrides ENV default) |
+| `CAMPUS_API_URL` | No | All | API service base URL (overrides ENV default) |
+| `ENV` / `CAMPUS_ENV` | No | All | Deployment environment selecting default URLs: `development` (default), `staging`, `production` |
 
 ## Development
 
