@@ -41,6 +41,9 @@ CLIENT_RESOURCE = {
     "description": "CLI client",
     "is_public": True,
     "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob"],
+    "allowed_scopes": [],
+    "upstream_scopes": {},
+    "token_bridge": False,
     "permissions": {},
 }
 
