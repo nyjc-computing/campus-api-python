@@ -331,6 +331,12 @@ class AuthRoot(ResourceRoot):
         authorization-code session endpoint at /auth/v1/token
         (campus/auth/provider.py), whose contract requires code and
         redirect_uri and rejects every other grant type (#60).
+
+        The path passed to the client is relative (like every other
+        resource method): CampusRequest._build_url() prepends the
+        client's base_url itself, so an absolute URL here would be
+        double-prefixed into `https://host/https://host/...` and 404
+        against real deployments.
         """
         json_body: dict[str, str] = {
             "grant_type": grant_type,
@@ -347,7 +353,7 @@ class AuthRoot(ResourceRoot):
                     )
                 json_body["refresh_token"] = refresh_token
 
-        base_url = self.base_url + self.url_prefix + "/oauth/token"
-        resp = self.client.post(base_url, json=json_body)
+        token_path = self.url_prefix + "/oauth/token"
+        resp = self.client.post(token_path, json=json_body)
         resp.raise_for_status()
         return campus.model.OAuthToken.from_resource(resp.json())

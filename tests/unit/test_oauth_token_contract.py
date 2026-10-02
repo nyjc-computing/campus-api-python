@@ -178,11 +178,17 @@ class TestTokenEndpointPath(unittest.TestCase):
     authorization-code session endpoint at /auth/v1/token
     (campus/auth/provider.py) — whose contract requires code and
     redirect_uri and rejects every other grant type (client issue #60).
+
+    The path must also be RELATIVE: CampusRequest._build_url() prepends
+    the client's base_url itself, so an absolute URL here gets
+    double-prefixed into `https://host/https://host/...` and 404s
+    against real deployments (client issue #62). The mock client's
+    base_url is therefore deliberately non-empty in these tests.
     """
 
     def setUp(self):
         self.auth, self.client = make_auth()
-        self.client.base_url = ""
+        self.client.base_url = "https://campusauth.example.com"
         self.client.post.return_value.json.return_value = dict(
             RFC_TOKEN_PAYLOAD
         )
@@ -205,6 +211,18 @@ class TestTokenEndpointPath(unittest.TestCase):
         self.assertEqual(args[0], "/auth/v1/oauth/token")
         self.assertEqual(kwargs["json"]["grant_type"], "refresh_token")
         self.assertEqual(kwargs["json"]["refresh_token"], "rt123")
+
+    def test_token_path_is_relative_not_double_prefixed(self):
+        """Regression (client issue #62): with a non-empty client
+        base_url, the path handed to the client must stay relative —
+        building `base_url + url_prefix + "/oauth/token"` produced
+        `https://host/https://host/auth/v1/oauth/token` (404 live)."""
+        with patch.dict(os.environ, {"CLIENT_ID": "cid123", "CLIENT_SECRET": "sec123"}):
+            self.auth.token(grant_type="client_credentials")
+
+        args, _ = self.client.post.call_args
+        self.assertFalse(args[0].startswith(("http://", "https://")))
+        self.assertEqual(args[0], "/auth/v1/oauth/token")
 
 
 class TestExpirySecondsAliasRemoved(unittest.TestCase):
