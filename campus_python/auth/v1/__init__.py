@@ -323,7 +323,15 @@ class AuthRoot(ResourceRoot):
             *,
             refresh_token: str | None = None,
     ) -> campus.model.OAuthToken:
-        """Get OAuth token from the token endpoint."""
+        """Get OAuth token from the token endpoint.
+
+        Targets the RFC 6749 token endpoint (/auth/v1/oauth/token,
+        campus/auth/routes/oauth.py), which serves the device_code,
+        refresh_token, and client_credentials grants — NOT the
+        authorization-code session endpoint at /auth/v1/token
+        (campus/auth/provider.py), whose contract requires code and
+        redirect_uri and rejects every other grant type (#60).
+        """
         json_body: dict[str, str] = {
             "grant_type": grant_type,
         }
@@ -339,7 +347,7 @@ class AuthRoot(ResourceRoot):
                     )
                 json_body["refresh_token"] = refresh_token
 
-        base_url = self.base_url + self.url_prefix + "/token"
+        base_url = self.base_url + self.url_prefix + "/oauth/token"
         resp = self.client.post(base_url, json=json_body)
         resp.raise_for_status()
         return campus.model.OAuthToken.from_resource(resp.json())

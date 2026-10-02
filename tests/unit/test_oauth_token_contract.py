@@ -6,7 +6,7 @@ pin the wire shapes exchanged with the dev API (campus-suite, branch
 weekly) so the client stays compatible until campus lands its deprecation
 PR:
 
-- POST /auth/v1/token responses carry standard RFC keys (access_token,
+- POST /auth/v1/oauth/token responses carry standard RFC keys (access_token,
   token_type, expires_in, scope) which OAuthToken.from_resource maps to
   campus names;
 - GET /credentials/... resources nest the token carrying the RFC 6749
@@ -170,6 +170,41 @@ class TestCredentialsUpdatePatchBody(unittest.TestCase):
         self.assertEqual(validated.id, "tok456")
         self.assertEqual(validated.scopes, ["campus.profile"])
         self.assertEqual(validated.scope, "campus.profile")
+
+
+class TestTokenEndpointPath(unittest.TestCase):
+    """auth.token() must target the RFC 6749 token endpoint
+    (/auth/v1/oauth/token, campus/auth/routes/oauth.py), not the
+    authorization-code session endpoint at /auth/v1/token
+    (campus/auth/provider.py) — whose contract requires code and
+    redirect_uri and rejects every other grant type (client issue #60).
+    """
+
+    def setUp(self):
+        self.auth, self.client = make_auth()
+        self.client.base_url = ""
+        self.client.post.return_value.json.return_value = dict(
+            RFC_TOKEN_PAYLOAD
+        )
+
+    def test_client_credentials_targets_oauth_token_endpoint(self):
+        envvars = {"CLIENT_ID": "cid123", "CLIENT_SECRET": "sec123"}
+        with patch.dict(os.environ, envvars):
+            self.auth.token(grant_type="client_credentials")
+
+        args, kwargs = self.client.post.call_args
+        self.assertEqual(args[0], "/auth/v1/oauth/token")
+        self.assertEqual(kwargs["json"]["grant_type"], "client_credentials")
+        self.assertEqual(kwargs["json"]["client_id"], "cid123")
+        self.assertEqual(kwargs["json"]["client_secret"], "sec123")
+
+    def test_refresh_token_targets_oauth_token_endpoint(self):
+        self.auth.token(grant_type="refresh_token", refresh_token="rt123")
+
+        args, kwargs = self.client.post.call_args
+        self.assertEqual(args[0], "/auth/v1/oauth/token")
+        self.assertEqual(kwargs["json"]["grant_type"], "refresh_token")
+        self.assertEqual(kwargs["json"]["refresh_token"], "rt123")
 
 
 class TestExpirySecondsAliasRemoved(unittest.TestCase):
