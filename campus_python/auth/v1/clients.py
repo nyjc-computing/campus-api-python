@@ -95,14 +95,27 @@ class Clients(ResourceCollection):
                 self,
                 name: str | None = None,
                 description: str | None = None,
-                redirect_uris: list[str] | None = None
+                redirect_uris: list[str] | None = None,
+                allowed_scopes: list[str] | None = None,
+                upstream_scopes: dict[str, list[str]] | None = None,
+                token_bridge: bool | None = None
         ) -> campus.model.Client:
             """Update the client.
+
+            Only the fields passed are sent; the server replaces each
+            provided field wholesale (PATCH semantics), so list and
+            dict values must carry the full desired contents.
 
             Args:
                 name: New client name
                 description: New client description
                 redirect_uris: New OAuth redirect URIs
+                allowed_scopes: Replacement token-scope allowlist
+                    (fail-closed: an empty list grants nothing)
+                upstream_scopes: Replacement per-provider upstream
+                    scope map (e.g. {"google": [...]})
+                token_bridge: Token bridge access flag (rejected by the
+                    server for public clients)
 
             Returns:
                 The updated Client
@@ -114,6 +127,12 @@ class Clients(ResourceCollection):
                 json_data["description"] = description
             if redirect_uris is not None:
                 json_data["redirect_uris"] = redirect_uris
+            if allowed_scopes is not None:
+                json_data["allowed_scopes"] = allowed_scopes
+            if upstream_scopes is not None:
+                json_data["upstream_scopes"] = upstream_scopes
+            if token_bridge is not None:
+                json_data["token_bridge"] = token_bridge
             resp = self.client.patch(self.make_path(), json=json_data)
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
