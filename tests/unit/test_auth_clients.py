@@ -158,5 +158,29 @@ class TestClientsUpdateScopeBridgeFields(unittest.TestCase):
         )
 
 
+class TestClientAccessTrailingSlash(unittest.TestCase):
+    """ClientAccess.get() must request /access/ with the trailing slash:
+    the auth app sets strict_slashes, so the slash-less path 404s."""
+
+    def setUp(self):
+        self.auth, self.client = make_auth()
+        response = Mock()
+        response.json.return_value = {"access": []}
+        self.client.get.return_value = response
+
+    def test_get_requests_trailing_slash(self):
+        self.auth.clients["cid123"].access.get()
+        self.client.get.assert_called_once_with(
+            "/auth/v1/clients/cid123/access/"
+        )
+
+    def test_get_with_vault_requests_trailing_slash(self):
+        self.auth.clients["cid123"].access.get(vault="google")
+        self.client.get.assert_called_once_with(
+            "/auth/v1/clients/cid123/access/",
+            query={"vault": "google"},
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

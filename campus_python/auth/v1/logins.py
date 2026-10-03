@@ -77,7 +77,7 @@ class LoginSessions(ResourceCollection):
         resp.raise_for_status()
         loginsession = campus.model.LoginSession.from_resource(resp.json())
         flask.session[self._session_key] = loginsession.id
-        return campus.model.LoginSession.from_resource(resp.json())
+        return loginsession
 
     class Login(Resource):
         """A single login session resource."""
@@ -92,7 +92,9 @@ class LoginSessions(ResourceCollection):
             )
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
-            del flask.session[self.parent._session_key]  # type: ignore
+            # The key may be absent (expired cookie, new worker) —
+            # revocation must not fail on local cleanup.
+            flask.session.pop(self.parent._session_key, None)  # type: ignore
 
         def get(self) -> campus.model.LoginSession:
             resp = self.client.get(

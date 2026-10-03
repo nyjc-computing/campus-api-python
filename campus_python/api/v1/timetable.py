@@ -114,7 +114,8 @@ class Timetables(ResourceCollection):
             }
         )
         resp.raise_for_status()
-        return resp.json()
+        # POST /timetable/ wraps the created resource in a data envelope
+        return resp.json()["data"]
 
     def list(self, **filters: typing.Any) -> "list[campus.model.TimetableMetadata]":
         """List timetables matching the provided filters.
@@ -129,7 +130,7 @@ class Timetables(ResourceCollection):
         resp.raise_for_status()
         return [
             campus.model.TimetableMetadata.from_resource(item)
-            for item in resp.json()
+            for item in resp.json()["data"]
         ]
 
     class Timetable(Resource):
@@ -146,13 +147,18 @@ class Timetables(ResourceCollection):
             return Timetables.Timetable.Metadata("metadata", parent=self)
 
         def get(self) -> campus.model.Timetable:
-            """Get the metadata for this timetable."""
+            """Get this timetable (metadata and labeled entries).
+
+            GET /timetable/<id>/ wraps the resource in a
+            ``{"timetable": ...}`` envelope.
+            """
             resp = self.client.get(
                 self.make_path(end_slash=True)
-                # json={},
             )
             resp.raise_for_status()
-            return resp.json()
+            return campus.model.Timetable.from_resource(
+                resp.json()["timetable"]
+            )
 
         class Entries(Resource):
             """Entries for a single timetable."""
@@ -178,15 +184,20 @@ class Timetables(ResourceCollection):
                 """
                 resp = self.client.get(self.make_path())
                 resp.raise_for_status()
-                return campus.model.Timetable.from_resource(resp.json())
+                return campus.model.TimetableMetadata.from_resource(resp.json())
 
-            def update(self, **kwargs) -> None:
+            def update(self, *, start_date: str, end_date: str) -> None:
                 """Update the metadata for this timetable.
 
-                Args:
-                    **kwargs: Fields to update (e.g., start_date, end_date)
+                The API replaces both dates together: each is required.
 
-                Raises:
-                    NotImplementedError: Not yet implemented
+                Args:
+                    start_date: New start date (schema.DateTime-compatible)
+                    end_date: New end date (schema.DateTime-compatible)
                 """
-                raise NotImplementedError("TODO: Student to implement")
+                resp = self.client.patch(self.make_path(), json={
+                    "start_date": start_date,
+                    "end_date": end_date,
+                })
+                resp.raise_for_status()
+                return None

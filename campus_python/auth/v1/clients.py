@@ -145,13 +145,15 @@ class Clients(ResourceCollection):
                     self,
                     vault: str | None = None
             ) -> JsonDict:
+                # GET rule is /<client_id>/access/ (trailing slash) and the
+                # auth app sets strict_slashes — the slash is required.
                 if vault:
                     resp = self.client.get(
-                        self.make_path(),
+                        self.make_path(end_slash=True),
                         query={"vault": vault}
                     )
                 else:
-                    resp = self.client.get(self.make_path())
+                    resp = self.client.get(self.make_path(end_slash=True))
                 # Raise error if status code is not 2XX or 3XX
                 resp.raise_for_status()
                 return resp.json()

@@ -133,7 +133,7 @@ class TestNestedResourceRequests(unittest.TestCase):
 
     def test_metadata_get_gets_metadata_endpoint(self):
         with patch.object(
-            campus.model.Timetable, "from_resource", return_value=Mock()
+            campus.model.TimetableMetadata, "from_resource", return_value=Mock()
         ):
             self.api.timetable["tt-1"].metadata.get()
         self.client.get.assert_called_once_with(

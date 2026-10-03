@@ -21,6 +21,11 @@ class OAuth(ResourceRoot):
     Reference: https://datatracker.ietf.org/doc/html/rfc8628
     """
 
+    # All OAuth endpoints live under /auth/v1/oauth (campus/auth/routes/
+    # oauth.py); the auth app enables strict_slashes, so the slash-less
+    # relative paths built here must match the route rules exactly.
+    url_prefix = "/auth/v1/oauth"
+
     def __init__(self, root: ResourceRoot):
         super().__init__(json_client=root.client)
         self._root = root
@@ -49,9 +54,7 @@ class OAuth(ResourceRoot):
         json_body = {
             "client_id": client_id,
         }
-        # Use /oauth prefix (not /auth/v1) for device authorization endpoints
-        device_code_path = "/oauth/device_authorize"
-        resp = self.client.post(device_code_path, json=json_body)
+        resp = self.client.post(self.make_path("device_authorize"), json=json_body)
         resp.raise_for_status()
         return resp.json()
 
@@ -86,39 +89,40 @@ class OAuth(ResourceRoot):
             "client_id": client_id,
             "device_code": device_code,
         }
-        token_path = "/oauth/token"
-        resp = self.client.post(token_path, json=json_body)
+        resp = self.client.post(self.make_path("token"), json=json_body)
 
         # Handle OAuth error responses
         if resp.status_code == 400:
             error_data = resp.json()
             error = error_data.get("error", "")
 
-            # Map RFC 8628 errors to AuthenticationError
+            # Map RFC 8628 errors to AuthenticationError; the OAuth error
+            # code travels in details so callers can read it back via the
+            # APIError.oauth_error property.
             if error == "authorization_pending":
                 raise errors.AuthenticationError(
                     error_description="Authorization pending",
-                    error_code="authorization_pending"
+                    details={"oauth_error": "authorization_pending"}
                 )
             elif error == "slow_down":
                 raise errors.AuthenticationError(
                     error_description="Slow down",
-                    error_code="slow_down"
+                    details={"oauth_error": "slow_down"}
                 )
             elif error == "expired_token":
                 raise errors.AuthenticationError(
                     error_description="Device code has expired",
-                    error_code="expired_token"
+                    details={"oauth_error": "expired_token"}
                 )
             elif error == "access_denied":
                 raise errors.AuthenticationError(
                     error_description="Access denied by user",
-                    error_code="access_denied"
+                    details={"oauth_error": "access_denied"}
                 )
             else:
                 raise errors.AuthenticationError(
                     error_description=error_data.get("error_description", "Unknown error"),
-                    error_code=error
+                    details={"oauth_error": error}
                 )
 
         resp.raise_for_status()
@@ -149,7 +153,8 @@ class OAuth(ResourceRoot):
             "user_code": user_code,
             "user_id": user_id,
         }
-        authorize_path = "/oauth/device/authorize"
-        resp = self.client.post(authorize_path, json=json_body)
+        resp = self.client.post(
+            self.make_path("device/authorize"), json=json_body
+        )
         resp.raise_for_status()
         return resp.json()
