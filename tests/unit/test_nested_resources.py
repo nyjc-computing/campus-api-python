@@ -1,4 +1,4 @@
-"""Regression tests for nested resource paths (issue #38).
+"""Regression tests for nested resource paths (issues #38, #42).
 
 Nested resources must be constructed with their path part so that their
 paths extend the parent resource's path instead of collapsing onto it.
@@ -11,7 +11,9 @@ campus-suite repository (branch: weekly):
 - POST /api/v1/assignments/<id>/links
 - GET  /api/v1/timetable/<id>/entries
 - GET  /api/v1/timetable/<id>/metadata
-- GET  /api/v1/circles/<id>/members
+- GET  /api/v1/circles/<id>/members/
+- POST /api/v1/circles/<id>/members/add
+- DELETE /api/v1/circles/<id>/members/remove
 """
 
 import unittest
@@ -139,10 +141,27 @@ class TestNestedResourceRequests(unittest.TestCase):
         )
 
     def test_members_list_gets_members_endpoint(self):
-        self.client.get.return_value.json.return_value = {"members": {}}
+        """members.list() must GET the canonical /members/ route (#42)."""
+        self.client.get.return_value.json.return_value = {"cir-2": 7}
         self.api.circles["cir-1"].members.list()
         self.client.get.assert_called_once_with(
-            "/api/v1/circles/cir-1/members"
+            "/api/v1/circles/cir-1/members/"
+        )
+
+    def test_members_add_posts_to_members_add_endpoint(self):
+        """members.add() must POST the /members/add route with access_value (#42)."""
+        self.api.circles["cir-1"].members.add(member_id="cir-2", access_value=7)
+        self.client.post.assert_called_once_with(
+            "/api/v1/circles/cir-1/members/add",
+            json={"member_id": "cir-2", "access_value": 7},
+        )
+
+    def test_members_remove_deletes_members_remove_endpoint(self):
+        """members.remove() must DELETE the /members/remove route (#42)."""
+        self.api.circles["cir-1"].members.remove(member_id="cir-2")
+        self.client.delete.assert_called_once_with(
+            "/api/v1/circles/cir-1/members/remove",
+            json={"member_id": "cir-2"},
         )
 
     def test_assignments_list_passes_query_argument(self):
