@@ -3,6 +3,8 @@
 Campus API circles resource (v1).
 """
 
+from typing import Any
+
 import campus.model
 
 from ...interface import Resource, ResourceCollection
@@ -22,21 +24,25 @@ class Circles(ResourceCollection):
         resp.raise_for_status()
         return [
             campus.model.Circle.from_resource(item)
-            for item in resp.json()["circles"]
+            for item in resp.json()["data"]
         ]
 
     def new(
             self,
             *,
             name: str,
-            description: str,
             tag: str,
+            description: str = "",
             parents: dict[str, int] | None = None,
     ) -> campus.model.Circle:
-        resp = self.client.post(self.make_path(), json={
+        payload: dict[str, Any] = {
             "name": name,
+            "tag": tag,
             "description": description,
-        })
+        }
+        if parents is not None:
+            payload["parents"] = parents
+        resp = self.client.post(self.make_path(), json=payload)
         resp.raise_for_status()
         return campus.model.Circle.from_resource(resp.json())
 
