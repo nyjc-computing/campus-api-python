@@ -159,6 +159,9 @@ class Campus:
             self.auth.credentials["campus"][login_session.user_id].update(
                 token=token
             )
+            # Return the refreshed token — user_creds still holds the
+            # pre-refresh (now rotated) access token.
+            return token
         return user_creds.token
 
     def revoke_session(self) -> None:

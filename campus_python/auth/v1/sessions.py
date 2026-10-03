@@ -22,7 +22,7 @@ class CampusSessions(ResourceCollection):
 
     @property
     def _session_key(self) -> str:
-        provider = self.path.split("/")[-1]
+        provider = self.path.rstrip("/").split("/")[-1]
         return f"{provider}_session_id"
 
     def __getitem__(self, session_id: str) -> "CampusSessions.Session":
@@ -102,8 +102,12 @@ class CampusSessions(ResourceCollection):
                 self.make_path(end_slash=True)
             )
             resp.raise_for_status()
-            # Remove session ID from Flask session using correct key
-            del flask.session[cast(CampusSessions, self.parent)._session_key]
+            # Remove session ID from Flask session using correct key.
+            # The key may be absent (expired cookie, new worker, lost
+            # session) — clearing it must not fail the finalization (#59).
+            flask.session.pop(
+                cast(CampusSessions, self.parent)._session_key, None
+            )
             body = resp.json()
             return body["target"]
 

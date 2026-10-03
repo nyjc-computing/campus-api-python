@@ -169,11 +169,12 @@ class AuthRoot(ResourceRoot):
         # 3. Finalize session and get target
         target = self.sessions[auth_session.id].finalize()
 
-        # 4. Ensure user exists
-        self.users[auth_session.user_id]
+        # 4. Ensure user exists (the server provisions the user record
+        # during verify_login; a missing user is a hard error here)
+        self.users[auth_session.user_id].get()
 
         # 5. Create login session
-        ls = self.logins.new(
+        self.logins.new(
             user_id=auth_session.user_id,
             device_id=uid.generate_category_uid("device", length=16),
             agent_string=flask.request.headers.get("User-Agent", ""),
