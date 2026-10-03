@@ -73,22 +73,23 @@ class Circles(ResourceCollection):
             """Campus API Circle Members resource."""
             path = "members"
 
-            def list(self) -> "list[dict[str, int]]":
-                resp = self.client.get(self.make_path())
+            def list(self) -> dict[str, int]:
+                """Return the circle's {member_id: access_value} mapping."""
+                resp = self.client.get(self.make_path(end_slash=True))
                 resp.raise_for_status()
-                return resp.json()["members"]
+                return resp.json()
 
             def add(self, member_id: str, access_value: int) -> None:
                 resp = self.client.post(
-                    self.make_path(),
-                    json={"member_id": member_id, "access": access_value}
+                    self.make_path("add"),
+                    json={"member_id": member_id, "access_value": access_value}
                 )
                 resp.raise_for_status()
                 return None
 
             def remove(self, member_id: str) -> None:
                 resp = self.client.delete(
-                    self.make_path(),
+                    self.make_path("remove"),
                     json={"member_id": member_id}
                 )
                 resp.raise_for_status()
