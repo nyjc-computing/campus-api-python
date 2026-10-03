@@ -169,29 +169,50 @@ class CampusRequest(JsonClient):
             raise errors.ServerError(error_description=str(exc)) from None
         return CampusResponse(resp)
 
-    def put(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
+    def put(
+            self: Self,
+            path: str,
+            json: JsonDict | None = None,
+            query: JsonDict | None = None
+    ) -> JsonResponse:
         """Sends a PUT request."""
         url = self._build_url(path)
         try:
-            resp = self._session.put(url, json=json, timeout=self._timeout)
+            resp = self._session.put(
+                url, json=json, params=query, timeout=self._timeout
+            )
         except requests.RequestException as exc:
             raise errors.ServerError(error_description=str(exc)) from None
         return CampusResponse(resp)
 
-    def delete(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
+    def delete(
+            self: Self,
+            path: str,
+            json: JsonDict | None = None,
+            query: JsonDict | None = None
+    ) -> JsonResponse:
         """Sends a DELETE request."""
         url = self._build_url(path)
         try:
-            resp = self._session.delete(url, json=json, timeout=self._timeout)
+            resp = self._session.delete(
+                url, json=json, params=query, timeout=self._timeout
+            )
         except requests.RequestException as exc:
             raise errors.ServerError(error_description=str(exc)) from None
         return CampusResponse(resp)
 
-    def patch(self: Self, path: str, json: Any = None) -> JsonResponse:
+    def patch(
+            self: Self,
+            path: str,
+            json: Any = None,
+            query: JsonDict | None = None
+    ) -> JsonResponse:
         """Sends a PATCH request."""
         url = self._build_url(path)
         try:
-            resp = self._session.patch(url, json=json, timeout=self._timeout)
+            resp = self._session.patch(
+                url, json=json, params=query, timeout=self._timeout
+            )
         except requests.RequestException as exc:
             raise errors.ServerError(error_description=str(exc)) from None
         return CampusResponse(resp)
