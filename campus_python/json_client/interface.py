@@ -151,13 +151,28 @@ class JsonClient(ABC):
         """Sends a POST request."""
 
     @abstractmethod
-    def put(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
+    def put(
+            self: Self,
+            path: str,
+            json: JsonDict | None = None,
+            query: JsonDict | None = None
+    ) -> JsonResponse:
         """Sends a PUT request."""
 
     @abstractmethod
-    def delete(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
+    def delete(
+            self: Self,
+            path: str,
+            json: JsonDict | None = None,
+            query: JsonDict | None = None
+    ) -> JsonResponse:
         """Sends a DELETE request."""
 
     @abstractmethod
-    def patch(self: Self, path: str, json: Any = None) -> JsonResponse:
+    def patch(
+            self: Self,
+            path: str,
+            json: Any = None,
+            query: JsonDict | None = None
+    ) -> JsonResponse:
         """Sends a PATCH request."""
