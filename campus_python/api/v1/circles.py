@@ -64,8 +64,27 @@ class Circles(ResourceCollection):
             resp.raise_for_status()
             return campus.model.Circle.from_resource(resp.json())
 
-        def update(self, **updates) -> None:
-            resp = self.client.patch(self.make_path(), json=updates)
+        def update(
+                self,
+                *,
+                name: str,
+                description: "str | None" = None,
+        ) -> None:
+            """Update this circle.
+
+            The server requires name on every circle PATCH and returns
+            422 without it, so it is a required parameter here.
+            Description is unchanged when omitted.
+
+            Args:
+                name: New circle name (must not collide with an
+                    existing circle's name)
+                description: New description; omitted leaves it unchanged
+            """
+            payload: dict[str, Any] = {"name": name}
+            if description is not None:
+                payload["description"] = description
+            resp = self.client.patch(self.make_path(), json=payload)
             resp.raise_for_status()
             return None
 
@@ -91,6 +110,21 @@ class Circles(ResourceCollection):
                 resp = self.client.delete(
                     self.make_path("remove"),
                     json={"member_id": member_id}
+                )
+                resp.raise_for_status()
+                return None
+
+            def set(self, member_id: str, access_value: int) -> None:
+                """Create or update a member's access value (upsert).
+
+                Unlike add()/remove(), which target the /members/add and
+                /members/remove action routes, this PATCHes the members
+                collection directly — the server's set semantics apply
+                (no error when the access value is unchanged).
+                """
+                resp = self.client.patch(
+                    self.make_path(end_slash=True),
+                    json={"member_id": member_id, "access_value": access_value}
                 )
                 resp.raise_for_status()
                 return None
