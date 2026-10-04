@@ -10,6 +10,7 @@ __all__ = [
 ]
 
 import base64
+from collections.abc import Callable
 from typing import Any, Mapping, Self, cast
 
 import campus.model
@@ -87,6 +88,10 @@ class CampusRequest(JsonClient):
         self._headers = dict(headers or {})
         # allow optional default timeout via kwargs
         self._timeout = kwargs.get("timeout", 10)
+        # Optional 401 auto-refresh hook (issue #89); see
+        # set_unauthorized_hook(). Off by default.
+        self._unauthorized_hook: Callable[[], str | None] | None = None
+        self._in_unauthorized_hook = False
         # Session to persist headers and connection pooling
         self._session = requests.Session()
         self._session.headers.update(self._headers)
@@ -140,6 +145,62 @@ class CampusRequest(JsonClient):
         """
         self._session.headers["Authorization"] = "Bearer " + token
 
+    def set_unauthorized_hook(
+            self,
+            hook: Callable[[], str | None] | None,
+    ) -> None:
+        """Install a 401 auto-refresh hook (issue #89).
+
+        When a request comes back 401, the hook is invoked once; if it
+        returns a bearer token, the Authorization header is refreshed
+        and the request is retried once with it. A second 401 on the
+        retry is returned to the caller as-is, and a hook returning
+        None (refresh failed) leaves the original 401 response in
+        place — failures surface exactly as they would without the
+        hook.
+
+        The hook runs at most once per request, and never re-enters
+        itself: requests made from inside the hook skip the hook, so a
+        hook that calls back into this client cannot recurse.
+
+        Args:
+            hook: Callable returning the new bearer token, or None to
+                signal refresh failure. None clears the hook.
+        """
+        self._unauthorized_hook = hook
+
+    def _send(self, method: str, url: str, **kwargs: Any) -> JsonResponse:
+        """Send a request, with one 401-triggered retry (issue #89).
+
+        The retry is safe even for non-idempotent requests: Campus
+        services validate the bearer in a before_request authenticator
+        before dispatching, so a 401 response is produced by the auth
+        layer before any handler runs — there is no partial work to
+        replay.
+        """
+        try:
+            resp = self._session.request(
+                method, url, timeout=self._timeout, **kwargs
+            )
+            if (
+                    resp.status_code == 401
+                    and self._unauthorized_hook is not None
+                    and not self._in_unauthorized_hook
+            ):
+                self._in_unauthorized_hook = True
+                try:
+                    token = self._unauthorized_hook()
+                finally:
+                    self._in_unauthorized_hook = False
+                if token:
+                    self.set_bearer_authorization(token)
+                    resp = self._session.request(
+                        method, url, timeout=self._timeout, **kwargs
+                    )
+        except requests.RequestException as exc:
+            raise errors.ServerError(error_description=str(exc)) from None
+        return CampusResponse(resp)
+
     def get(
             self: Self,
             path: str,
@@ -147,27 +208,14 @@ class CampusRequest(JsonClient):
     ) -> JsonResponse:
         """Sends a GET request."""
         url = self._build_url(path)
-        try:
-            if query:
-                resp = self._session.get(
-                    url,
-                    params=query,
-                    timeout=self._timeout
-                )
-            else:
-                resp = self._session.get(url, timeout=self._timeout)
-        except requests.RequestException as exc:
-            raise errors.ServerError(error_description=str(exc)) from None
-        return CampusResponse(resp)
+        if query:
+            return self._send("GET", url, params=query)
+        return self._send("GET", url)
 
     def post(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
         """Sends a POST request."""
         url = self._build_url(path)
-        try:
-            resp = self._session.post(url, json=json, timeout=self._timeout)
-        except requests.RequestException as exc:
-            raise errors.ServerError(error_description=str(exc)) from None
-        return CampusResponse(resp)
+        return self._send("POST", url, json=json)
 
     def put(
             self: Self,
@@ -177,13 +225,7 @@ class CampusRequest(JsonClient):
     ) -> JsonResponse:
         """Sends a PUT request."""
         url = self._build_url(path)
-        try:
-            resp = self._session.put(
-                url, json=json, params=query, timeout=self._timeout
-            )
-        except requests.RequestException as exc:
-            raise errors.ServerError(error_description=str(exc)) from None
-        return CampusResponse(resp)
+        return self._send("PUT", url, json=json, params=query)
 
     def delete(
             self: Self,
@@ -193,13 +235,7 @@ class CampusRequest(JsonClient):
     ) -> JsonResponse:
         """Sends a DELETE request."""
         url = self._build_url(path)
-        try:
-            resp = self._session.delete(
-                url, json=json, params=query, timeout=self._timeout
-            )
-        except requests.RequestException as exc:
-            raise errors.ServerError(error_description=str(exc)) from None
-        return CampusResponse(resp)
+        return self._send("DELETE", url, json=json, params=query)
 
     def patch(
             self: Self,
@@ -209,10 +245,4 @@ class CampusRequest(JsonClient):
     ) -> JsonResponse:
         """Sends a PATCH request."""
         url = self._build_url(path)
-        try:
-            resp = self._session.patch(
-                url, json=json, params=query, timeout=self._timeout
-            )
-        except requests.RequestException as exc:
-            raise errors.ServerError(error_description=str(exc)) from None
-        return CampusResponse(resp)
+        return self._send("PATCH", url, json=json, params=query)

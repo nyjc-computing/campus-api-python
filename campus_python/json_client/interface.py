@@ -107,6 +107,12 @@ class JsonResponse(ABC):
 class JsonClient(ABC):
     """This class describes the public interface required from Client
     classes, which are used to send JSON requests.
+
+    Optional capability, not part of this abstract interface: concrete
+    clients may support a 401 auto-refresh hook
+    (CampusRequest.set_unauthorized_hook, issue #89) that refreshes the
+    bearer token and retries a request once when it comes back 401.
+    Callers must feature-detect (hasattr) rather than assume it.
     """
     base_url: str
     # pylint: disable=unnecessary-ellipsis
