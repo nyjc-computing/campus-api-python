@@ -31,7 +31,10 @@ class Clients(ResourceCollection):
             name: str,
             description: str,
             is_public: bool = False,
-            redirect_uris: list[str] | None = None
+            redirect_uris: list[str] | None = None,
+            allowed_scopes: list[str] | None = None,
+            upstream_scopes: dict[str, list[str]] | None = None,
+            token_bridge: bool | None = None
     ) -> campus.model.Client:
         """Create a new client.
 
@@ -40,16 +43,28 @@ class Clients(ResourceCollection):
             description: Client description
             is_public: True for public clients (CLI/mobile apps) without secrets
             redirect_uris: OAuth redirect URIs for public clients
+            allowed_scopes: Token-scope allowlist (fail-closed: an
+                empty list grants nothing)
+            upstream_scopes: Per-provider upstream scope map
+                (e.g. {"google": [...]})
+            token_bridge: Token bridge access flag (upstream token
+                release; rejected by the server for public clients)
 
         Returns:
             The created Client
         """
-        json_data = {
+        json_data: JsonDict = {
             "name": name,
             "description": description,
             "is_public": is_public,
             "redirect_uris": redirect_uris or []
         }
+        if allowed_scopes is not None:
+            json_data["allowed_scopes"] = allowed_scopes
+        if upstream_scopes is not None:
+            json_data["upstream_scopes"] = upstream_scopes
+        if token_bridge is not None:
+            json_data["token_bridge"] = token_bridge
         resp = self.client.post(self.make_path(), json=json_data)
         # Raise error if status code is not 2XX or 3XX
         resp.raise_for_status()
@@ -154,6 +169,24 @@ class Clients(ResourceCollection):
                     )
                 else:
                     resp = self.client.get(self.make_path(end_slash=True))
+                # Raise error if status code is not 2XX or 3XX
+                resp.raise_for_status()
+                return resp.json()
+
+            def check(
+                    self,
+                    vault: str,
+                    permission: int,
+            ) -> JsonDict:
+                """Check whether the client holds a permission on a vault.
+
+                GET /<client_id>/access/check?vault=&permission=
+                Returns: {"vault": ..., "permission": <bool>}
+                """
+                resp = self.client.get(
+                    self.make_path("check", end_slash=False),
+                    query={"vault": vault, "permission": permission}
+                )
                 # Raise error if status code is not 2XX or 3XX
                 resp.raise_for_status()
                 return resp.json()

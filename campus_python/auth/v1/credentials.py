@@ -82,9 +82,22 @@ class Credentials(ResourceCollection):
                     scopes: "list[str]",
                     expires_in: int,
             ) -> campus.model.UserCredentials:
-                raise NotImplementedError(
-                    "Method not expected to be called on API"
+                """Issue new credentials for this provider and user.
+
+                POST /credentials/<provider>/<user_id> with body
+                {scopes, expires_in}; the client_id comes from the
+                request's auth context, not the body.
+
+                Returns:
+                    The created UserCredentials
+                """
+                resp = self.client.post(
+                    self.make_path(),
+                    json={"scopes": scopes, "expires_in": expires_in}
                 )
+                # Raise error if status code is not 2XX or 3XX
+                resp.raise_for_status()
+                return campus.model.UserCredentials.from_resource(resp.json())
 
             def update(self, token: campus.model.OAuthToken) -> None:
                 client_id = env.CLIENT_ID
