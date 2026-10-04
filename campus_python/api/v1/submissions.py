@@ -178,6 +178,19 @@ class Submissions(ResourceCollection):
             resp.raise_for_status()
             return None
 
+        def unsubmit(self) -> None:
+            """Clear this submission's submitted_at timestamp.
+
+            The server only clears submitted_at for an explicit null in
+            the PATCH body; update() cannot express that because None
+            means "omit the field" there.
+            """
+            resp = self.client.patch(
+                self.make_path(), json={"submitted_at": None}
+            )
+            resp.raise_for_status()
+            return None
+
         class Responses(Resource):
             """Campus API Submission Responses resource."""
             path = "responses"
