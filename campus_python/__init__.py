@@ -19,6 +19,7 @@ from campus.common import env
 from . import errors
 from .api.v1 import ApiRoot
 from .auth.v1 import AuthRoot
+from .integrations.v1 import IntegrationsRoot
 from .json_client import CampusRequest
 
 logging.basicConfig(level=logging.INFO)
@@ -137,6 +138,21 @@ class Campus:
                 )
             )
         return self._api
+
+    @property
+    def integrations(self) -> IntegrationsRoot:
+        """Get the integrations registry resource (auth service).
+
+        Public, read-only catalog of first-party integrations (#56),
+        served by the auth service at /integrations/v1 (outside
+        /auth/v1); shares the auth client so it works in device mode
+        too.
+        """
+        if not hasattr(self, "_integrations"):
+            self._integrations = IntegrationsRoot(
+                json_client=self.auth.client
+            )
+        return self._integrations
 
     def _get_token_from_session(
             self,

@@ -68,6 +68,10 @@ client = Campus(timeout=30, mode="server")
 
 # For device/public clients
 client = Campus(timeout=30, mode="device")
+
+# Discover the first-party integrations Campus offers (public, read-only)
+for integration in client.integrations.list():
+    print(integration.provider, integration.connectable)
 ```
 
 ## Project Structure
@@ -94,6 +98,8 @@ campus-api-python/
 │   │       ├── sessions.py
 │   │       ├── users.py
 │   │       └── vaults.py
+│   ├── integrations/
+│   │   └── v1/             # Integrations registry (auth service, public)
 │   └── json_client/        # JSON client implementation
 │       ├── __init__.py
 │       └── interface.py
