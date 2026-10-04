@@ -18,6 +18,7 @@ from ...interface import ResourceRoot
 from ...json_client.interface import JsonClient
 from . import (
     clients,
+    connections,
     credentials,
     logins,
     oauth,
@@ -37,6 +38,7 @@ class AuthRoot(ResourceRoot):
     def __init__(self, json_client: JsonClient):
         super().__init__(json_client=json_client)
         self._clients = None
+        self._connections = None
         self._credentials = None
         self._logins = None
         self._oauth = None
@@ -51,6 +53,13 @@ class AuthRoot(ResourceRoot):
         if not self._clients:
             self._clients = clients.Clients(root=self)
         return self._clients
+
+    @property
+    def connections(self) -> connections.Connections:
+        """Get the connections resource."""
+        if not self._connections:
+            self._connections = connections.Connections(root=self)
+        return self._connections
 
     @property
     def credentials(self) -> credentials.Credentials:
