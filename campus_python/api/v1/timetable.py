@@ -101,11 +101,21 @@ class Timetables(ResourceCollection):
 
         Args:
             metadata: Metadata for the timetable (e.g., start_date, end_date)
-            data: Timetable data (e.g., entries)
+            data: Timetable data; must contain the key `lessongroups`
+                (not `lesson_groups` — the server rejects the request
+                with 400 otherwise)
 
         Returns:
             The created timetable resource
         """
+        if "lessongroups" not in data:
+            raise ValueError(
+                "data must contain the key 'lessongroups'"
+                + (
+                    " ('lesson_groups' found instead — rename it)"
+                    if "lesson_groups" in data else ""
+                )
+            )
         resp = self.client.post(
             self.make_path(),
             json={

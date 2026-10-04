@@ -76,6 +76,13 @@ class Assignments(ResourceCollection):
             return campus.model.Assignment.from_resource(resp.json())
 
         def update(self, **updates) -> None:
+            """Update this assignment with the given fields.
+
+            The server rejects an empty PATCH body, so at least one
+            field must be provided.
+            """
+            if not updates:
+                raise ValueError("At least one field must be provided for update")
             resp = self.client.patch(self.make_path(), json=updates)
             resp.raise_for_status()
             return None

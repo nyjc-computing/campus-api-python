@@ -152,16 +152,16 @@ client.auth.client.set_bearer_authorization(access_token)
 
 ## Service Base URLs
 
-Each service client (`campus.auth`, `campus.api`) resolves its base URL in this order:
+Each service client (`campus.auth`, `campus.api`, `campus.audit`) resolves its base URL in this order:
 
-1. **Explicit URL config** — the `CAMPUS_AUTH_URL` / `CAMPUS_API_URL` environment variable, if set. Use this for local testing deployments and custom endpoints (e.g. `CAMPUS_AUTH_URL=http://localhost:5000`).
+1. **Explicit URL config** — the `CAMPUS_AUTH_URL` / `CAMPUS_API_URL` / `CAMPUS_AUDIT_URL` environment variable, if set. Use this for local testing deployments and custom endpoints (e.g. `CAMPUS_AUTH_URL=http://localhost:5000`).
 2. **ENV-based defaults** — selected by `ENV` (or `CAMPUS_ENV`):
 
-| ENV value | auth | api |
-|-----------|------|-----|
-| `development` (default) | `https://campusauth-development.up.railway.app` | `https://campusapi-development.up.railway.app` |
-| `staging` | `https://auth.campus.nyjc.dev` | `https://api.campus.nyjc.dev` |
-| `production` | `https://auth.campus.nyjc.app` | `https://api.campus.nyjc.app` |
+| ENV value | auth | api | audit |
+|-----------|------|-----|-------|
+| `development` (default) | `https://campusauth-development.up.railway.app` | `https://campusapi-development.up.railway.app` | `https://campusaudit-development.up.railway.app` |
+| `staging` | `https://auth.campus.nyjc.dev` | `https://api.campus.nyjc.dev` | `https://audit.campus.nyjc.dev` |
+| `production` | `https://auth.campus.nyjc.app` | `https://api.campus.nyjc.app` | `https://audit.campus.nyjc.app` |
 
 > **Deprecated (issue #52):** base URLs are no longer derived from the `HOSTNAME` environment variable. Deployments that relied on the `DEPLOY` service suffix (e.g. `campus.auth`) or `ENV=testing` to produce `https://{HOSTNAME}` URLs now get a `DeprecationWarning` and the ENV-based default instead — set `CAMPUS_AUTH_URL` / `CAMPUS_API_URL` explicitly to point the client at those deployments.
 
@@ -173,6 +173,8 @@ Each service client (`campus.auth`, `campus.api`) resolves its base URL in this 
 | `CLIENT_SECRET` | Yes | Server | OAuth client secret from Campus auth |
 | `CAMPUS_AUTH_URL` | No | All | Auth service base URL (overrides ENV default) |
 | `CAMPUS_API_URL` | No | All | API service base URL (overrides ENV default) |
+| `CAMPUS_AUDIT_URL` | No | All | Audit service base URL (overrides ENV default) |
+| `AUDIT_API_KEY` | Yes (audit) | All | Audit service API key (`audit_v1_...`); sent as the audit root's Bearer token |
 | `ENV` / `CAMPUS_ENV` | No | All | Deployment environment selecting default URLs: `development` (default), `staging`, `production` |
 
 ## Development

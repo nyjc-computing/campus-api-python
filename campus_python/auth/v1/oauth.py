@@ -158,3 +158,30 @@ class OAuth(ResourceRoot):
         )
         resp.raise_for_status()
         return resp.json()
+
+    def revoke(
+            self,
+            token: str,
+            client_id: str,
+            token_type_hint: "str | None" = None,
+    ) -> None:
+        """Revoke an access or refresh token (RFC 7009).
+
+        Args:
+            token: The access or refresh token to revoke
+            client_id: The OAuth client the token was issued to
+            token_type_hint: Optional "access_token" or "refresh_token"
+
+        Per RFC 7009 section 2.2 the server returns 200 regardless of
+        whether the token was found or already revoked, so callers
+        cannot use this endpoint to confirm a token's validity.
+        """
+        json_body: dict = {
+            "token": token,
+            "client_id": client_id,
+        }
+        if token_type_hint is not None:
+            json_body["token_type_hint"] = token_type_hint
+        resp = self.client.post(self.make_path("revoke"), json=json_body)
+        resp.raise_for_status()
+        return None

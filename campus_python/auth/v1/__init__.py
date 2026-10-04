@@ -17,7 +17,9 @@ from ... import errors
 from ...interface import ResourceRoot
 from ...json_client.interface import JsonClient
 from . import (
+    broker,
     clients,
+    connections,
     credentials,
     logins,
     oauth,
@@ -36,7 +38,9 @@ class AuthRoot(ResourceRoot):
 
     def __init__(self, json_client: JsonClient):
         super().__init__(json_client=json_client)
+        self._broker = None
         self._clients = None
+        self._connections = None
         self._credentials = None
         self._logins = None
         self._oauth = None
@@ -46,11 +50,25 @@ class AuthRoot(ResourceRoot):
         self._vaults = None
 
     @property
+    def broker(self) -> broker.Broker:
+        """Get the token broker resource."""
+        if not self._broker:
+            self._broker = broker.Broker(root=self)
+        return self._broker
+
+    @property
     def clients(self) -> clients.Clients:
         """Get the clients resource."""
         if not self._clients:
             self._clients = clients.Clients(root=self)
         return self._clients
+
+    @property
+    def connections(self) -> connections.Connections:
+        """Get the connections resource."""
+        if not self._connections:
+            self._connections = connections.Connections(root=self)
+        return self._connections
 
     @property
     def credentials(self) -> credentials.Credentials:
