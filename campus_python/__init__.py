@@ -243,21 +243,78 @@ class Campus:
             self.revoke_session()
 
     @contextmanager
-    def with_user_session(self) -> Iterator["Campus"]:
+    def with_user_session(
+            self,
+            *,
+            refresh_on_401: bool = True,
+    ) -> Iterator["Campus"]:
         """Context manager yielding CampusRequest with user credentials.
 
         Usage:
             with campus.with_user_session() as client:
                 # use client for requests
 
+        By default a 401 auto-refresh hook is installed on the auth and
+        api clients for the duration of the session (issue #89): when a
+        request comes back 401 because the bearer expired after the
+        proactive refresh below, the token is force-refreshed once and
+        the request retried with the new Authorization header. The
+        retry cannot double-execute work — Campus services reject
+        unauthenticated requests in a before_request authenticator
+        before any handler runs. If the refresh itself fails, the
+        original 401 response surfaces to the caller as before. Pass
+        refresh_on_401=False for the old behaviour.
+
         Yields:
-            CampusRequest: JSON client with user credentials set.
+            Campus: JSON client with user credentials set.
         """
+        token = self._get_token_from_session()
+        self.use_token(token)
+
+        hooked_clients = []
+        if refresh_on_401:
+            refreshing = False
+
+            def refresh_bearer() -> str | None:
+                """Force-refresh the session token once.
+
+                Returns the new bearer token for the client to retry
+                with, or None on failure (the original 401 then
+                surfaces). Re-entrant calls (the refresh round-trip
+                itself hitting a 401) bail out immediately.
+
+                The refresh round-trip authenticates as the client
+                (Basic), the same mode _get_token_from_session runs in
+                at session establishment — auth routes accept both,
+                but the session's stale bearer must not be presented
+                mid-rotation.
+                """
+                nonlocal refreshing
+                if refreshing:
+                    return None
+                refreshing = True
+                try:
+                    self.revoke_session()
+                    refreshed = self._get_token_from_session(
+                        force_refresh=True
+                    )
+                except errors.APIError:
+                    self.use_token(token)
+                    return None
+                finally:
+                    refreshing = False
+                self.use_token(refreshed)
+                return refreshed.access_token
+
+            for client in (self.api.client, self.auth.client):
+                client.set_unauthorized_hook(refresh_bearer)
+                hooked_clients.append(client)
+
         try:
-            token = self._get_token_from_session()
-            self.use_token(token)
             yield self
         except Exception:
             raise
         finally:
+            for client in hooked_clients:
+                client.set_unauthorized_hook(None)
             self.revoke_session()

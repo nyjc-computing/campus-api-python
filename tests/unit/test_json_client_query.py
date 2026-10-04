@@ -23,33 +23,34 @@ class TestQueryKwargOnNonGetVerbs(unittest.TestCase):
             base_url="https://auth.example.test", mode="device"
         )
 
-    def _assert_params_passed(self, verb: str, session_method: mock.Mock):
+    def _assert_params_passed(self, verb: str, expected_method: str):
         self.client._timeout = 5
         with mock.patch.object(
-                self.client._session, session_method,
-                return_value=mock.Mock()) as method:
+                self.client._session, "request",
+                return_value=mock.Mock()) as request:
             getattr(self.client, verb)(
                 "/some/path", json={"k": "v"}, query={"user_id": "u"})
-        _, kwargs = method.call_args
+        args, kwargs = request.call_args
+        self.assertEqual(args[0], expected_method.upper())
         self.assertEqual(kwargs["json"], {"k": "v"})
         self.assertEqual(kwargs["params"], {"user_id": "u"})
 
     def test_put_passes_query_as_params(self):
-        self._assert_params_passed("put", "put")
+        self._assert_params_passed("put", "PUT")
 
     def test_delete_passes_query_as_params(self):
-        self._assert_params_passed("delete", "delete")
+        self._assert_params_passed("delete", "DELETE")
 
     def test_patch_passes_query_as_params(self):
-        self._assert_params_passed("patch", "patch")
+        self._assert_params_passed("patch", "PATCH")
 
     def test_query_defaults_to_none(self):
         """Omitting query= sends params=None, preserving old behavior."""
         with mock.patch.object(
-                self.client._session, "delete",
-                return_value=mock.Mock()) as delete:
+                self.client._session, "request",
+                return_value=mock.Mock()) as request:
             self.client.delete("/some/path")
-        self.assertIsNone(delete.call_args.kwargs["params"])
+        self.assertIsNone(request.call_args.kwargs["params"])
 
 
 if __name__ == "__main__":

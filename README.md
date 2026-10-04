@@ -150,6 +150,26 @@ client.auth.client.set_bearer_authorization(access_token)
 # Now you can make authenticated requests
 ```
 
+### 401 Auto-Refresh
+
+`with_user_session()` installs a one-shot 401 auto-refresh hook on the auth and api clients by default (issue #89): when a request comes back 401 because the bearer expired mid-session, the session token is force-refreshed once and the request retried with the new Authorization header. If the refresh fails, the original 401 surfaces to the caller as before. Pass `refresh_on_401=False` for the old behaviour.
+
+```python
+with campus.with_user_session() as client:            # hook on (default)
+    ...
+
+with campus.with_user_session(refresh_on_401=False) as client:  # hook off
+    ...
+```
+
+The retry cannot double-execute work: Campus services authenticate requests in a `before_request` hook before any handler runs, so a 401 response means no handler executed.
+
+Raw `CampusRequest` users can install their own hook (e.g. public clients driving `auth.refresh(stored)`):
+
+```python
+client.set_unauthorized_hook(lambda: campus.auth.refresh(stored, client_id="campus-cli").access_token)
+```
+
 ## Service Base URLs
 
 Each service client (`campus.auth`, `campus.api`, `campus.audit`) resolves its base URL in this order:
