@@ -4,7 +4,8 @@ Campus Auth resource.
 """
 
 import logging
-from typing import Literal
+import time
+from typing import Any, Literal
 
 import flask
 import werkzeug
@@ -31,6 +32,12 @@ from . import (
 
 logger = logging.getLogger(__name__)
 
+# How long push_context() may reuse a session's resolved user (#57).
+# push_context runs as an app-wide before_request hook, so without the
+# cache a session-carrying browser pays 1-2 synchronous auth API calls
+# before every route. Warm requests within the window pay none.
+USER_CACHE_TTL_SECONDS = 60.0
+
 
 class AuthRoot(ResourceRoot):
     """Campus Auth resource."""
@@ -48,6 +55,14 @@ class AuthRoot(ResourceRoot):
         self._sessions = None
         self._users = None
         self._vaults = None
+        # (kind, session_id) -> (expires_at, user resource, device_id).
+        # kind namespaces the two session stores: "session" (auth
+        # sessions) and "login" (login sessions).
+        self._user_cache: dict[
+            tuple[str, str],
+            tuple[float, dict[str, Any], str | None],
+        ] = {}
+        self.user_cache_ttl = USER_CACHE_TTL_SECONDS
 
     @property
     def broker(self) -> broker.Broker:
@@ -255,6 +270,7 @@ class AuthRoot(ResourceRoot):
         try:
             login_session = self.logins.from_session()
             self.logins[login_session.id].revoke()
+            self._user_cache_pop("login", login_session.id)
         except Exception as err:
             logger.warning(
                 "Login session revocation failed (continuing with local "
@@ -304,31 +320,94 @@ class AuthRoot(ResourceRoot):
         # For now, return the token as-is
         return credentials.token
 
+    def _user_cache_get(
+            self, kind: str, session_id: str
+    ) -> tuple[campus.model.User, str | None] | None:
+        """Return the cached (user, device_id) for a session, or None.
+
+        Expired entries are dropped lazily on read. The resource dict is
+        rehydrated into a fresh User per hit so callers cannot poison
+        the cache by mutating flask.g.user.
+        """
+        entry = self._user_cache.get((kind, session_id))
+        if entry is None:
+            return None
+        expires_at, resource, device_id = entry
+        if time.monotonic() >= expires_at:
+            self._user_cache.pop((kind, session_id), None)
+            return None
+        return campus.model.User.from_resource(resource), device_id
+
+    def _user_cache_put(
+            self,
+            kind: str,
+            session_id: str,
+            user: campus.model.User,
+            device_id: str | None,
+    ) -> None:
+        """Cache a session's resolved user for user_cache_ttl seconds."""
+        self._user_cache[(kind, session_id)] = (
+            time.monotonic() + self.user_cache_ttl,
+            user.to_resource(),
+            device_id,
+        )
+
+    def _user_cache_pop(self, kind: str, session_id: str) -> None:
+        """Drop a session's cached user (logout, stale session)."""
+        self._user_cache.pop((kind, session_id), None)
+
     def push_context(self) -> None:
-        """Push auth/login context to flask g."""
+        """Push auth/login context to flask g.
+
+        Resolved users are cached in-process per session for
+        user_cache_ttl seconds (#57): a session-carrying request
+        otherwise pays 1-2 synchronous auth API calls before every
+        route, which can wedge sync workers under load. Warm requests
+        make zero upstream calls. Trade-off: a session revoked
+        server-side — not through logout(), which evicts immediately —
+        keeps resolving for up to the TTL window.
+        """
         flask.g.user = None
         flask.g.device = None
 
         # Try to load auth session if one exists
         if self.sessions.has_session():
+            session_id = flask.session[self.sessions._session_key]
+            cached = self._user_cache_get("session", session_id)
+            if cached is not None:
+                flask.g.user, flask.g.device = cached
+                return
             try:
                 auth_session = self.sessions.from_session()
                 if auth_session.user_id:
-                    flask.g.user = self.users[auth_session.user_id].get()
+                    user = self.users[auth_session.user_id].get()
+                    flask.g.user = user
+                    self._user_cache_put("session", session_id, user, None)
             except errors.NotFoundError:
                 # Session no longer exists on server (expired, restart, etc.)
+                self._user_cache_pop("session", session_id)
                 # Clear the stale session reference from Flask session
                 if self.sessions._session_key in flask.session:
                     del flask.session[self.sessions._session_key]
 
         # Try to load login session if one exists
         elif self.logins.has_session():
+            login_id = flask.session[self.logins._session_key]
+            cached = self._user_cache_get("login", login_id)
+            if cached is not None:
+                flask.g.user, flask.g.device = cached
+                return
             try:
                 login_session = self.logins.from_session()
-                flask.g.user = self.users[login_session.user_id].get()
+                user = self.users[login_session.user_id].get()
+                flask.g.user = user
                 flask.g.device = login_session.device_id
+                self._user_cache_put(
+                    "login", login_id, user, login_session.device_id
+                )
             except errors.NotFoundError:
                 # Login session no longer exists on server
+                self._user_cache_pop("login", login_id)
                 # Clear the stale session reference from Flask session
                 if self.logins._session_key in flask.session:
                     del flask.session[self.logins._session_key]
