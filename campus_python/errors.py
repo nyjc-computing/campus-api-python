@@ -25,6 +25,33 @@ class FieldError:
     message: str
 
 
+# Campus envelope error codes that do not follow the AUTH_<OAUTH_ERROR>
+# pattern (campus/common/errors/base.py _OAUTH_TO_CAMPUS_ERROR_CODES).
+_CAMPUS_CODE_TO_OAUTH_ERROR = {
+    "AUTH_UNSUPPORTED_GRANT": "unsupported_grant_type",
+}
+
+
+def oauth_error_from_code(code: str) -> str | None:
+    """Recover the OAuth error code from a Campus envelope AUTH_* code.
+
+    The auth server strips the error envelope's details in production
+    (campus/common/errors/handlers.py), taking details.oauth_error with
+    it; the code remains and encodes the OAuth error as
+    AUTH_<OAUTH_ERROR> (upper snake case), with the exceptions mapped
+    in _CAMPUS_CODE_TO_OAUTH_ERROR.
+
+    Returns None for codes that carry no OAuth error (plain API codes).
+    """
+    if not code:
+        return None
+    if code in _CAMPUS_CODE_TO_OAUTH_ERROR:
+        return _CAMPUS_CODE_TO_OAUTH_ERROR[code]
+    if code.startswith("AUTH_"):
+        return code[len("AUTH_"):].lower()
+    return None
+
+
 class APIError(Exception):
     """Base exception for all campus client errors.
 
@@ -140,6 +167,14 @@ class APIError(Exception):
                 error_description = error_description or error_obj.get("message")
                 request_id = request_id or error_obj.get("request_id")
                 details = details or error_obj.get("details")
+                if not details:
+                    # Production strips envelope details, taking the
+                    # OAuth error code with it; recover it from the
+                    # AUTH_* code so auth callers can still branch on
+                    # APIError.oauth_error (#87).
+                    derived = oauth_error_from_code(error_obj.get("code", ""))
+                    if derived:
+                        details = {"oauth_error": derived}
 
                 # Parse field-level errors for validation errors
                 if "errors" in error_obj and isinstance(error_obj["errors"], list):
