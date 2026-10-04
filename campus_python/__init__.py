@@ -18,6 +18,7 @@ from campus.common import env
 
 from . import errors
 from .api.v1 import ApiRoot
+from .audit.v1 import AuditRoot
 from .auth.v1 import AuthRoot
 from .integrations.v1 import IntegrationsRoot
 from .json_client import CampusRequest
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 # Development Railway deployments, used when no explicit URL is configured
 AUTH_DEVELOPMENT_URL = "https://campusauth-development.up.railway.app"
 API_DEVELOPMENT_URL = "https://campusapi-development.up.railway.app"
+AUDIT_DEVELOPMENT_URL = "https://campusaudit-development.up.railway.app"
 
 
 def _resolve_base_url(service: str, url_var: str, development_url: str) -> str:
@@ -80,8 +82,10 @@ class Campus:
     - mode="device": For public clients (e.g., CLI) that don't have secrets.
       No credentials required; only public OAuth endpoints are accessible.
 
-    Service base URLs are resolved per service (auth, api) in this order:
-    1. Explicit URL config: CAMPUS_AUTH_URL / CAMPUS_API_URL env vars.
+    Service base URLs are resolved per service (auth, api, audit) in
+    this order:
+    1. Explicit URL config: CAMPUS_AUTH_URL / CAMPUS_API_URL /
+       CAMPUS_AUDIT_URL env vars.
     2. ENV/CAMPUS_ENV defaults: development (Railway), staging, production.
 
     See the API Reference for usage examples.
@@ -138,6 +142,30 @@ class Campus:
                 )
             )
         return self._api
+
+    @property
+    def audit(self) -> AuditRoot:
+        """Get the audit service resource.
+
+        The audit service authenticates with one of its own API keys
+        (AUDIT_API_KEY env var, an `audit_v1_...` value) sent as a
+        Bearer token — CLIENT_ID/CLIENT_SECRET are not accepted — so
+        this root carries its own JsonClient, created in device mode
+        to avoid requiring app credentials.
+        """
+        if not hasattr(self, "_audit"):
+            base_url = _resolve_base_url(
+                "audit", "CAMPUS_AUDIT_URL", AUDIT_DEVELOPMENT_URL
+            )
+            client = CampusRequest(
+                base_url=base_url,
+                timeout=self.timeout,
+                mode="device",
+            )
+            env.require("AUDIT_API_KEY")
+            client.set_bearer_authorization(env.get("AUDIT_API_KEY"))
+            self._audit = AuditRoot(json_client=client)
+        return self._audit
 
     @property
     def integrations(self) -> IntegrationsRoot:
