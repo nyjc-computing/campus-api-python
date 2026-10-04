@@ -4,12 +4,74 @@ OAuth 2.0 Device Authorization Flow (RFC 8628) support.
 
 This module provides methods for the device authorization flow,
 which is used by CLI and other device applications.
+
+Device-flow parity (issue #87)
+------------------------------
+
+The error mapping and polling semantics implemented here pin the
+behaviour campus-cli's device flow (campus_cli/auth/login.py) relies
+on, so the CLI can retire its raw `requests` copies and drive this
+resource instead. Parity table:
+
+| Server response (RFC 8628 §3.5)      | Library behaviour                    |
+|--------------------------------------|--------------------------------------|
+| authorization_pending                | wait_for_token() invokes on_pending() and keeps polling at the current interval |
+| slow_down                            | wait_for_token() raises the poll interval by 5s and the raised interval persists for the remainder of the flow (not just the next attempt) |
+| expired_token                        | fatal: AuthenticationError with oauth_error="expired_token" |
+| access_denied                        | fatal: AuthenticationError with oauth_error="access_denied" |
+| any other 400                        | fatal: AuthenticationError carrying the server's OAuth error code |
+| network failure / 5xx                | retried at the current interval on non-final attempts, then ServerError propagates |
+| max_attempts exhausted               | fatal: AuthenticationError (timeout) |
+
+The auth server emits token-endpoint errors as the Campus envelope
+{"error": {code, message, details.oauth_error}} (dev/staging), the same
+envelope with details stripped in production, or the flat RFC 6749 form
+{"error": ..., "error_description": ...}; poll_for_token() accepts all
+three and normalizes them to AuthenticationError with the OAuth error
+code in details (APIError.oauth_error).
 """
 
+import time
+from collections.abc import Callable
 from typing import Literal
 
 from ... import errors
 from ...interface import ResourceRoot
+
+# Fallback poll interval (seconds) when the server omits interval from
+# the device_authorize response (RFC 8628 §3.2 default is 5).
+DEFAULT_POLL_INTERVAL = 5
+
+# RFC 8628 §3.5: the interval adjustment requested by slow_down.
+SLOW_DOWN_ADJUSTMENT = 5
+
+
+def _parse_oauth_error(payload: dict) -> "tuple[str | None, str]":
+    """Extract the OAuth error code and message from a token-endpoint
+    error payload.
+
+    Handles the three shapes the auth server emits:
+
+    - flat RFC 6749: {"error": "authorization_pending", ...}
+    - Campus envelope (dev/staging): {"error": {"code": "AUTH_...",
+      "message": ..., "details": {"oauth_error": ...}}}
+    - Campus envelope with details stripped (production): the OAuth
+      error is recovered from the AUTH_* code
+
+    Returns:
+        (oauth_error, message); oauth_error is None when the payload
+        carries neither a details.oauth_error key nor a recoverable
+        AUTH_* code.
+    """
+    error = payload.get("error", "")
+    if isinstance(error, str):
+        # Flat RFC 6749 format
+        return (error or None, payload.get("error_description", ""))
+
+    oauth_error = (error.get("details") or {}).get("oauth_error")
+    if not oauth_error:
+        oauth_error = errors.oauth_error_from_code(error.get("code", ""))
+    return (oauth_error, error.get("message", ""))
 
 
 class OAuth(ResourceRoot):
@@ -93,40 +155,107 @@ class OAuth(ResourceRoot):
 
         # Handle OAuth error responses
         if resp.status_code == 400:
-            error_data = resp.json()
-            error = error_data.get("error", "")
+            oauth_error, message = _parse_oauth_error(resp.json())
 
             # Map RFC 8628 errors to AuthenticationError; the OAuth error
             # code travels in details so callers can read it back via the
             # APIError.oauth_error property.
-            if error == "authorization_pending":
-                raise errors.AuthenticationError(
-                    error_description="Authorization pending",
-                    details={"oauth_error": "authorization_pending"}
-                )
-            elif error == "slow_down":
-                raise errors.AuthenticationError(
-                    error_description="Slow down",
-                    details={"oauth_error": "slow_down"}
-                )
-            elif error == "expired_token":
-                raise errors.AuthenticationError(
-                    error_description="Device code has expired",
-                    details={"oauth_error": "expired_token"}
-                )
-            elif error == "access_denied":
-                raise errors.AuthenticationError(
-                    error_description="Access denied by user",
-                    details={"oauth_error": "access_denied"}
-                )
-            else:
-                raise errors.AuthenticationError(
-                    error_description=error_data.get("error_description", "Unknown error"),
-                    details={"oauth_error": error}
-                )
+            descriptions = {
+                "authorization_pending": "Authorization pending",
+                "slow_down": "Slow down",
+                "expired_token": "Device code has expired",
+                "access_denied": "Access denied by user",
+            }
+            raise errors.AuthenticationError(
+                status_code=400,
+                error_description=(
+                    descriptions.get(oauth_error)
+                    or message
+                    or "Unknown error"
+                ),
+                details={"oauth_error": oauth_error},
+            )
 
         resp.raise_for_status()
         return resp.json()
+
+    def wait_for_token(
+            self,
+            client_id: str,
+            device_code: str,
+            *,
+            interval: int | None = None,
+            max_attempts: int = 60,
+            on_pending: Callable[[], None] | None = None,
+            sleep: Callable[[float], None] = time.sleep,
+    ) -> dict:
+        """Poll the token endpoint until the device is authorized.
+
+        Implements the polling loop RFC 8628 §3.5 clients must run on
+        top of poll_for_token(): authorization_pending keeps polling,
+        slow_down raises the interval by SLOW_DOWN_ADJUSTMENT seconds
+        with the raised interval persisting for the remainder of the
+        flow, network failures are retried on non-final attempts, and
+        every other error (expired_token, access_denied, unknown) is
+        fatal. See the parity table in this module's docstring.
+
+        Args:
+            client_id: The OAuth client ID (e.g., "campus-cli")
+            device_code: The device code from request_device_code()
+            interval: Minimum seconds between poll attempts, from the
+                request_device_code() response. Defaults to
+                DEFAULT_POLL_INTERVAL when absent or zero.
+            max_attempts: Maximum number of poll attempts; callers
+                typically derive this from the device code's expires_in.
+            on_pending: Invoked after each authorization_pending response,
+                for progress reporting (e.g. printing a dot per poll).
+            sleep: The sleep function; injectable for tests.
+
+        Returns:
+            The token response dict (access_token, refresh_token, ...),
+            as returned by poll_for_token().
+
+        Raises:
+            AuthenticationError: On fatal OAuth errors or when
+                max_attempts is exhausted without authorization.
+            errors.ServerError: When the final attempt fails at the
+                network/5xx level.
+        """
+        poll_interval = (
+            max(1, int(interval)) if interval else DEFAULT_POLL_INTERVAL
+        )
+        last_attempt = max_attempts - 1
+
+        for attempt in range(max_attempts):
+            try:
+                return self.poll_for_token(
+                    client_id=client_id, device_code=device_code
+                )
+            except errors.AuthenticationError as err:
+                if err.oauth_error == "authorization_pending":
+                    if on_pending is not None:
+                        on_pending()
+                    sleep(poll_interval)
+                elif err.oauth_error == "slow_down":
+                    # RFC 8628 §3.5: the raised interval persists for
+                    # the remainder of the flow, not just the next
+                    # attempt.
+                    poll_interval += SLOW_DOWN_ADJUSTMENT
+                    sleep(poll_interval)
+                else:
+                    raise
+            except errors.ServerError:
+                # Network failure: retry on non-final attempts only
+                if attempt == last_attempt:
+                    raise
+                sleep(poll_interval)
+
+        raise errors.AuthenticationError(
+            error_description=(
+                "Device authorization timed out after "
+                f"{max_attempts} poll attempts; restart the flow."
+            )
+        )
 
     def authorize_device(
             self,

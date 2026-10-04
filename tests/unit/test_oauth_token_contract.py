@@ -28,6 +28,7 @@ from unittest.mock import Mock, patch
 
 import campus.model
 
+from campus_python import errors
 from campus_python.auth.v1 import AuthRoot
 
 # Exact token-endpoint response shape emitted by campus weekly
@@ -205,12 +206,40 @@ class TestTokenEndpointPath(unittest.TestCase):
         self.assertEqual(kwargs["json"]["client_secret"], "sec123")
 
     def test_refresh_token_targets_oauth_token_endpoint(self):
-        self.auth.token(grant_type="refresh_token", refresh_token="rt123")
+        """The refresh grant must carry client_id: the token endpoint
+        requires it for every grant (campus auth/routes/oauth.py
+        token()), including refresh_token (#87)."""
+        with patch.dict(os.environ, {"CLIENT_ID": "cid123"}):
+            self.auth.token(grant_type="refresh_token", refresh_token="rt123")
 
         args, kwargs = self.client.post.call_args
         self.assertEqual(args[0], "/auth/v1/oauth/token")
         self.assertEqual(kwargs["json"]["grant_type"], "refresh_token")
+        self.assertEqual(kwargs["json"]["client_id"], "cid123")
         self.assertEqual(kwargs["json"]["refresh_token"], "rt123")
+
+    def test_refresh_token_explicit_client_id_for_public_clients(self):
+        """A public client passes client_id explicitly (#87): device
+        mode has no CLIENT_ID env to fall back to."""
+        with patch.dict(os.environ, {}, clear=True):
+            self.auth.token(
+                grant_type="refresh_token",
+                refresh_token="rt123",
+                client_id="campus-cli",
+            )
+
+        kwargs = self.client.post.call_args.kwargs
+        self.assertEqual(kwargs["json"]["client_id"], "campus-cli")
+
+    def test_refresh_token_without_client_id_is_rejected(self):
+        """No client_id from arg or env — refuse to send a request the
+        server would reject anyway (missing required parameter)."""
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(errors.AuthenticationError):
+                self.auth.token(
+                    grant_type="refresh_token", refresh_token="rt123"
+                )
+        self.client.post.assert_not_called()
 
     def test_token_path_is_relative_not_double_prefixed(self):
         """Regression (client issue #62): with a non-empty client
