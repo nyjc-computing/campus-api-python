@@ -207,9 +207,18 @@ class AuthRoot(ResourceRoot):
         self.users[auth_session.user_id].get()
 
         # 5. Create login session
+        # 5. Create login session. The device id rides the auth session
+        # (#825): campus.auth observed the stable campus_device cookie at
+        # /authorize and recorded it there, so re-logins from the same
+        # browser profile land on the same device id. The minted fallback
+        # keeps non-cookie flows (and pre-#825 auth services) working —
+        # those degrade to per-login device ids.
         self.logins.new(
             user_id=auth_session.user_id,
-            device_id=uid.generate_category_uid("device", length=16),
+            device_id=(
+                auth_session.device_id
+                or uid.generate_category_uid("device", length=16)
+            ),
             agent_string=flask.request.headers.get("User-Agent", ""),
         )
 
