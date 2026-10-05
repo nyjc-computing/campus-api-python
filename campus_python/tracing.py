@@ -28,6 +28,11 @@ import requests
 TRACE_ID_HEADER = "X-Request-ID"
 PARENT_SPAN_ID_HEADER = "X-Parent-Span-ID"
 
+# Mirror of campus.audit.middleware.journeys.ACTION_JOURNEY_HEADER
+# (campus#828): forwarded so a child service's span joins the caller's
+# action journey. Keep the two in lockstep.
+JOURNEY_ID_HEADER = "X-Journey-ID"
+
 # Same marker attribute as campus.audit.middleware.tracing so a session
 # instrumented by either implementation is left alone by the other.
 _INSTRUMENTED_ATTR = "_campus_trace_instrumented"
@@ -58,17 +63,30 @@ def current_context() -> tuple[str, str] | None:
 def propagation_headers() -> dict[str, str]:
     """Headers to attach to an outbound SDK call from the active request.
 
-    Empty outside a traced host request. The receiving campus service's
-    tracing middleware turns these into a child span of the caller's
-    span (#794, campus#816).
+    Empty outside a request context. The receiving campus service's
+    tracing middleware turns the trace headers into a child span of the
+    caller's span (#794, campus#816); the journeys middleware adopts
+    X-Journey-ID so the child span joins the caller's action journey
+    (campus#828). The two are independent: trace headers require span
+    state on flask.g (tracing middleware ran), the journey header only
+    requires an active journey.
     """
-    context = current_context()
-    if context is None:
-        return {}
-    return {
-        TRACE_ID_HEADER: context[0],
-        PARENT_SPAN_ID_HEADER: context[1],
-    }
+    headers: dict[str, str] = {}
+    try:
+        import flask
+    except ImportError:  # pragma: no cover - host without flask
+        return headers
+    if not flask.has_request_context():
+        return headers
+    trace_id = getattr(flask.g, "trace_id", None)
+    span_id = getattr(flask.g, "span_id", None)
+    if trace_id and span_id:
+        headers[TRACE_ID_HEADER] = trace_id
+        headers[PARENT_SPAN_ID_HEADER] = span_id
+    journey_id = getattr(flask.g, "journey_id", None)
+    if journey_id:
+        headers[JOURNEY_ID_HEADER] = journey_id
+    return headers
 
 
 def instrument_requests_session(session: requests.Session) -> bool:
