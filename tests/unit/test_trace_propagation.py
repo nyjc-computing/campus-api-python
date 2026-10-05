@@ -126,5 +126,60 @@ class TestTracePropagation(unittest.TestCase):
         self.assertEqual(captured["headers"].get("X-Request-ID"), TRACE_ID)
 
 
+class TestJourneyForwarding(unittest.TestCase):
+    """Action-journey forwarding on SDK calls (campus#828).
+
+    When the host request carries an action journey (stashed as
+    flask.g.journey_id by the journeys middleware), SDK calls forward it
+    as X-Journey-ID so child services' spans join the same journey.
+    """
+
+    def test_journey_forwarded_inside_traced_request(self):
+        app = flask.Flask(__name__)
+        client = _make_client()
+        captured = _capture_send(client)
+
+        with app.test_request_context("/"):
+            flask.g.trace_id = TRACE_ID
+            flask.g.span_id = SPAN_ID
+            flask.g.journey_id = "uid-journey-abc123"
+            client.get("/ping")
+
+        self.assertEqual(
+            captured["headers"].get("X-Journey-ID"), "uid-journey-abc123"
+        )
+        self.assertEqual(captured["headers"].get("X-Request-ID"), TRACE_ID)
+
+    def test_no_journey_no_header(self):
+        """A traced request without a journey emits no journey header."""
+        app = flask.Flask(__name__)
+        client = _make_client()
+        captured = _capture_send(client)
+
+        with app.test_request_context("/"):
+            flask.g.trace_id = TRACE_ID
+            flask.g.span_id = SPAN_ID
+            client.get("/ping")
+
+        self.assertNotIn("X-Journey-ID", captured["headers"])
+
+    def test_journey_header_outside_trace_context(self):
+        """A journey without an active span still forwards (the journeys
+        middleware can adopt journeys on hosts where span tracing is off;
+        the trace headers are simply absent)."""
+        app = flask.Flask(__name__)
+        client = _make_client()
+        captured = _capture_send(client)
+
+        with app.test_request_context("/"):
+            flask.g.journey_id = "uid-journey-abc123"
+            client.get("/ping")
+
+        self.assertEqual(
+            captured["headers"].get("X-Journey-ID"), "uid-journey-abc123"
+        )
+        self.assertNotIn("X-Request-ID", captured["headers"])
+
+
 if __name__ == "__main__":
     unittest.main()
