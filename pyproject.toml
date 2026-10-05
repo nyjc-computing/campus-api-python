@@ -18,7 +18,7 @@ include = "campus_python"
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md
 useLibraryCodeForTypes = true
-exclude = [".cache"]
+exclude = ["**/node_modules", "**/__pycache__", "**/.*", ".cache"]
 
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
