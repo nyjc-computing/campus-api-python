@@ -95,6 +95,13 @@ class CampusRequest(JsonClient):
         # Session to persist headers and connection pooling
         self._session = requests.Session()
         self._session.headers.update(self._headers)
+        # Propagate campus trace context on calls made while the host app
+        # handles a traced request, so receiving campus services record
+        # them as child spans (campus#816). No-op outside a request
+        # context (startup, background threads).
+        from .. import tracing
+
+        tracing.instrument_requests_session(self._session)
         # Only set client credentials in server mode
         # Device mode starts without auth (Bearer token will be set later)
         if mode == "server":
