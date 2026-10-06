@@ -6,9 +6,19 @@ Span ingestion and trace queries. Traces are addressed by their 32-char
 hex trace ID and spans by their 16-char hex span ID.
 """
 
+import contextlib
 from typing import Any
 
 from ...interface import JsonDict, Resource, ResourceCollection
+from .. import ratelimit
+
+
+def _safe_json(resp: Any) -> Any:
+    """Best-effort JSON parse for breaker observation."""
+    try:
+        return resp.json()
+    except Exception:
+        return None
 
 
 class Traces(ResourceCollection):
@@ -31,6 +41,12 @@ class Traces(ResourceCollection):
             adds {"failed": [...]} with per-span statuses.
         """
         resp = self.client.post(self.make_path(), json={"spans": spans})
+        # Feed the ingest circuit breaker before raising: 429 trips the
+        # bucket (Retry-After + tripped key from the body), 2xx clears
+        # expired trips (#831). The error still raises as normal, and a
+        # breaker failure must never break ingestion.
+        with contextlib.suppress(Exception):
+            ratelimit.breaker.observe(resp.status_code, resp.headers, _safe_json(resp))
         resp.raise_for_status()
         return resp.json()
 
