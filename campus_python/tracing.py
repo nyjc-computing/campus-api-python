@@ -33,6 +33,14 @@ PARENT_SPAN_ID_HEADER = "X-Parent-Span-ID"
 # action journey. Keep the two in lockstep.
 JOURNEY_ID_HEADER = "X-Journey-ID"
 
+# Mirror of campus.config.DEVICE_ID_HEADER (campus#837): forwarded so a
+# child service's span carries the caller's device identity when the
+# host stashed one (flask_campus's push_context sets g.device from the
+# login session). The receiving middleware reads it only when it knows
+# nothing better (g.device absent, no campus_device cookie). Keep the
+# two in lockstep.
+DEVICE_ID_HEADER = "X-Campus-Device"
+
 # Same marker attribute as campus.audit.middleware.tracing so a session
 # instrumented by either implementation is left alone by the other.
 _INSTRUMENTED_ATTR = "_campus_trace_instrumented"
@@ -67,9 +75,12 @@ def propagation_headers() -> dict[str, str]:
     tracing middleware turns the trace headers into a child span of the
     caller's span (#794, campus#816); the journeys middleware adopts
     X-Journey-ID so the child span joins the caller's action journey
-    (campus#828). The two are independent: trace headers require span
-    state on flask.g (tracing middleware ran), the journey header only
-    requires an active journey.
+    (campus#828); the tracing middleware adopts X-Campus-Device for the
+    child span's device tag when it knows nothing better (campus#837).
+    The three are independent: trace headers require span state on
+    flask.g (tracing middleware ran), the journey header only requires
+    an active journey, the device header only requires a stashed
+    g.device.
     """
     headers: dict[str, str] = {}
     try:
@@ -86,6 +97,9 @@ def propagation_headers() -> dict[str, str]:
     journey_id = getattr(flask.g, "journey_id", None)
     if journey_id:
         headers[JOURNEY_ID_HEADER] = journey_id
+    device_id = getattr(flask.g, "device", None)
+    if device_id:
+        headers[DEVICE_ID_HEADER] = str(device_id)
     return headers
 
 
