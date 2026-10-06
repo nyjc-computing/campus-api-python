@@ -148,6 +148,18 @@ class JsonClient(ABC):
             token (str): Bearer token.
         """
 
+    def set_default_header(self, name: str, value: str) -> None:
+        """Set a default header sent with every request (#837).
+
+        Optional capability: the ABC default refuses, so callers can
+        detect a client that cannot carry default headers instead of
+        silently dropping them. Implementations should set the header
+        on their underlying transport (e.g. the requests session).
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support default headers"
+        )
+
     @abstractmethod
     def get(self: Self, path: str, query: JsonDict | None = None) -> JsonResponse:
         """Sends a GET request."""

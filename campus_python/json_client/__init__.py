@@ -152,6 +152,16 @@ class CampusRequest(JsonClient):
         """
         self._session.headers["Authorization"] = "Bearer " + token
 
+    def set_default_header(self, name: str, value: str) -> None:
+        """Set a default header sent with every request from this client.
+
+        Non-browser clients use this to present stable identity on API
+        calls, e.g. X-Campus-Device (#837) for device attribution of
+        spans. Calls made inside a host request context may still add
+        per-request headers on top (tracing.propagation_headers).
+        """
+        self._session.headers[name] = value
+
     def set_unauthorized_hook(
             self,
             hook: Callable[[], str | None] | None,

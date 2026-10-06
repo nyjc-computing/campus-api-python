@@ -181,5 +181,103 @@ class TestJourneyForwarding(unittest.TestCase):
         self.assertNotIn("X-Request-ID", captured["headers"])
 
 
+class TestDeviceForwarding(unittest.TestCase):
+    """Device forwarding on SDK calls (campus#837).
+
+    When the host request carries a device identity (stashed as
+    flask.g.device by flask_campus's push_context from the login
+    session), SDK calls forward it as X-Campus-Device so child services'
+    spans carry the same device tag.
+    """
+
+    def test_device_forwarded_inside_traced_request(self):
+        app = flask.Flask(__name__)
+        client = _make_client()
+        captured = _capture_send(client)
+
+        with app.test_request_context("/"):
+            flask.g.trace_id = TRACE_ID
+            flask.g.span_id = SPAN_ID
+            flask.g.device = "uid-device-abc123"
+            client.get("/ping")
+
+        self.assertEqual(
+            captured["headers"].get("X-Campus-Device"), "uid-device-abc123"
+        )
+        self.assertEqual(captured["headers"].get("X-Request-ID"), TRACE_ID)
+
+    def test_no_device_no_header(self):
+        """A traced request with no stashed device emits no device header."""
+        app = flask.Flask(__name__)
+        client = _make_client()
+        captured = _capture_send(client)
+
+        with app.test_request_context("/"):
+            flask.g.trace_id = TRACE_ID
+            flask.g.span_id = SPAN_ID
+            client.get("/ping")
+
+        self.assertNotIn("X-Campus-Device", captured["headers"])
+
+    def test_device_header_outside_trace_context(self):
+        """A stashed device forwards even without an active span."""
+        app = flask.Flask(__name__)
+        client = _make_client()
+        captured = _capture_send(client)
+
+        with app.test_request_context("/"):
+            flask.g.device = "uid-device-abc123"
+            client.get("/ping")
+
+        self.assertEqual(
+            captured["headers"].get("X-Campus-Device"), "uid-device-abc123"
+        )
+        self.assertNotIn("X-Request-ID", captured["headers"])
+
+
+class TestSetDefaultHeader(unittest.TestCase):
+    """JsonClient.set_default_header for non-browser identity (#837)."""
+
+    def test_default_header_sent_on_every_request(self):
+        client = _make_client()
+        captured = _capture_send(client)
+
+        client.set_default_header("X-Campus-Device", "uid-device-cli42")
+        client.get("/ping")
+
+        self.assertEqual(
+            captured["headers"].get("X-Campus-Device"), "uid-device-cli42"
+        )
+
+    def test_propagation_headers_win_over_default(self):
+        """Per-request trace context rides on top of defaults."""
+        app = flask.Flask(__name__)
+        client = _make_client()
+        captured = _capture_send(client)
+        client.set_default_header("X-Campus-Device", "uid-device-default")
+
+        with app.test_request_context("/"):
+            flask.g.device = "uid-device-session"
+            client.get("/ping")
+
+        # The request-time forward overwrites the static default for
+        # this call only; the default survives for later calls.
+        self.assertEqual(
+            captured["headers"].get("X-Campus-Device"), "uid-device-session"
+        )
+
+    def test_default_header_persists_across_calls(self):
+        client = _make_client()
+        captured = _capture_send(client)
+        client.set_default_header("X-Campus-Device", "uid-device-cli42")
+
+        client.get("/ping")
+        client.get("/ping")
+
+        self.assertEqual(
+            captured["headers"].get("X-Campus-Device"), "uid-device-cli42"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
