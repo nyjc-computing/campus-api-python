@@ -134,7 +134,7 @@ name = "campus-suite"
 version = "0.1.16"
 description = "Campus Suite - Complete education management platform deployment orchestrator and client library"
 optional = false
-python-versions = ">=3.11.0,<3.14"
+python-versions = ">=3.11.0,<3.15"
 groups = ["main"]
 files = []
 develop = false
@@ -142,7 +142,7 @@ develop = false
 [package.dependencies]
 bcrypt = "^5.0.0"
 boto3 = "^1.35.0"
-campus-api-python = {git = "https://github.com/nyjc-computing/campus-api-python.git", branch = "main"}
+campus-api-python = {git = "https://github.com/nyjc-computing/campus-api-python.git", branch = "py-support-policy"}
 flask = "^3.0.0"
 gunicorn = "^26.2.0"
 psycopg2-binary = "^2.9.0"
@@ -154,7 +154,7 @@ werkzeug = "^3.0.0"
 type = "git"
 url = "https://github.com/nyjc-computing/campus.git"
 reference = "weekly"
-resolved_reference = "a12f02328ea1fe27163ea79f4fd9ba8869eeb3f3"
+resolved_reference = "3e76e0a42159810a7efb3094f790052d6f32edbd"
 
 [[package]]
 name = "certifi"
@@ -909,5 +909,5 @@ watchdog = ["watchdog (>=2.3)"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.11,<3.14"
-content-hash = "727c9d78cd3424798b39a7cdc7ec11ab3b95ee9502f4db829db43fa65faae29b"
+python-versions = ">=3.11,<3.15"
+content-hash = "96efa4aa931d87d618c0f34681daf6ffba10a359baae98aa4de94666c9d132cd"
