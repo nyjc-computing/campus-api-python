@@ -5,7 +5,11 @@ description = "Campus API for Python projects"
 authors = ["NYJC Computing <nyjc.computing@nyjc.edu.sg>"]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.14"
+# Python support tiers (python.org release status):
+# - security (3.11-3.13): officially supported; CI-required.
+# - bugfix (3.14): unofficial ("not yet but eventually"); CI-tested with
+#   failures allowed; never deployed to prod.
+python = ">=3.11,<3.15"
 flask = "^3.0.0"
 campus-suite = {git = "https://github.com/nyjc-computing/campus.git", branch = "weekly"}
 
