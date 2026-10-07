@@ -15,7 +15,14 @@ from typing import Any, Mapping, Self, cast
 
 import requests
 from campus.common import env
-from campus.webauth.models import HttpHeader
+
+try:
+    from campus.webauth.models import HttpHeader
+except ImportError:
+    # campus-suite predating campus#857 keeps header models in
+    # campus.model; this fallback lets this client work against both
+    # the old and the new campus-suite until locks are re-resolved.
+    from campus.model import HttpHeader
 
 from .. import errors
 from .interface import JsonClient, JsonDict, JsonResponse
