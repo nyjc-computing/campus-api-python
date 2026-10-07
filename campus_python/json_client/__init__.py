@@ -13,9 +13,9 @@ import base64
 from collections.abc import Callable
 from typing import Any, Mapping, Self, cast
 
-import campus.model
 import requests
 from campus.common import env
+from campus.webauth.models import HttpHeader
 
 from .. import errors
 from .interface import JsonClient, JsonDict, JsonResponse
@@ -47,7 +47,7 @@ class CampusResponse(JsonResponse):
     def json(self) -> Any:
         try:
             return self._response.json()
-        except ValueError as exc:  # JSON decoding error
+        except ValueError:  # JSON decoding error
             raise errors.MalformedResponseError(
                 error_description="Response is not valid JSON"
             ) from None
@@ -108,10 +108,10 @@ class CampusRequest(JsonClient):
             self.reset_authorization()
 
     @property
-    def headers(self) -> campus.model.HttpHeader:
+    def headers(self) -> HttpHeader:
         """Get the currently configured headers."""
         headers = cast(Mapping[str, str], self._session.headers)
-        return campus.model.HttpHeader.from_header(headers)
+        return HttpHeader.from_header(headers)
 
     def _build_url(self, path: str) -> str:
         if not self.base_url:  # relative URL
