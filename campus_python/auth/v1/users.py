@@ -4,7 +4,7 @@ Campus Auth users resource (v1).
 
 This mirrors the style used in `clients.py` and `credentials.py` and
 implements the minimal methods used by the Flask routes: list, new,
-and per-user activate/delete/get.
+and per-user activate/delete/get/update.
 """
 
 import campus.model
@@ -51,5 +51,22 @@ class Users(ResourceCollection):
 
         def get(self) -> campus.model.User:
             resp = self.client.get(self.make_path())
+            resp.raise_for_status()
+            return campus.model.User.from_resource(resp.json())
+
+        def update(self, *, name: str) -> campus.model.User:
+            """Update the user's display name (campus-cli#42).
+
+            The server PATCH accepts name only: a user's id IS its
+            email (identity), and activation runs through the
+            /activate endpoint, so no other field is patchable.
+
+            Args:
+                name: New display name
+
+            Returns:
+                The updated User
+            """
+            resp = self.client.patch(self.make_path(), json={"name": name})
             resp.raise_for_status()
             return campus.model.User.from_resource(resp.json())
