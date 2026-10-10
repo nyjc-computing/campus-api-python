@@ -53,7 +53,8 @@ def run_finalize(auth: AuthRoot, device_id: str | None) -> dict:
     sessions = MagicMock()
     sessions.from_code.return_value = make_auth_session(device_id)
     sessions[SESSION_ID].finalize.return_value = (
-        "https://app.example.org/landing"
+        "https://app.example.org/landing",
+        None,
     )
     auth._sessions = sessions
     auth._users = MagicMock()
