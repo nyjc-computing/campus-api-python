@@ -22,6 +22,7 @@ from . import (
     clients,
     connections,
     credentials,
+    grants,
     logins,
     oauth,
     root,
@@ -49,6 +50,7 @@ class AuthRoot(ResourceRoot):
         self._clients = None
         self._connections = None
         self._credentials = None
+        self._grants = None
         self._logins = None
         self._oauth = None
         self._root = None
@@ -126,6 +128,13 @@ class AuthRoot(ResourceRoot):
         if not self._users:
             self._users = users.Users(root=self)
         return self._users
+
+    @property
+    def grants(self) -> grants.Grants:
+        """Get the access-grant store resource."""
+        if not self._grants:
+            self._grants = grants.Grants(root=self)
+        return self._grants
 
     @property
     def vaults(self) -> vaults.Vaults:
