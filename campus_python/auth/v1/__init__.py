@@ -199,12 +199,18 @@ class AuthRoot(ResourceRoot):
             redirect_uri=auth_session.redirect_uri
         )
 
-        # 3. Finalize session and get target
-        target = self.sessions[auth_session.id].finalize()
+        # 3. Finalize session and get target; the response embeds the
+        # session user for the owning client (#879). Pre-#879 services
+        # return no user (None).
+        target, session_user = self.sessions[auth_session.id].finalize()
 
         # 4. Ensure user exists (the server provisions the user record
-        # during verify_login; a missing user is a hard error here)
-        self.users[auth_session.user_id].get()
+        # during verify_login; a missing user is a hard error here).
+        # The embedded record (#879) usually answers this without the
+        # operator-gated users route; the explicit fetch remains as the
+        # fallback for older auth services.
+        if session_user is None:
+            self.users[auth_session.user_id].get()
 
         # 5. Create login session
         # 5. Create login session. The device id rides the auth session
@@ -389,7 +395,15 @@ class AuthRoot(ResourceRoot):
             try:
                 auth_session = self.sessions.from_session()
                 if auth_session.user_id:
-                    user = self.users[auth_session.user_id].get()
+                    # The auth service embeds the session user for the
+                    # owning client (#879); the operator-gated users
+                    # route remains the fallback for older services.
+                    # getattr guards installs whose campus-suite predates
+                    # the embedded-user model field.
+                    user = (
+                        getattr(auth_session, "user", None)
+                        or self.users[auth_session.user_id].get()
+                    )
                     flask.g.user = user
                     self._user_cache_put("session", session_id, user, None)
             except errors.NotFoundError:
@@ -408,7 +422,11 @@ class AuthRoot(ResourceRoot):
                 return
             try:
                 login_session = self.logins.from_session()
-                user = self.users[login_session.user_id].get()
+                # Embedded login user (#879) with the same fallback.
+                user = (
+                    getattr(login_session, "user", None)
+                    or self.users[login_session.user_id].get()
+                )
                 flask.g.user = user
                 flask.g.device = login_session.device_id
                 self._user_cache_put(

@@ -58,14 +58,33 @@ class TestSessionFinalize(unittest.TestCase):
     def test_finalize_removes_session_key(self):
         with session_context():
             flask.session["campus_session_id"] = "sess-1"
-            target = self.auth.sessions["sess-1"].finalize()
+            target, user = self.auth.sessions["sess-1"].finalize()
             self.assertEqual(target, "https://app.example.org/after-login")
+            self.assertIsNone(user)
             self.assertNotIn("campus_session_id", flask.session)
 
     def test_finalize_succeeds_without_session_key(self):
         with session_context():
-            target = self.auth.sessions["sess-1"].finalize()
+            target, _ = self.auth.sessions["sess-1"].finalize()
             self.assertEqual(target, "https://app.example.org/after-login")
+
+    def test_finalize_parses_embedded_user(self):
+        """The #879 embed rides along as a User model."""
+        self.client.delete.return_value = ok_response({
+            "target": "https://app.example.org/after-login",
+            "user": {
+                "id": "user-1",
+                "created_at": "2026-10-05T00:00:00+00:00",
+                "email": "user@example.org",
+                "name": "Test User",
+            },
+        })
+        with session_context():
+            target, user = self.auth.sessions["sess-1"].finalize()
+            self.assertEqual(target, "https://app.example.org/after-login")
+            self.assertIsNotNone(user)
+            self.assertEqual(user.id, "user-1")
+            self.assertEqual(user.email, "user@example.org")
 
 
 class TestLoginRevoke(unittest.TestCase):

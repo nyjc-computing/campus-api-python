@@ -96,8 +96,9 @@ class CampusSessions(ResourceCollection):
         def session_id(self) -> str:
             return self.path.split("/")[-1]
 
-        def finalize(self) -> str:
-            # DELETE /sessions/{provider}/{session_id} -> {"target": <url>}
+        def finalize(self) -> "tuple[str, campus.model.User | None]":
+            # DELETE /sessions/{provider}/{session_id} ->
+            # {"target": <url>, "user": {...}|null}
             resp = self.client.delete(
                 self.make_path(end_slash=True)
             )
@@ -109,7 +110,11 @@ class CampusSessions(ResourceCollection):
                 cast(CampusSessions, self.parent)._session_key, None
             )
             body = resp.json()
-            return body["target"]
+            # The auth service embeds the session user for the owning
+            # client (#879); None from pre-#879 services.
+            user = campus.model.User.from_resource(body["user"]) \
+                if body.get("user") else None
+            return body["target"], user
 
         def get(self) -> campus.model.AuthSession:
             resp = self.client.get(
