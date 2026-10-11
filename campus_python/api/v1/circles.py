@@ -55,12 +55,12 @@ class Circles(ResourceCollection):
             return Circles.Circle.CircleMembers("members", parent=self)
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_path())
+            resp = self.client.delete(self.make_path(end_slash=True))
             resp.raise_for_status()
             return None
 
         def get(self) -> campus.model.Circle:
-            resp = self.client.get(self.make_path())
+            resp = self.client.get(self.make_path(end_slash=True))
             resp.raise_for_status()
             return campus.model.Circle.from_resource(resp.json())
 
@@ -84,7 +84,7 @@ class Circles(ResourceCollection):
             payload: dict[str, Any] = {"name": name}
             if description is not None:
                 payload["description"] = description
-            resp = self.client.patch(self.make_path(), json=payload)
+            resp = self.client.patch(self.make_path(end_slash=True), json=payload)
             resp.raise_for_status()
             return None
 

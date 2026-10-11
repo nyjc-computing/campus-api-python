@@ -128,7 +128,7 @@ class TestCredentialsUserNew(unittest.TestCase):
             scopes=["campus.profile"], expires_in=3600
         )
         self.client.post.assert_called_once_with(
-            "/auth/v1/credentials/campus/user1",
+            "/auth/v1/credentials/campus/user1/",
             json={"scopes": ["campus.profile"], "expires_in": 3600},
         )
         self.assertIsInstance(creds, campus.model.UserCredentials)

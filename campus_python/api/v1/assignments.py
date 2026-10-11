@@ -66,12 +66,12 @@ class Assignments(ResourceCollection):
             return Assignments.Assignment.Links("links", parent=self)
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_path())
+            resp = self.client.delete(self.make_path(end_slash=True))
             resp.raise_for_status()
             return None
 
         def get(self) -> campus.model.Assignment:
-            resp = self.client.get(self.make_path())
+            resp = self.client.get(self.make_path(end_slash=True))
             resp.raise_for_status()
             return campus.model.Assignment.from_resource(resp.json())
 
@@ -83,7 +83,7 @@ class Assignments(ResourceCollection):
             """
             if not updates:
                 raise ValueError("At least one field must be provided for update")
-            resp = self.client.patch(self.make_path(), json=updates)
+            resp = self.client.patch(self.make_path(end_slash=True), json=updates)
             resp.raise_for_status()
             return None
 
