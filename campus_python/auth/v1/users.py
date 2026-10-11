@@ -46,11 +46,11 @@ class Users(ResourceCollection):
             return campus.model.User.from_resource(resp.json())
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_path())
+            resp = self.client.delete(self.make_path(end_slash=True))
             resp.raise_for_status()
 
         def get(self) -> campus.model.User:
-            resp = self.client.get(self.make_path())
+            resp = self.client.get(self.make_path(end_slash=True))
             resp.raise_for_status()
             return campus.model.User.from_resource(resp.json())
 
@@ -67,6 +67,6 @@ class Users(ResourceCollection):
             Returns:
                 The updated User
             """
-            resp = self.client.patch(self.make_path(), json={"name": name})
+            resp = self.client.patch(self.make_path(end_slash=True), json={"name": name})
             resp.raise_for_status()
             return campus.model.User.from_resource(resp.json())

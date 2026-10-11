@@ -136,7 +136,7 @@ class TestCredentialsUpdatePatchBody(unittest.TestCase):
             self.auth.credentials["campus"]["user1"].update(self.token)
         self.client.patch.assert_called_once()
         args, kwargs = self.client.patch.call_args
-        self.assertEqual(args[0], "/auth/v1/credentials/campus/user1")
+        self.assertEqual(args[0], "/auth/v1/credentials/campus/user1/")
         self.assertEqual(kwargs["json"]["client_id"], "cid123")
         self.assertEqual(kwargs["json"]["token"], self.token.to_resource())
 

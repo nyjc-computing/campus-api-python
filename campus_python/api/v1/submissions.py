@@ -59,7 +59,7 @@ class Submissions(ResourceCollection):
         Returns:
             List of Submission objects
         """
-        path = f"{self.make_path()}/by-assignment/{assignment_id}"
+        path = f"{self.make_path()}/by-assignment/{assignment_id}/"
         resp = self.client.get(path)
         resp.raise_for_status()
         return [
@@ -76,7 +76,7 @@ class Submissions(ResourceCollection):
         Returns:
             List of Submission objects
         """
-        path = f"{self.make_path()}/by-student/{student_id}"
+        path = f"{self.make_path()}/by-student/{student_id}/"
         resp = self.client.get(path)
         resp.raise_for_status()
         return [
@@ -130,13 +130,13 @@ class Submissions(ResourceCollection):
 
         def delete(self) -> None:
             """Delete this submission."""
-            resp = self.client.delete(self.make_path())
+            resp = self.client.delete(self.make_path(end_slash=True))
             resp.raise_for_status()
             return None
 
         def get(self) -> campus.model.Submission:
             """Get this submission."""
-            resp = self.client.get(self.make_path())
+            resp = self.client.get(self.make_path(end_slash=True))
             resp.raise_for_status()
             return campus.model.Submission.from_resource(resp.json())
 
@@ -167,7 +167,7 @@ class Submissions(ResourceCollection):
             if not payload:
                 raise ValueError("At least one field must be provided for update")
 
-            resp = self.client.patch(self.make_path(), json=payload)
+            resp = self.client.patch(self.make_path(end_slash=True), json=payload)
             resp.raise_for_status()
             return None
 
@@ -186,7 +186,7 @@ class Submissions(ResourceCollection):
             means "omit the field" there.
             """
             resp = self.client.patch(
-                self.make_path(), json={"submitted_at": None}
+                self.make_path(end_slash=True), json={"submitted_at": None}
             )
             resp.raise_for_status()
             return None
