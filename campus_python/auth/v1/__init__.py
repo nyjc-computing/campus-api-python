@@ -332,6 +332,10 @@ class AuthRoot(ResourceRoot):
             )
         login_session = self.logins.from_session()
         user_id = login_session.user_id
+        if user_id is None:
+            raise errors.AuthenticationError(
+                error_description="Login session has no user id."
+            )
 
         # Retrieve credentials for the user
         credentials = self.credentials["campus"][user_id].get()
@@ -432,15 +436,16 @@ class AuthRoot(ResourceRoot):
             try:
                 login_session = self.logins.from_session()
                 # Embedded login user (#879) with the same fallback.
-                user = (
-                    getattr(login_session, "user", None)
-                    or self.users[login_session.user_id].get()
-                )
+                login_user_id = login_session.user_id
+                user = getattr(login_session, "user", None)
+                if user is None and login_user_id is not None:
+                    user = self.users[login_user_id].get()
                 flask.g.user = user
                 flask.g.device = login_session.device_id
-                self._user_cache_put(
-                    "login", login_id, user, login_session.device_id
-                )
+                if user is not None:
+                    self._user_cache_put(
+                        "login", login_id, user, login_session.device_id
+                    )
             except errors.NotFoundError:
                 # Login session no longer exists on server
                 self._user_cache_pop("login", login_id)

@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "campus_python"))
 
 import unittest
 
-from errors import (
+from errors import (  # pyright: ignore[reportMissingImports]
     APIError,
     BadRequestError,
     FieldError,

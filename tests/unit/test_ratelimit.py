@@ -46,6 +46,7 @@ class TestObserve(unittest.TestCase):
         self.br.observe(429, {"Retry-After": "45"}, _body("user=u1"))
         retry_after = self.br.check("user=u1")
         self.assertIsNotNone(retry_after)
+        assert retry_after is not None
         self.assertGreaterEqual(retry_after, 44)
         self.assertLessEqual(retry_after, 46)
 
@@ -54,6 +55,7 @@ class TestObserve(unittest.TestCase):
         self.br.observe(429, None, _body("user=u1"))
         retry_after = self.br.check("user=u1")
         self.assertIsNotNone(retry_after)
+        assert retry_after is not None
         self.assertGreaterEqual(retry_after, 29)
 
     def test_429_without_bucket_trips_wildcard(self):

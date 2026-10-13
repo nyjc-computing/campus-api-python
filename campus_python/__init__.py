@@ -163,7 +163,7 @@ class Campus:
                 mode="device",
             )
             env.require("AUDIT_API_KEY")
-            client.set_bearer_authorization(env.get("AUDIT_API_KEY"))
+            client.set_bearer_authorization(env.get("AUDIT_API_KEY") or "")
             self._audit = AuditRoot(json_client=client)
         return self._audit
 
@@ -190,7 +190,12 @@ class Campus:
         """Get the token from flask session."""
         # flask session stores a session id
         login_session = self.auth.logins.from_session()
-        creds_resource = self.auth.credentials["campus"][login_session.user_id]
+        user_id = login_session.user_id
+        if user_id is None:
+            raise errors.AuthenticationError(
+                error_description="Login session has no user id."
+            )
+        creds_resource = self.auth.credentials["campus"][user_id]
         user_creds = creds_resource.get()
         if (
                 force_refresh
@@ -200,9 +205,7 @@ class Campus:
                 grant_type="refresh_token",
                 refresh_token=user_creds.token.refresh_token
             )
-            self.auth.credentials["campus"][login_session.user_id].update(
-                token=token
-            )
+            self.auth.credentials["campus"][user_id].update(token=token)
             # Return the refreshed token — user_creds still holds the
             # pre-refresh (now rotated) access token.
             return token
@@ -307,8 +310,11 @@ class Campus:
                 return refreshed.access_token
 
             for client in (self.api.client, self.auth.client):
-                client.set_unauthorized_hook(refresh_bearer)
-                hooked_clients.append(client)
+                # The 401 hook is an optional JsonClient capability
+                # (see json_client.interface) — feature-detect it.
+                if isinstance(client, CampusRequest):
+                    client.set_unauthorized_hook(refresh_bearer)
+                    hooked_clients.append(client)
 
         try:
             yield self

@@ -11,10 +11,12 @@ Bool query values must reach the server as lowercase literals
 
 import os
 import unittest
+from typing import cast
 from unittest.mock import Mock, patch
 
 from campus_python import Campus
 from campus_python.audit.v1 import AuditRoot
+from campus_python.json_client import CampusRequest
 
 API_KEY_RESOURCE = {
     "id": "akm123",
@@ -187,7 +189,7 @@ class TestCampusAuditWiring(unittest.TestCase):
             audit = campus.audit
         self.assertEqual(audit.base_url, "https://audit.example.test")
         self.assertEqual(
-            audit.client._session.headers["Authorization"],
+            cast(CampusRequest, audit.client)._session.headers["Authorization"],
             "Bearer audit_v1_testkey",
         )
         self.assertEqual(audit.url_prefix, "/audit/v1")

@@ -83,6 +83,7 @@ class TestSessionFinalize(unittest.TestCase):
             target, user = self.auth.sessions["sess-1"].finalize()
             self.assertEqual(target, "https://app.example.org/after-login")
             self.assertIsNotNone(user)
+            assert user is not None
             self.assertEqual(user.id, "user-1")
             self.assertEqual(user.email, "user@example.org")
 

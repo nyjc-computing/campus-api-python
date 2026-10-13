@@ -65,6 +65,7 @@ class TestCampusRequestModes(unittest.TestCase):
         # Verify Basic auth header was set
         auth_header = client._session.headers.get('Authorization')
         self.assertIsNotNone(auth_header)
+        assert auth_header is not None
         self.assertTrue(auth_header.startswith('Basic '))
 
     def test_default_mode_is_server(self):
@@ -101,6 +102,7 @@ class TestCampusRequestModes(unittest.TestCase):
 
         # Verify Basic auth was set initially
         auth_header = client._session.headers.get('Authorization')
+        assert auth_header is not None
         self.assertTrue(auth_header.startswith('Basic '))
 
         # Set Bearer authorization (should override)
