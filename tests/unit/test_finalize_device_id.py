@@ -9,6 +9,7 @@ the same device id. A minted fallback keeps non-cookie flows working.
 import os
 import re
 import unittest
+from typing import cast
 from unittest.mock import MagicMock, Mock, patch
 
 import campus.model
@@ -63,7 +64,7 @@ def run_finalize(auth: AuthRoot, device_id: str | None) -> dict:
     # _exchange_code_for_token POSTs to /auth/v1/token
     token_response = Mock()
     token_response.json.return_value = TOKEN_RESOURCE
-    auth.client.post.return_value = token_response
+    cast(MagicMock, auth.client.post).return_value = token_response
 
     app = flask.Flask(__name__)
     app.secret_key = "test-secret"

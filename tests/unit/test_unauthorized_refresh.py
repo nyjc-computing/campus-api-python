@@ -14,6 +14,7 @@ the client (Basic) like session establishment does.
 import json
 import os
 import unittest
+from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock, Mock
 
@@ -51,8 +52,9 @@ class TestUnauthorizedHook(unittest.TestCase):
         self.client = make_client()
 
     def set_responses(self, *responses: requests.Response) -> MagicMock:
-        self.client._session.request.side_effect = list(responses)
-        return self.client._session.request
+        session = cast(MagicMock, self.client._session)
+        session.request.side_effect = list(responses)
+        return session.request
 
     def test_401_triggers_hook_and_retries(self):
         request_mock = self.set_responses(
@@ -180,7 +182,7 @@ class TestWithUserSessionWiring(unittest.TestCase):
         self.get_token.return_value = token1
 
     def test_401_mid_session_force_refreshes_and_retries(self):
-        self.api_client._session.request.side_effect = [
+        cast(MagicMock, self.api_client._session).request.side_effect = [
             raw_response(401, {}), raw_response(200, {"ok": True}),
         ]
         token2 = Mock(access_token="tok2")
@@ -204,7 +206,7 @@ class TestWithUserSessionWiring(unittest.TestCase):
         self.assertTrue(self.get_token.call_args.kwargs["force_refresh"])
 
     def test_refresh_failure_surfaces_original_401(self):
-        self.api_client._session.request.side_effect = [raw_response(401, {})]
+        cast(MagicMock, self.api_client._session).request.side_effect = [raw_response(401, {})]
         self.get_token.side_effect = [
             Mock(access_token="tok1"),
             errors.AuthenticationError(error_description="session gone"),
@@ -219,7 +221,7 @@ class TestWithUserSessionWiring(unittest.TestCase):
             )
 
         self.assertEqual(resp.status_code, 401)
-        self.assertEqual(self.api_client._session.request.call_count, 1)
+        self.assertEqual(cast(MagicMock, self.api_client._session).request.call_count, 1)
 
     def test_hooks_cleared_after_session(self):
         with self.campus.with_user_session():
@@ -230,7 +232,7 @@ class TestWithUserSessionWiring(unittest.TestCase):
         self.assertIsNone(self.auth_client._unauthorized_hook)
 
     def test_refresh_on_401_false_keeps_old_behaviour(self):
-        self.api_client._session.request.side_effect = [raw_response(401, {})]
+        cast(MagicMock, self.api_client._session).request.side_effect = [raw_response(401, {})]
 
         with self.campus.with_user_session(refresh_on_401=False):
             self.assertIsNone(self.api_client._unauthorized_hook)

@@ -261,7 +261,7 @@ class TestExpirySecondsAliasRemoved(unittest.TestCase):
 
     def test_constructor_rejects_expiry_seconds_kwarg(self):
         with self.assertRaises(TypeError):
-            campus.model.OAuthToken(id="tok-1", expiry_seconds=60)
+            campus.model.OAuthToken(id="tok-1", expiry_seconds=60)  # pyright: ignore[reportCallIssue]
 
     def test_payload_with_only_expiry_seconds_fails_validation(self):
         """Mirrors the server-side validation: a payload whose only

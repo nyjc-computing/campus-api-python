@@ -10,6 +10,7 @@ the campus-side embedding change).
 import os
 import unittest
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import campus.model
@@ -68,7 +69,7 @@ class TestFinalizeUsesEmbed(unittest.TestCase):
     """finalize() answers step 4 from the embed when present."""
 
     def setUp(self):
-        self.auth, _ = make_auth()
+        self.auth, self.client_mock = make_auth()
 
     def run_finalize(self, finalize_return: tuple) -> None:
         sessions = MagicMock()
@@ -83,11 +84,12 @@ class TestFinalizeUsesEmbed(unittest.TestCase):
         users = MagicMock()
         users["user-1"].get.return_value = EMBEDDED_USER
         self.auth._users = users
+        self.users_mock = users
         logins = MagicMock()
         self.auth._logins = logins
         token_response = Mock()
         token_response.json.return_value = TOKEN_RESOURCE
-        self.auth.client.post.return_value = token_response
+        self.client_mock.post.return_value = token_response
 
         app = flask.Flask(__name__)
         app.secret_key = "test-secret"
@@ -101,12 +103,12 @@ class TestFinalizeUsesEmbed(unittest.TestCase):
     def test_embedded_user_skips_users_route(self):
         """The embed answers the user-exists check without users.get."""
         self.run_finalize(("https://app.example.org/landing", EMBEDDED_USER))
-        self.assertFalse(self.auth._users["user-1"].get.called)
+        self.assertFalse(self.users_mock["user-1"].get.called)
 
     def test_no_embed_falls_back_to_users_route(self):
         """Pre-#879 services return no embed; users.get stays the check."""
         self.run_finalize(("https://app.example.org/landing", None))
-        self.assertTrue(self.auth._users["user-1"].get.called)
+        self.assertTrue(self.users_mock["user-1"].get.called)
 
 
 class TestPushContextUsesEmbed(unittest.TestCase):
@@ -115,7 +117,7 @@ class TestPushContextUsesEmbed(unittest.TestCase):
     def setUp(self):
         self.auth, _ = make_auth()
 
-    def push_session(self, session_obj) -> object:
+    def push_session(self, session_obj) -> Any:
         sessions = MagicMock()
         sessions._session_key = "campus_session_id"
         sessions.has_session.return_value = True
@@ -124,12 +126,13 @@ class TestPushContextUsesEmbed(unittest.TestCase):
         users = MagicMock()
         users["user-1"].get.return_value = EMBEDDED_USER
         self.auth._users = users
+        self.users_mock = users
         with session_context():
             flask.session["campus_session_id"] = SESSION_ID
             self.auth.push_context()
             return flask.g.user
 
-    def push_login(self, login_obj) -> object:
+    def push_login(self, login_obj) -> Any:
         logins = MagicMock()
         logins._session_key = "logins_login_id"
         logins.has_session.return_value = True
@@ -138,6 +141,7 @@ class TestPushContextUsesEmbed(unittest.TestCase):
         users = MagicMock()
         users["user-1"].get.return_value = EMBEDDED_USER
         self.auth._users = users
+        self.users_mock = users
         with session_context():
             flask.session["logins_login_id"] = "login-1"
             self.auth.push_context()
@@ -147,13 +151,13 @@ class TestPushContextUsesEmbed(unittest.TestCase):
         session = SimpleNamespace(user_id="user-1", user=EMBEDDED_USER)
         user = self.push_session(session)
         self.assertEqual(user.email, USER_RESOURCE["email"])
-        self.assertFalse(self.auth._users["user-1"].get.called)
+        self.assertFalse(self.users_mock["user-1"].get.called)
 
     def test_session_without_embed_falls_back(self):
         session = SimpleNamespace(user_id="user-1", user=None)
         user = self.push_session(session)
         self.assertEqual(user.email, USER_RESOURCE["email"])
-        self.assertTrue(self.auth._users["user-1"].get.called)
+        self.assertTrue(self.users_mock["user-1"].get.called)
 
     def test_model_without_user_field_falls_back(self):
         """An installed campus-suite predating the field still resolves."""
@@ -166,7 +170,7 @@ class TestPushContextUsesEmbed(unittest.TestCase):
         )
         user = self.push_session(session)
         self.assertEqual(user.email, USER_RESOURCE["email"])
-        self.assertTrue(self.auth._users["user-1"].get.called)
+        self.assertTrue(self.users_mock["user-1"].get.called)
 
     def test_login_embed_skips_users_route(self):
         login = SimpleNamespace(
@@ -174,13 +178,13 @@ class TestPushContextUsesEmbed(unittest.TestCase):
         )
         user = self.push_login(login)
         self.assertEqual(user.email, USER_RESOURCE["email"])
-        self.assertFalse(self.auth._users["user-1"].get.called)
+        self.assertFalse(self.users_mock["user-1"].get.called)
 
     def test_login_without_embed_falls_back(self):
         login = SimpleNamespace(user_id="user-1", user=None, device_id=None)
         user = self.push_login(login)
         self.assertEqual(user.email, USER_RESOURCE["email"])
-        self.assertTrue(self.auth._users["user-1"].get.called)
+        self.assertTrue(self.users_mock["user-1"].get.called)
 
 
 if __name__ == "__main__":

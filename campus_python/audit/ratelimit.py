@@ -200,10 +200,12 @@ def _bucket_from_body(body: typing.Any) -> str | None:
 def _retry_after_seconds(headers: typing.Mapping[str, str] | None) -> float:
     """Parse Retry-After from response headers, defaulting to the floor."""
     if headers:
-        try:
-            return float(headers.get("Retry-After"))
-        except (TypeError, ValueError):
-            pass
+        retry_after = headers.get("Retry-After")
+        if retry_after is not None:
+            try:
+                return float(retry_after)
+            except ValueError:
+                pass
     return BACKOFF_FLOOR_SECONDS
 
 

@@ -31,8 +31,8 @@ def _capture_send(client: CampusRequest) -> dict:
     """
     captured: dict = {}
 
-    def fake_send(prepared: requests.PreparedRequest, **_kwargs):
-        captured["headers"] = dict(prepared.headers)
+    def fake_send(request: requests.PreparedRequest, **_kwargs):
+        captured["headers"] = dict(request.headers)
         response = requests.Response()
         response.status_code = 200
         response.headers["Content-Type"] = "application/json"

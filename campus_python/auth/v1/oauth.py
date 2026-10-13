@@ -169,7 +169,7 @@ class OAuth(ResourceRoot):
             raise errors.AuthenticationError(
                 status_code=400,
                 error_description=(
-                    descriptions.get(oauth_error)
+                    descriptions.get(oauth_error or "")
                     or message
                     or "Unknown error"
                 ),

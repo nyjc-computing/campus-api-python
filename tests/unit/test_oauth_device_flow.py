@@ -297,7 +297,7 @@ class TestWaitForToken(unittest.TestCase):
         with self.assertRaises(errors.AuthenticationError) as ctx:
             self.wait(max_attempts=5)
         self.assertIsNone(ctx.exception.oauth_error)
-        self.assertIn("timed out", ctx.exception.error_description)
+        self.assertIn("timed out", ctx.exception.error_description or "")
 
     def test_default_interval_when_server_omits_it(self):
         self.client.post.side_effect = [self.pending(), self.token_response()]

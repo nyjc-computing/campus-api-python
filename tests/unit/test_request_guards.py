@@ -29,7 +29,7 @@ class TestCirclesUpdateGuard(unittest.TestCase):
 
     def test_update_requires_name(self):
         with self.assertRaises(TypeError):
-            self.api.circles["cir-1"].update()
+            self.api.circles["cir-1"].update()  # pyright: ignore[reportCallIssue]
         self.client.patch.assert_not_called()
 
     def test_update_sends_name(self):
