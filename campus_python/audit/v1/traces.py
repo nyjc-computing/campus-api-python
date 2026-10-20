@@ -92,6 +92,7 @@ class Traces(ResourceCollection):
             api_key_id: "str | None" = None,
             client_id: "str | None" = None,
             user_id: "str | None" = None,
+            journey_id: "str | None" = None,
             since: "str | None" = None,
             until: "str | None" = None,
             limit: "int | None" = None,
@@ -105,6 +106,7 @@ class Traces(ResourceCollection):
             api_key_id: Filter by audit API key
             client_id: Filter by OAuth client
             user_id: Filter by user
+            journey_id: Filter by login-journey tag (campus#803)
             since, until, limit, cursor: As in list()
 
         Returns:
@@ -121,6 +123,8 @@ class Traces(ResourceCollection):
             query["client_id"] = client_id
         if user_id is not None:
             query["user_id"] = user_id
+        if journey_id is not None:
+            query["journey_id"] = journey_id
         if since is not None:
             query["since"] = since
         if until is not None:
