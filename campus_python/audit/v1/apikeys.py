@@ -10,13 +10,28 @@ regeneration.
 A key's privilege set may be given as a scope list or as a named role
 the service resolves to one (the catalogue is the service's, so it is
 not duplicated here).
+
+The service's catalogue (campus#918) currently holds:
+
+    traces-viewer    traces:read
+    traces-searcher  traces:read, traces:search
+    traces-producer  traces:read, traces:search, traces:write
+    key-operator     apikeys:read, apikeys:write
+
+That list is quoted here for orientation, not as a contract: the
+service is the authority, and it refuses an unknown role with the
+names of the roles it does have. No role resolves to a wildcard.
 """
 
 from ...interface import JsonDict, Resource, ResourceCollection
 
 
 class APIKeys(ResourceCollection):
-    """Campus Audit API keys resource."""
+    """Campus Audit API keys resource.
+
+    Every write takes a privilege set: either a scope list or a named
+    role the service resolves to one.
+    """
     path = "apikeys/"
 
     def __getitem__(self, api_key_id: str) -> "APIKeys.APIKey":
@@ -102,7 +117,11 @@ class APIKeys(ResourceCollection):
         return resp.json()
 
     class APIKey(Resource):
-        """Single campus audit API key resource."""
+        """Single campus audit API key resource.
+
+        update() takes a privilege set too: a scope list or a named
+        role.
+        """
 
         def get(self) -> JsonDict:
             """Get this API key's record (no key hash or plaintext)."""
