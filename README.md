@@ -12,6 +12,7 @@ The Campus API Python library is a comprehensive client for interacting with the
 - Support for server-to-server and device authentication modes
 - OAuth2 integration with Google Workspace (nyjc.edu.sg domain)
 - Comprehensive API coverage for assignments, circles, submissions, and timetable
+- Campus Audit client: API keys (mint, scope, rotate, revoke) and traces
 - Session management and secure request handling
 - Error handling and logging support
 
@@ -82,24 +83,32 @@ campus-api-python/
 │   ├── __init__.py         # Main Campus client class
 │   ├── errors.py           # Error handling
 │   ├── interface.py        # Core interfaces
+│   ├── tracing.py          # Trace context propagation (X-Request-ID)
 │   ├── api/
 │   │   └── v1/             # API service clients
 │   │       ├── assignments.py
 │   │       ├── circles.py
 │   │       ├── submissions.py
 │   │       └── timetable.py
+│   ├── audit/
+│   │   ├── ratelimit.py    # Ingest circuit breaker (campus.audit)
+│   │   └── v1/             # Audit service clients
+│   │       ├── apikeys.py  # Audit API keys (mint, scope, rotate, revoke)
+│   │       └── traces.py   # Traces (list, search, ingest)
 │   ├── auth/
 │   │   └── v1/             # Authentication clients
+│   │       ├── broker.py
 │   │       ├── clients.py
+│   │       ├── connections.py
 │   │       ├── credentials.py
+│   │       ├── grants.py
 │   │       ├── logins.py
 │   │       ├── oauth.py
 │   │       ├── root.py
 │   │       ├── sessions.py
 │   │       ├── users.py
 │   │       └── vaults.py
-│   ├── integrations/
-│   │   └── v1/             # Integrations registry (auth service, public)
+│   ├── integrations/       # Integrations registry (auth service, public)
 │   └── json_client/        # JSON client implementation
 │       ├── __init__.py
 │       └── interface.py

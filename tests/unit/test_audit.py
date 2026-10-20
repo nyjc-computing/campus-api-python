@@ -70,6 +70,50 @@ class TestAPIKeys(unittest.TestCase):
         )
         self.assertEqual(record["api_key"], "audit_v1_abc")
 
+    def test_new_posts_a_role_instead_of_scopes(self):
+        """A key can be created by named role; the service resolves it."""
+        self.client.post.return_value.json.return_value = {
+            **API_KEY_RESOURCE,
+            "api_key": "audit_v1_abc",
+        }
+        self.audit.apikeys.new(
+            name="alice-key",
+            owner_id="user1",
+            role="traces-viewer",
+        )
+        self.client.post.assert_called_once_with(
+            "/audit/v1/apikeys/",
+            json={
+                "name": "alice-key",
+                "owner_id": "user1",
+                "role": "traces-viewer",
+            },
+        )
+
+    def test_new_sends_both_role_and_scopes_when_given(self):
+        """The SDK does not pre-judge the combination: the server
+        refuses a role and a scope list together, and that error is
+        the answer."""
+        self.client.post.return_value.json.return_value = {
+            **API_KEY_RESOURCE,
+            "api_key": "audit_v1_abc",
+        }
+        self.audit.apikeys.new(
+            name="alice-key",
+            owner_id="user1",
+            scopes=["traces:read"],
+            role="traces-viewer",
+        )
+        self.client.post.assert_called_once_with(
+            "/audit/v1/apikeys/",
+            json={
+                "name": "alice-key",
+                "owner_id": "user1",
+                "scopes": ["traces:read"],
+                "role": "traces-viewer",
+            },
+        )
+
     def test_list_sends_lowercase_active_only(self):
         self.client.get.return_value.json.return_value = {
             "api_keys": [API_KEY_RESOURCE], "count": 1
@@ -97,6 +141,15 @@ class TestAPIKeys(unittest.TestCase):
         self.client.patch.assert_called_once_with(
             "/audit/v1/apikeys/akm123/",
             json={"scopes": ["traces:read"]},
+        )
+
+    def test_update_patches_a_role(self):
+        """A key can be re-scoped by named role."""
+        self.client.patch.return_value.json.return_value = API_KEY_RESOURCE
+        self.audit.apikeys["akm123"].update(role="traces-searcher")
+        self.client.patch.assert_called_once_with(
+            "/audit/v1/apikeys/akm123/",
+            json={"role": "traces-searcher"},
         )
 
     def test_revoke_deletes_trailing_slash(self):

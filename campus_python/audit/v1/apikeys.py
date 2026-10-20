@@ -6,13 +6,32 @@ API keys are the audit service's own auth material (audit_v1_...),
 managed here: create, list, inspect, update, revoke, regenerate.
 Plaintext key values are returned exactly once, at creation and at
 regeneration.
+
+A key's privilege set may be given as a scope list or as a named role
+the service resolves to one (the catalogue is the service's, so it is
+not duplicated here).
+
+The service's catalogue (campus#918) currently holds:
+
+    traces-viewer    traces:read
+    traces-searcher  traces:read, traces:search
+    traces-producer  traces:read, traces:search, traces:write
+    key-operator     apikeys:read, apikeys:write
+
+That list is quoted here for orientation, not as a contract: the
+service is the authority, and it refuses an unknown role with the
+names of the roles it does have. No role resolves to a wildcard.
 """
 
 from ...interface import JsonDict, Resource, ResourceCollection
 
 
 class APIKeys(ResourceCollection):
-    """Campus Audit API keys resource."""
+    """Campus Audit API keys resource.
+
+    Every write takes a privilege set: either a scope list or a named
+    role the service resolves to one.
+    """
     path = "apikeys/"
 
     def __getitem__(self, api_key_id: str) -> "APIKeys.APIKey":
@@ -24,16 +43,26 @@ class APIKeys(ResourceCollection):
             *,
             name: str,
             owner_id: str,
-            scopes: "list[str]",
+            scopes: "list[str] | None" = None,
+            role: "str | None" = None,
             rate_limit: "int | None" = None,
             expires_at: "str | None" = None,
     ) -> JsonDict:
         """Create an API key.
 
+        Give either `scopes` or a named `role` — the service resolves a
+        role to exactly one scope list. The two are mutually exclusive
+        server-side: sending both is refused (422) rather than one
+        silently winning, so this method does not pre-judge them. An
+        unknown role is likewise refused, with the server naming the
+        roles that exist — the catalogue is the service's, so it is not
+        duplicated here.
+
         Args:
             name: Key name
             owner_id: Owner user ID
             scopes: Scope strings the key grants (e.g. ["traces:read"])
+            role: A named role the service resolves to a scope list
             rate_limit: Requests per minute (optional)
             expires_at: ISO 8601 expiry (optional)
 
@@ -44,8 +73,11 @@ class APIKeys(ResourceCollection):
         payload: JsonDict = {
             "name": name,
             "owner_id": owner_id,
-            "scopes": scopes,
         }
+        if scopes is not None:
+            payload["scopes"] = scopes
+        if role is not None:
+            payload["role"] = role
         if rate_limit is not None:
             payload["rate_limit"] = rate_limit
         if expires_at is not None:
@@ -85,7 +117,11 @@ class APIKeys(ResourceCollection):
         return resp.json()
 
     class APIKey(Resource):
-        """Single campus audit API key resource."""
+        """Single campus audit API key resource.
+
+        update() takes a privilege set too: a scope list or a named
+        role.
+        """
 
         def get(self) -> JsonDict:
             """Get this API key's record (no key hash or plaintext)."""
@@ -98,6 +134,7 @@ class APIKeys(ResourceCollection):
                 *,
                 name: "str | None" = None,
                 scopes: "list[str] | None" = None,
+                role: "str | None" = None,
                 rate_limit: "int | None" = None,
         ) -> JsonDict:
             """Update this API key's mutable fields.
@@ -105,6 +142,12 @@ class APIKeys(ResourceCollection):
             Only name, scopes, and rate_limit are mutable; use
             revoke() to disable the key. The server rejects an empty
             update, so at least one field must be provided.
+
+            A `role` re-scopes the key to the scope list the service
+            resolves that role to. It is mutually exclusive with
+            `scopes` server-side: sending both is refused (422) rather
+            than one silently winning, so this method does not
+            pre-judge them.
 
             Returns:
                 The updated key record
@@ -114,6 +157,8 @@ class APIKeys(ResourceCollection):
                 payload["name"] = name
             if scopes is not None:
                 payload["scopes"] = scopes
+            if role is not None:
+                payload["role"] = role
             if rate_limit is not None:
                 payload["rate_limit"] = rate_limit
             if not payload:
