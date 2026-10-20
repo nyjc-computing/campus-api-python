@@ -151,6 +151,19 @@ class TestTraces(unittest.TestCase):
             query={"path": "/api/v1/timetable/", "status": 404},
         )
 
+    def test_search_sends_journey_id_when_given(self):
+        # journey_id rides as a query param like the other optional
+        # filters (#110); the exact-dict assertion above covers its
+        # omission when not passed.
+        self.client.get.return_value.json.return_value = {
+            "traces": [], "cursor": {"next": None, "has_more": False}
+        }
+        self.audit.traces.search(journey_id="uid-journey-abc123")
+        self.client.get.assert_called_once_with(
+            "/audit/v1/traces/search",
+            query={"journey_id": "uid-journey-abc123"},
+        )
+
     def test_trace_get_returns_tree_envelope(self):
         self.client.get.return_value.json.return_value = {
             "trace_id": "a" * 32,
