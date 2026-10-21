@@ -248,37 +248,36 @@ def propagation_headers() -> dict[str, str]:
         import flask
     except ImportError:  # pragma: no cover - host without flask
         flask = None
-    in_request = flask is not None and flask.has_request_context()
 
-    if in_request:
-        trace_id = getattr(flask.g, "trace_id", None)
-        span_id = getattr(flask.g, "span_id", None)
-        if trace_id and span_id:
-            headers[TRACE_ID_HEADER] = trace_id
-            headers[PARENT_SPAN_ID_HEADER] = span_id
-        journey_id = getattr(flask.g, "journey_id", None)
+    if flask is None or not flask.has_request_context():
+        # Out of any request context (startup, background threads): the
+        # boot journey and process device are the only correlation there is.
+        journey_id, journey_name, device_id = _process_snapshot()
         if journey_id:
             headers[JOURNEY_ID_HEADER] = journey_id
-        journey_name = getattr(flask.g, "journey_name", None)
         if journey_name:
             headers[JOURNEY_NAME_HEADER] = journey_name
-        device_id = getattr(flask.g, "device", None)
-        if not device_id:
-            # Gap-fill only: a request with its own device keeps it.
-            device_id = _process_device()
         if device_id:
-            headers[DEVICE_ID_HEADER] = str(device_id)
+            headers[DEVICE_ID_HEADER] = device_id
         return headers
 
-    # Out of any request context (startup, background threads): the
-    # boot journey and process device are the only correlation there is.
-    journey_id, journey_name, device_id = _process_snapshot()
+    trace_id = getattr(flask.g, "trace_id", None)
+    span_id = getattr(flask.g, "span_id", None)
+    if trace_id and span_id:
+        headers[TRACE_ID_HEADER] = trace_id
+        headers[PARENT_SPAN_ID_HEADER] = span_id
+    journey_id = getattr(flask.g, "journey_id", None)
     if journey_id:
         headers[JOURNEY_ID_HEADER] = journey_id
+    journey_name = getattr(flask.g, "journey_name", None)
     if journey_name:
         headers[JOURNEY_NAME_HEADER] = journey_name
+    device_id = getattr(flask.g, "device", None)
+    if not device_id:
+        # Gap-fill only: a request with its own device keeps it.
+        device_id = _process_device()
     if device_id:
-        headers[DEVICE_ID_HEADER] = device_id
+        headers[DEVICE_ID_HEADER] = str(device_id)
     return headers
 
 
