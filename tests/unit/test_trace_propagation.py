@@ -7,6 +7,7 @@ receiving campus service records the call as a child span — and attach
 nothing when there is no active traced request.
 """
 
+import os
 import unittest
 
 import flask
@@ -225,6 +226,219 @@ class TestJourneyNameForwarding(unittest.TestCase):
         adoption constant — the two modules carry keep-in-lockstep
         notes and the whole chain breaks silently if they drift."""
         self.assertEqual(tracing.JOURNEY_NAME_HEADER, "X-Journey-Name")
+
+
+class TestProcessJourney(unittest.TestCase):
+    """Boot journey + process device on out-of-request calls (#114).
+
+    Ruling (2026-10-21): every SDK call is a user request — human or
+    agent — so out-of-request calls (startup, background threads)
+    correlate under one journey per process boot, attributed to the
+    operator. Strict MVP: in-request calls never inherit the journey.
+    """
+
+    def setUp(self):
+        tracing._reset_process_journey()
+        self.addCleanup(tracing._reset_process_journey)
+        # Snapshot and clear both env knobs so tests are deterministic
+        # regardless of the host environment.
+        self._saved_env = {
+            key: os.environ.get(key)
+            for key in (tracing.PROCESS_JOURNEY_ENV, tracing.PROCESS_DEVICE_ENV)
+        }
+        for key in self._saved_env:
+            os.environ.pop(key, None)
+        self.addCleanup(self._restore_env)
+
+    def _restore_env(self):
+        for key, value in self._saved_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    def _client(self):
+        client = _make_client()
+        self.captured = _capture_send(client)
+        return client
+
+    def test_out_of_request_call_carries_boot_journey(self):
+        client = self._client()
+
+        client.get("/ping")
+
+        journey_id = self.captured["headers"].get("X-Journey-ID")
+        self.assertTrue(journey_id.startswith("uid-journey-"))
+        # Auto-minted: no name until the app sets one.
+        self.assertNotIn("X-Journey-Name", self.captured["headers"])
+
+    def test_one_journey_per_process(self):
+        """The minted id stays fixed across calls — one journey per boot."""
+        client = self._client()
+
+        client.get("/ping")
+        first = self.captured["headers"].get("X-Journey-ID")
+        client.get("/ping")
+
+        self.assertEqual(self.captured["headers"].get("X-Journey-ID"), first)
+
+    def test_explicit_id_and_name_via_api(self):
+        tracing.set_process_journey("uid-journey-custom01", name="campus.api.boot")
+        client = self._client()
+
+        client.get("/ping")
+
+        self.assertEqual(
+            self.captured["headers"].get("X-Journey-ID"), "uid-journey-custom01"
+        )
+        self.assertEqual(
+            self.captured["headers"].get("X-Journey-Name"), "campus.api.boot"
+        )
+
+    def test_set_process_journey_mints_and_returns_id(self):
+        journey_id = tracing.set_process_journey(name="campus.yapper.boot")
+
+        self.assertTrue(journey_id.startswith("uid-journey-"))
+        client = self._client()
+        client.get("/ping")
+        self.assertEqual(self.captured["headers"].get("X-Journey-ID"), journey_id)
+        self.assertEqual(
+            self.captured["headers"].get("X-Journey-Name"), "campus.yapper.boot"
+        )
+
+    def test_env_opt_out_suppresses_journey(self):
+        os.environ[tracing.PROCESS_JOURNEY_ENV] = "off"
+        client = self._client()
+
+        client.get("/ping")
+
+        self.assertNotIn("X-Journey-ID", self.captured["headers"])
+        self.assertNotIn("X-Journey-Name", self.captured["headers"])
+
+    def test_disable_api_suppresses_journey(self):
+        tracing.disable_process_journey()
+        client = self._client()
+
+        client.get("/ping")
+
+        self.assertNotIn("X-Journey-ID", self.captured["headers"])
+
+    def test_set_process_journey_reenables_after_disable(self):
+        tracing.disable_process_journey()
+        tracing.set_process_journey(name="campus.api.boot")
+        client = self._client()
+
+        client.get("/ping")
+
+        self.assertTrue(self.captured["headers"].get("X-Journey-ID", "").startswith(
+            "uid-journey-"
+        ))
+
+    def test_env_explicit_id_pinned(self):
+        """A non-off CAMPUS_PROCESS_JOURNEY value pins that id (e.g. to
+        correlate a known deploy) instead of auto-minting."""
+        os.environ[tracing.PROCESS_JOURNEY_ENV] = "uid-journey-deploy42"
+        client = self._client()
+
+        client.get("/ping")
+
+        self.assertEqual(
+            self.captured["headers"].get("X-Journey-ID"), "uid-journey-deploy42"
+        )
+
+    def test_process_device_from_railway_env(self):
+        os.environ[tracing.PROCESS_DEVICE_ENV] = "deploy-abc123"
+        client = self._client()
+
+        client.get("/ping")
+
+        self.assertEqual(
+            self.captured["headers"].get("X-Campus-Device"), "deploy-abc123"
+        )
+
+    def test_in_request_journeyless_call_stays_unjourneyed(self):
+        """Strict MVP: no journey header inside a request that has none —
+        the trace waterfall already correlates the chain."""
+        app = flask.Flask(__name__)
+        client = self._client()
+        tracing.set_process_journey(name="campus.api.boot")
+
+        with app.test_request_context("/"):
+            client.get("/ping")
+
+        self.assertNotIn("X-Journey-ID", self.captured["headers"])
+        self.assertNotIn("X-Journey-Name", self.captured["headers"])
+
+    def test_in_request_journey_wins_over_process(self):
+        """A journeyed request forwards its own journey, never the boot's."""
+        app = flask.Flask(__name__)
+        client = self._client()
+        boot_id = tracing.set_process_journey()
+
+        with app.test_request_context("/"):
+            flask.g.journey_id = "uid-journey-request1"
+            flask.g.journey_name = "campus.submissions.submit"
+            client.get("/ping")
+
+        self.assertEqual(
+            self.captured["headers"].get("X-Journey-ID"), "uid-journey-request1"
+        )
+        self.assertEqual(
+            self.captured["headers"].get("X-Journey-Name"),
+            "campus.submissions.submit",
+        )
+        self.assertNotEqual(
+            self.captured["headers"].get("X-Journey-ID"), boot_id
+        )
+
+    def test_in_request_device_gap_filled_by_process(self):
+        """A request with no stashed device attributes to the deploy."""
+        app = flask.Flask(__name__)
+        client = self._client()
+        os.environ[tracing.PROCESS_DEVICE_ENV] = "deploy-abc123"
+
+        with app.test_request_context("/"):
+            flask.g.trace_id = TRACE_ID
+            flask.g.span_id = SPAN_ID
+            client.get("/ping")
+
+        self.assertEqual(
+            self.captured["headers"].get("X-Campus-Device"), "deploy-abc123"
+        )
+
+    def test_in_request_stashed_device_wins(self):
+        app = flask.Flask(__name__)
+        client = self._client()
+        os.environ[tracing.PROCESS_DEVICE_ENV] = "deploy-abc123"
+
+        with app.test_request_context("/"):
+            flask.g.device = "uid-device-session1"
+            client.get("/ping")
+
+        self.assertEqual(
+            self.captured["headers"].get("X-Campus-Device"), "uid-device-session1"
+        )
+
+    def test_set_process_device_overrides_env(self):
+        os.environ[tracing.PROCESS_DEVICE_ENV] = "deploy-abc123"
+        tracing.set_process_device("deploy-xyz789")
+        client = self._client()
+
+        client.get("/ping")
+
+        self.assertEqual(
+            self.captured["headers"].get("X-Campus-Device"), "deploy-xyz789"
+        )
+
+    def test_minted_id_matches_campus_format(self):
+        """uid-journey-<first 16 chars of the hyphenated uuid4>, matching
+        campus.common.utils.uid.generate_category_uid("journey")."""
+        journey_id = tracing._mint_journey_id()
+
+        self.assertTrue(journey_id.startswith("uid-journey-"))
+        suffix = journey_id.removeprefix("uid-journey-")
+        self.assertEqual(len(suffix), 16)
+        self.assertEqual(suffix.count("-"), 2)
 
 
 class TestDeviceForwarding(unittest.TestCase):
