@@ -181,6 +181,52 @@ class TestJourneyForwarding(unittest.TestCase):
         self.assertNotIn("X-Request-ID", captured["headers"])
 
 
+class TestJourneyNameForwarding(unittest.TestCase):
+    """Journey-label forwarding on SDK calls (campus#952).
+
+    When the host stashes a journey name (flask.g.journey_name — set by
+    flask_campus's @journey decorator or by the journeys middleware
+    adopting X-Journey-Name), SDK calls forward it alongside the id so
+    child services' spans tag the same journey_name.
+    """
+
+    def test_name_forwarded_with_journey_id(self):
+        app = flask.Flask(__name__)
+        client = _make_client()
+        captured = _capture_send(client)
+
+        with app.test_request_context("/"):
+            flask.g.journey_id = "uid-journey-abc123"
+            flask.g.journey_name = "campus.submissions.submit"
+            client.get("/ping")
+
+        self.assertEqual(
+            captured["headers"].get("X-Journey-Name"),
+            "campus.submissions.submit",
+        )
+        self.assertEqual(
+            captured["headers"].get("X-Journey-ID"), "uid-journey-abc123"
+        )
+
+    def test_no_name_no_header(self):
+        """A journey without a stashed name emits no name header."""
+        app = flask.Flask(__name__)
+        client = _make_client()
+        captured = _capture_send(client)
+
+        with app.test_request_context("/"):
+            flask.g.journey_id = "uid-journey-abc123"
+            client.get("/ping")
+
+        self.assertNotIn("X-Journey-Name", captured["headers"])
+
+    def test_name_lockstep_with_campus_middleware(self):
+        """The header name must match the campus journeys middleware's
+        adoption constant — the two modules carry keep-in-lockstep
+        notes and the whole chain breaks silently if they drift."""
+        self.assertEqual(tracing.JOURNEY_NAME_HEADER, "X-Journey-Name")
+
+
 class TestDeviceForwarding(unittest.TestCase):
     """Device forwarding on SDK calls (campus#837).
 
