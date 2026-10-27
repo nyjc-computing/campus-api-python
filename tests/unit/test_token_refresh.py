@@ -43,8 +43,14 @@ LOGIN_TOKEN_PAYLOAD = {
 
 
 def make_auth() -> tuple[AuthRoot, Mock]:
-    """Create an AuthRoot backed by a mock JSON client."""
+    """Create an AuthRoot backed by a mock JSON client.
+
+    headers.get defaults to None (no ambient Authorization header) —
+    token() restores whatever header it finds, so tests that exercise
+    the ambient-bearer path override this.
+    """
     client = Mock()
+    client.headers.get.return_value = None
     return AuthRoot(json_client=client), client
 
 
@@ -153,6 +159,63 @@ class TestLoginSessionTokenRoute(unittest.TestCase):
             with self.assertRaises(errors.APIError) as ctx:
                 self.auth.logins.token()
         self.assertEqual(ctx.exception.oauth_error, "invalid_grant")
+
+
+class TestLoginTokenPresentsBasicOnly(unittest.TestCase):
+    """The session-token route serves client principals only (#963/A10):
+    token() must present Basic credentials even when an ambient bearer
+    is set — a with_user_session() nested inside another one otherwise
+    presents the outer session's user token and is refused with 403.
+    The prior header is restored afterwards."""
+
+    def setUp(self):
+        self.auth, self.client = make_auth()
+        self.client.post.return_value = make_response(
+            200, dict(LOGIN_TOKEN_PAYLOAD)
+        )
+
+    def _call(self):
+        with session_context():
+            flask.session["logins_login_id"] = "login-1"
+            return self.auth.logins.token()
+
+    def test_forces_basic_when_bearer_is_set(self):
+        self.client.headers.get.return_value = "Bearer outer-user-token"
+        self._call()
+        calls = [name for name, _, _ in self.client.mock_calls
+                 if name in ("reset_authorization", "post",
+                             "set_bearer_authorization")]
+        # The exact ordering contract: drop the ambient bearer (Basic),
+        # make the call, then restore it.
+        self.assertEqual(
+            ["reset_authorization", "post", "set_bearer_authorization"], calls
+        )
+
+    def test_restores_ambient_bearer_after_the_call(self):
+        self.client.headers.get.return_value = "Bearer outer-user-token"
+        self._call()
+        self.client.set_bearer_authorization.assert_called_once_with(
+            "outer-user-token"
+        )
+
+    def test_failure_still_restores_ambient_bearer(self):
+        self.client.headers.get.return_value = "Bearer outer-user-token"
+        self.client.post.return_value = make_response(403, {
+            "error": {"code": "FORBIDDEN", "message": "denied"}
+        })
+        with session_context():
+            flask.session["logins_login_id"] = "login-1"
+            with self.assertRaises(errors.APIError):
+                self.auth.logins.token()
+        self.client.set_bearer_authorization.assert_called_once_with(
+            "outer-user-token"
+        )
+
+    def test_no_ambient_header_leaves_basic_in_place(self):
+        self.client.headers.get.return_value = None
+        self._call()
+        self.client.reset_authorization.assert_called_once()
+        self.client.set_bearer_authorization.assert_not_called()
 
 
 class TestPublicClientRefresh(unittest.TestCase):
