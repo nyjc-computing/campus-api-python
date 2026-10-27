@@ -131,6 +131,11 @@ class JsonClient(ABC):
     def reset_authorization(self) -> None:
         """Reset authorization back to client credentials from env."""
 
+    @property
+    @abstractmethod
+    def authorization(self) -> str | None:
+        """The current Authorization header value, or None when unset."""
+
     @abstractmethod
     def set_basic_authorization(self, client_id: str, secret: str) -> None:
         """Set Basic Authorization header using a pre-encoded token.

@@ -143,12 +143,32 @@ class LoginSessions(ResourceCollection):
             nothing (C5). The response omits the refresh token —
             campus refresh material never leaves the auth service in
             this lane.
+
+            The call presents Basic client credentials, never the
+            ambient bearer: the route denies user principals outright
+            (#963/A10), and with_user_session() nested inside another
+            with_user_session() (e.g. an auth-broker release reached
+            from a route that already holds the user session) would
+            otherwise present the outer session's user token and be
+            refused with 403. Any prior Authorization header is
+            restored afterwards, so an enclosing session keeps its
+            authorization until it re-runs use_token() with the fresh
+            bearer.
             """
             # Canonical path has no trailing slash (route rule is
             # /<session_id>/token, unlike the CRUD subresources).
-            resp = self.client.post(
-                self.make_path("token")
-            )
+            prior_authorization = self.client.authorization
+            self.client.reset_authorization()
+            try:
+                resp = self.client.post(
+                    self.make_path("token")
+                )
+            finally:
+                if prior_authorization is not None and prior_authorization.startswith(
+                        "Bearer "):
+                    self.client.set_bearer_authorization(
+                        prior_authorization[len("Bearer "):]
+                    )
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
             return campus.model.OAuthToken.from_resource(resp.json())

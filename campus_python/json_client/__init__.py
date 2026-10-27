@@ -130,6 +130,11 @@ class CampusRequest(JsonClient):
             secret=env.CLIENT_SECRET
         )
 
+    @property
+    def authorization(self) -> str | None:
+        """The current Authorization header value, or None when unset."""
+        return self._session.headers.get("Authorization")
+
     def set_basic_authorization(self, client_id: str, secret: str) -> None:
         """Set Basic Authorization header using a pre-encoded token.
 
