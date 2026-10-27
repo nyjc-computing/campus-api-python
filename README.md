@@ -161,7 +161,7 @@ client.auth.client.set_bearer_authorization(access_token)
 
 ### 401 Auto-Refresh
 
-`with_user_session()` installs a one-shot 401 auto-refresh hook on the auth and api clients by default (issue #89): when a request comes back 401 because the bearer expired mid-session, the session token is force-refreshed once and the request retried with the new Authorization header. If the refresh fails, the original 401 surfaces to the caller as before. Pass `refresh_on_401=False` for the old behaviour.
+`with_user_session()` installs a one-shot 401 auto-refresh hook on the auth and api clients by default (issue #89): when a request comes back 401 because the bearer expired mid-session, the session token is re-acquired once via `POST /auth/v1/logins/<session_id>/token` (campus#964) and the request retried with the new Authorization header. If the re-acquisition fails, the original 401 surfaces to the caller as before. Pass `refresh_on_401=False` for the old behaviour.
 
 ```python
 with campus.with_user_session() as client:            # hook on (default)

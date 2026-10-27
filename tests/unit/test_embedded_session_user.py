@@ -40,17 +40,6 @@ TOKEN_RESOURCE = {
     "user_id": "user-1",
 }
 
-AUTH_SESSION_RESOURCE = {
-    "id": SESSION_ID,
-    "created_at": "2026-10-01T00:00:00+00:00",
-    "expires_at": "2026-11-01T00:00:00+00:00",
-    "provider": "campus",
-    "client_id": "client-1",
-    "user_id": "user-1",
-    "redirect_uri": "https://app.example.org/finalize_login",
-    "scopes": [],
-}
-
 
 def make_auth() -> tuple[AuthRoot, Mock]:
     """Create an AuthRoot backed by a mock JSON client."""
@@ -160,14 +149,10 @@ class TestPushContextUsesEmbed(unittest.TestCase):
         self.assertTrue(self.users_mock["user-1"].get.called)
 
     def test_model_without_user_field_falls_back(self):
-        """An installed campus-suite predating the field still resolves."""
-        session = campus.model.AuthSession.from_resource(
-            AUTH_SESSION_RESOURCE
-        )
-        assert not hasattr(session, "user"), (
-            "campus-suite now carries the field; this skew case needs a "
-            "pre-#879 fixture instead"
-        )
+        """A campus-suite predating the #879 field still resolves: the
+        getattr fallback tolerates session objects with no `user`
+        attribute at all (pre-#879 model shape), not just user=None."""
+        session = SimpleNamespace(user_id="user-1")
         user = self.push_session(session)
         self.assertEqual(user.email, USER_RESOURCE["email"])
         self.assertTrue(self.users_mock["user-1"].get.called)

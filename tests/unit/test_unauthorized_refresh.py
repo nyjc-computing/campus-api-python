@@ -7,8 +7,9 @@ Failures (hook returns None, or the retry 401s again) surface the
 original 401 to the caller — the hook is strictly a safety net.
 
 Campus.with_user_session(refresh_on_401=True) wires the hook so the
-refresh round-trip force-refreshes the session token, authenticating as
-the client (Basic) like session establishment does.
+refresh round-trip re-acquires the session token via the login-session
+token route (campus#964), authenticating as the client (Basic) — the
+route denies user principals outright.
 """
 
 import json
@@ -147,8 +148,8 @@ class TestUnauthorizedHook(unittest.TestCase):
 
 
 class TestWithUserSessionWiring(unittest.TestCase):
-    """with_user_session() installs a force-refresh hook on both
-    service clients and removes it when the session closes."""
+    """with_user_session() installs a token re-acquisition hook on
+    both service clients and removes it when the session closes."""
 
     def setUp(self):
         self.campus = Campus.__new__(Campus)
@@ -181,7 +182,7 @@ class TestWithUserSessionWiring(unittest.TestCase):
         token1 = Mock(access_token="tok1")
         self.get_token.return_value = token1
 
-    def test_401_mid_session_force_refreshes_and_retries(self):
+    def test_401_mid_session_reacquires_and_retries(self):
         cast(MagicMock, self.api_client._session).request.side_effect = [
             raw_response(401, {}), raw_response(200, {"ok": True}),
         ]
@@ -201,9 +202,10 @@ class TestWithUserSessionWiring(unittest.TestCase):
             )
 
         self.assertEqual(resp.status_code, 200)
-        # Second call is the hook's force-refresh
+        # Second call is the hook's re-acquisition — same one-endpoint
+        # path as session establishment (#117): no refresh kwargs.
         self.assertEqual(self.get_token.call_count, 2)
-        self.assertTrue(self.get_token.call_args.kwargs["force_refresh"])
+        self.assertEqual(self.get_token.call_args.kwargs, {})
 
     def test_refresh_failure_surfaces_original_401(self):
         cast(MagicMock, self.api_client._session).request.side_effect = [raw_response(401, {})]

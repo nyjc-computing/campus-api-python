@@ -52,6 +52,23 @@ class LoginSessions(ResourceCollection):
         """Check if there is a session ID stored in the flask session."""
         return self._session_key in flask.session
 
+    def token(self) -> campus.model.OAuthToken:
+        """Re-acquire the current login session's campus bearer (#117).
+
+        One endpoint call (campus#964, invariant A10):
+        POST /logins/<session_id>/token, authenticated by the client's
+        Basic credentials plus the session id — user bearers are denied
+        outright, so the caller must not present one (revoke_session()
+        first mid-rotation). An expired grant token is rotated
+        server-side; the response omits the refresh token.
+
+        Raises:
+            AuthenticationError: If no login session is present.
+            APIError: invalid_grant when the session or the user's
+                campus grant is gone — the cue to require re-login.
+        """
+        return self[None].token()
+
     def new(
             self,
             *,
@@ -112,3 +129,26 @@ class LoginSessions(ResourceCollection):
             # Raise error if status code is not 2XX or 3XX
             resp.raise_for_status()
             return campus.model.LoginSession.from_resource(resp.json())
+
+        def token(self) -> campus.model.OAuthToken:
+            """Re-acquire the session user's campus bearer (#117).
+
+            POST /logins/<session_id>/token — the session-bound
+            re-acquisition lane (campus#964, invariant A10): the login
+            session plays the authorization code's role, authenticated
+            with the client's Basic credentials. Issuance mirrors the
+            code exchange: an unexpired grant token is reused, an
+            expired one is minted fresh (rotated server-side), and a
+            missing grant is an invalid_grant, never minted from
+            nothing (C5). The response omits the refresh token —
+            campus refresh material never leaves the auth service in
+            this lane.
+            """
+            # Canonical path has no trailing slash (route rule is
+            # /<session_id>/token, unlike the CRUD subresources).
+            resp = self.client.post(
+                self.make_path("token")
+            )
+            # Raise error if status code is not 2XX or 3XX
+            resp.raise_for_status()
+            return campus.model.OAuthToken.from_resource(resp.json())
