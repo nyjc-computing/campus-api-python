@@ -306,9 +306,13 @@ class AuthRoot(ResourceRoot):
     def get_token(self) -> campus.model.OAuthToken:
         """Convenience method to get access token for a user.
 
-        This retrieves the user's credentials which includes their access token.
-        Allows apps to get a fresh token without re-authenticating via OAuth
-        if the user has a valid login session.
+        Re-acquires the login session user's campus bearer via
+        POST /logins/<session_id>/token (campus#963/#964, invariant
+        A10): one Basic-authenticated endpoint call in the
+        session-bound lane — never the operator-gated credentials
+        routes (#854). An expired grant token is rotated server-side,
+        so the returned token is always live; the response carries no
+        refresh token.
 
         Args:
             None
@@ -317,7 +321,9 @@ class AuthRoot(ResourceRoot):
             OAuthToken for the user
 
         Raises:
-            AuthenticationError: If no login session or no credentials found
+            AuthenticationError: If no login session is present
+            APIError: invalid_grant if the login session or the
+                user's campus grant is gone — re-login required
 
         Example:
             # In a protected view that needs the user's token
@@ -325,28 +331,7 @@ class AuthRoot(ResourceRoot):
             headers = {"Authorization": f"Bearer {token.id}"}
             response = requests.get("https://api.example.com/data", headers=headers)
         """
-        # Get user_id from login session
-        if not self.logins.has_session():
-            raise errors.AuthenticationError(
-                error_description="No login session found. User must log in first."
-            )
-        login_session = self.logins.from_session()
-        user_id = login_session.user_id
-        if user_id is None:
-            raise errors.AuthenticationError(
-                error_description="Login session has no user id."
-            )
-
-        # Retrieve credentials for the user
-        credentials = self.credentials["campus"][user_id].get()
-        if not credentials.token:
-            raise errors.AuthenticationError(
-                error_description=f"No Campus token found for user {user_id}"
-            )
-
-        # TODO: Auto-refresh if token is expired and refresh_token is available
-        # For now, return the token as-is
-        return credentials.token
+        return self.logins.token()
 
     def _user_cache_get(
             self, kind: str, session_id: str

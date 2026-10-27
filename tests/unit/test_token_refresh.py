@@ -1,8 +1,11 @@
-"""Unit test for Campus._get_token_from_session token rotation.
+"""Unit tests for the session-token path.
 
-After exchanging the refresh token, the refreshed token must be the one
-returned — the credentials resource still holds the pre-refresh access
-token, and refresh-token grants rotate (single-use) on the server.
+Campus._get_token_from_session() re-acquires the session user's campus
+bearer with ONE call to POST /auth/v1/logins/{session_id}/token
+(campus#963/#964, invariant A10) — the operator-gated credentials
+GET → refresh grant → credentials PATCH legs (#854) are gone, with no
+fallback to them. The server rotates an expired grant token itself, so
+the client sends no body and never writes back.
 
 Also covers the public-client refresh helper auth.refresh(stored)
 (client issue #87): it presents the stored refresh token with the
@@ -12,9 +15,10 @@ issuing client_id and returns the rotated pair.
 import json
 import os
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import campus.model
+import flask
 import requests
 
 from campus_python import Campus, errors
@@ -29,11 +33,29 @@ RFC_REFRESH_PAYLOAD = {
     "scope": "campus.profile",
 }
 
+LOGIN_TOKEN_PAYLOAD = {
+    "access_token": "tok-live",
+    "token_type": "Bearer",
+    "expires_in": 432000,
+    "scope": "campus.profile",
+    "user_id": "user1",
+}
+
 
 def make_auth() -> tuple[AuthRoot, Mock]:
     """Create an AuthRoot backed by a mock JSON client."""
     client = Mock()
     return AuthRoot(json_client=client), client
+
+
+def make_campus() -> tuple[Campus, Mock]:
+    """Create a Campus whose auth root is backed by a mock client."""
+    client = Mock()
+    campus = Campus.__new__(Campus)
+    campus._mode = "server"
+    campus.timeout = 5
+    campus._auth = AuthRoot(json_client=client)
+    return campus, client
 
 
 def make_response(status_code: int, payload: dict) -> CampusResponse:
@@ -46,40 +68,91 @@ def make_response(status_code: int, payload: dict) -> CampusResponse:
     return CampusResponse(raw)
 
 
+def session_context():
+    """A Flask request context with a writable session."""
+    app = flask.Flask(__name__)
+    app.secret_key = "test-secret"
+    return app.test_request_context()
+
+
 class TestGetTokenFromSession(unittest.TestCase):
-    """The refreshed token, not the stale credentials token, is returned."""
+    """The session bearer comes from the login-session token route."""
 
-    def test_returns_refreshed_token_after_refresh(self):
-        with patch.dict(os.environ, {"CLIENT_ID": "cid", "CLIENT_SECRET": "sec"}):
-            campus = Campus(timeout=5)
-            auth = campus.auth
+    def test_delegates_to_logins_token_once(self):
+        campus, client = make_campus()
+        auth = campus.auth
 
-            old_token = Mock()
-            old_token.is_expired.return_value = True
-            new_token = Mock()
+        logins = Mock()
+        live = Mock(access_token="tok-live")
+        logins.token.return_value = live
+        auth._logins = logins
 
-            auth._logins = Mock()
-            auth._logins.from_session.return_value = Mock(user_id="user1")
+        result = campus._get_token_from_session()
 
-            creds_resource = Mock()
-            creds_resource.get.return_value = Mock(token=old_token)
-            provider = MagicMock()
-            provider.__getitem__.return_value = creds_resource
-            creds_collection = MagicMock()
-            creds_collection.__getitem__.return_value = provider
-            auth._credentials = creds_collection
+        self.assertIs(result, live)
+        logins.token.assert_called_once_with()
+        # One endpoint call, nothing else: no credentials GET, no
+        # refresh grant, no PATCH write-back (#854 lanes are gone).
+        client.get.assert_not_called()
+        client.post.assert_not_called()
+        client.patch.assert_not_called()
 
-            with patch.object(
-                    type(auth), "token", return_value=new_token
-            ) as token_mock:
-                result = campus._get_token_from_session(force_refresh=True)
 
-            self.assertIs(result, new_token)
-            token_mock.assert_called_once_with(
-                grant_type="refresh_token",
-                refresh_token=old_token.refresh_token,
-            )
-            creds_resource.update.assert_called_once_with(token=new_token)
+class TestLoginSessionTokenRoute(unittest.TestCase):
+    """logins.token() POSTs /auth/v1/logins/{id}/token (#117)."""
+
+    def setUp(self):
+        self.auth, self.client = make_auth()
+        self.client.post.return_value = make_response(
+            200, dict(LOGIN_TOKEN_PAYLOAD)
+        )
+
+    def test_posts_to_session_token_route(self):
+        with session_context():
+            flask.session["logins_login_id"] = "login-1"
+            token = self.auth.logins.token()
+
+        self.assertEqual(token.access_token, "tok-live")
+        self.assertEqual(token.scope, "campus.profile")
+        # The user_id echo survives as provider metadata (#648)
+        self.assertEqual(token.provider_fields.get("user_id"), "user1")
+        args, kwargs = self.client.post.call_args
+        # Canonical route has no trailing slash; the session id and
+        # the client's Basic credentials carry the request — no body.
+        self.assertEqual(args[0], "/auth/v1/logins/login-1/token")
+        self.assertIsNone(kwargs.get("json"))
+
+    def test_get_token_uses_the_same_route(self):
+        with session_context():
+            flask.session["logins_login_id"] = "login-1"
+            token = self.auth.get_token()
+
+        self.assertEqual(token.access_token, "tok-live")
+        self.client.get.assert_not_called()
+        self.client.patch.assert_not_called()
+
+    def test_no_login_session_raises_without_http(self):
+        with session_context():
+            with self.assertRaises(errors.AuthenticationError):
+                self.auth.logins.token()
+        self.client.post.assert_not_called()
+
+    def test_invalid_grant_surfaces_oauth_error(self):
+        """A gone session or campus grant is invalid_grant — the
+        caller's cue to require re-login (#87 convention)."""
+        self.client.post.return_value = make_response(400, {
+            "error": {
+                "code": "AUTH_INVALID_GRANT",
+                "message": "Invalid or expired login session",
+                "details": {"oauth_error": "invalid_grant"},
+                "request_id": None,
+            }
+        })
+        with session_context():
+            flask.session["logins_login_id"] = "login-1"
+            with self.assertRaises(errors.APIError) as ctx:
+                self.auth.logins.token()
+        self.assertEqual(ctx.exception.oauth_error, "invalid_grant")
 
 
 class TestPublicClientRefresh(unittest.TestCase):

@@ -182,34 +182,19 @@ class Campus:
             )
         return self._integrations
 
-    def _get_token_from_session(
-            self,
-            force_refresh=False,
-            refresh_if_expired=True
-    ) -> campus.model.OAuthToken:
-        """Get the token from flask session."""
-        # flask session stores a session id
-        login_session = self.auth.logins.from_session()
-        user_id = login_session.user_id
-        if user_id is None:
-            raise errors.AuthenticationError(
-                error_description="Login session has no user id."
-            )
-        creds_resource = self.auth.credentials["campus"][user_id]
-        user_creds = creds_resource.get()
-        if (
-                force_refresh
-                or refresh_if_expired and user_creds.token.is_expired()
-        ):
-            token = self.auth.token(
-                grant_type="refresh_token",
-                refresh_token=user_creds.token.refresh_token
-            )
-            self.auth.credentials["campus"][user_id].update(token=token)
-            # Return the refreshed token — user_creds still holds the
-            # pre-refresh (now rotated) access token.
-            return token
-        return user_creds.token
+    def _get_token_from_session(self) -> campus.model.OAuthToken:
+        """Get the token from flask session.
+
+        One endpoint call (campus#963/#964, invariant A10):
+        POST /logins/<session_id>/token re-acquires the session user's
+        campus bearer with the client's Basic credentials. The
+        operator-gated credentials GET → refresh grant → credentials
+        PATCH legs (#854) are gone, with no fallback to them; the
+        server rotates an expired grant token itself, so there is no
+        proactive is_expired() check or write-back here — re-calling
+        this method (as the 401 hook does) is the refresh.
+        """
+        return self.auth.get_token()
 
     def revoke_session(self) -> None:
         """Revoke the current authorization token."""
@@ -260,12 +245,13 @@ class Campus:
         By default a 401 auto-refresh hook is installed on the auth and
         api clients for the duration of the session (issue #89): when a
         request comes back 401 because the bearer expired after the
-        proactive refresh below, the token is force-refreshed once and
-        the request retried with the new Authorization header. The
-        retry cannot double-execute work — Campus services reject
-        unauthenticated requests in a before_request authenticator
-        before any handler runs. If the refresh itself fails, the
-        original 401 response surfaces to the caller as before. Pass
+        re-acquisition below, the token is re-acquired once via the
+        login-session token route (campus#964) and the request retried
+        with the new Authorization header. The retry cannot
+        double-execute work — Campus services reject unauthenticated
+        requests in a before_request authenticator before any handler
+        runs. If the re-acquisition itself fails, the original 401
+        response surfaces to the caller as before. Pass
         refresh_on_401=False for the old behaviour.
 
         Yields:
@@ -279,18 +265,17 @@ class Campus:
             refreshing = False
 
             def refresh_bearer() -> str | None:
-                """Force-refresh the session token once.
+                """Re-acquire the session token once.
 
                 Returns the new bearer token for the client to retry
                 with, or None on failure (the original 401 then
-                surfaces). Re-entrant calls (the refresh round-trip
-                itself hitting a 401) bail out immediately.
+                surfaces). Re-entrant calls (the re-acquisition
+                round-trip itself hitting a 401) bail out immediately.
 
-                The refresh round-trip authenticates as the client
-                (Basic), the same mode _get_token_from_session runs in
-                at session establishment — auth routes accept both,
-                but the session's stale bearer must not be presented
-                mid-rotation.
+                The round-trip authenticates as the client (Basic):
+                the login-session token route denies user principals
+                outright (campus#964/A10), so the session's stale
+                bearer must not be presented mid-rotation.
                 """
                 nonlocal refreshing
                 if refreshing:
@@ -298,9 +283,7 @@ class Campus:
                 refreshing = True
                 try:
                     self.revoke_session()
-                    refreshed = self._get_token_from_session(
-                        force_refresh=True
-                    )
+                    refreshed = self._get_token_from_session()
                 except errors.APIError:
                     self.use_token(token)
                     return None
