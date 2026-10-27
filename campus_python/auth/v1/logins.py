@@ -157,7 +157,7 @@ class LoginSessions(ResourceCollection):
             """
             # Canonical path has no trailing slash (route rule is
             # /<session_id>/token, unlike the CRUD subresources).
-            prior_authorization = self.client.headers.get("Authorization")
+            prior_authorization = self.client.authorization
             self.client.reset_authorization()
             try:
                 resp = self.client.post(

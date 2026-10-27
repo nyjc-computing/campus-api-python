@@ -50,7 +50,7 @@ def make_auth() -> tuple[AuthRoot, Mock]:
     the ambient-bearer path override this.
     """
     client = Mock()
-    client.headers.get.return_value = None
+    client.authorization = None  # property read in token()
     return AuthRoot(json_client=client), client
 
 
@@ -180,7 +180,7 @@ class TestLoginTokenPresentsBasicOnly(unittest.TestCase):
             return self.auth.logins.token()
 
     def test_forces_basic_when_bearer_is_set(self):
-        self.client.headers.get.return_value = "Bearer outer-user-token"
+        self.client.authorization = "Bearer outer-user-token"
         self._call()
         calls = [name for name, _, _ in self.client.mock_calls
                  if name in ("reset_authorization", "post",
@@ -192,14 +192,14 @@ class TestLoginTokenPresentsBasicOnly(unittest.TestCase):
         )
 
     def test_restores_ambient_bearer_after_the_call(self):
-        self.client.headers.get.return_value = "Bearer outer-user-token"
+        self.client.authorization = "Bearer outer-user-token"
         self._call()
         self.client.set_bearer_authorization.assert_called_once_with(
             "outer-user-token"
         )
 
     def test_failure_still_restores_ambient_bearer(self):
-        self.client.headers.get.return_value = "Bearer outer-user-token"
+        self.client.authorization = "Bearer outer-user-token"
         self.client.post.return_value = make_response(403, {
             "error": {"code": "FORBIDDEN", "message": "denied"}
         })
