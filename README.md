@@ -18,11 +18,12 @@ The Campus API Python library is a comprehensive client for interacting with the
 
 ## Tech Stack
 
-- **Language:** Python 3.11 and 3.12
+- **Language:** Python 3.11–3.13 (3.14 tested, unofficial)
 - **Package Management:** Poetry
 - **Dependencies:**
+  - `requests` - HTTP client (`json_client`)
   - `flask` - Web framework (for integration)
-  - `campus-suite` - Campus backend services
+  - `campus-common` / `campus-model` - Campus shared kernel and domain models (version-pinned release wheels)
   - Additional dependencies managed via Poetry
 
 ## Setup
@@ -112,8 +113,6 @@ campus-api-python/
 │   └── json_client/        # JSON client implementation
 │       ├── __init__.py
 │       └── interface.py
-├── scripts/                # Utility scripts
-│   └── refresh-dependencies.sh
 ├── tests/                  # Test suite
 │   └── unit/               # Unit tests
 ├── pyproject.toml          # Poetry configuration
@@ -208,15 +207,14 @@ Each service client (`campus.auth`, `campus.api`, `campus.audit`) resolves its b
 
 ## Development
 
-### Refreshing Dependencies
+### Updating Dependencies
 
-If you make changes to the local `campus-suite` package:
-
-```bash
-./scripts/refresh-dependencies.sh
-```
-
-This will update `poetry.lock` and reinstall dependencies from the latest commits.
+The SDK depends on the campus-common and campus-model **release wheels**
+(pinned by URL in `pyproject.toml`), not on campus-suite — it imports no
+campus-suite module. To pick up a new wheel release: edit the URL, run
+`poetry lock`, then `poetry install` (or `poetry sync` to also remove
+packages the old lock pulled in). Read the release's CHANGELOG first —
+both dists use strict 0.x versioning (pre-1.0 minors may break).
 
 ### Testing
 
