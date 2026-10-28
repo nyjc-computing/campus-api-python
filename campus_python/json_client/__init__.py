@@ -15,7 +15,7 @@ from typing import Any, Mapping, Self, cast
 
 import requests
 from campus.common import env
-from campus.webauth.models import HttpHeader
+from campus.model import HttpHeader
 
 from .. import errors
 from .interface import JsonClient, JsonDict, JsonResponse
