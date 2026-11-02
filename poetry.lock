@@ -91,13 +91,13 @@ files = [
 
 [[package]]
 name = "campus-common"
-version = "0.2.2"
+version = "0.3.0"
 description = "Campus shared kernel: env, errors, introspect, schema, utils, validation - PEP 420 namespace portion under campus/common"
 optional = false
 python-versions = ">=3.11.0,<3.15"
 groups = ["main"]
 files = [
-    {file = "campus_common-0.2.2-py3-none-any.whl", hash = "sha256:f332595eb2aa4b97b9aef6f9d069aee7395dab7e13946aaaade22224fae392f3"},
+    {file = "campus_common-0.3.0-py3-none-any.whl", hash = "sha256:c227cdd1508db23964dadde3dc7ad4db4be008b40c18133fa0306abda6b337c1"},
 ]
 
 [package.dependencies]
@@ -105,25 +105,25 @@ bcrypt = ">=5.0.0,<6.0.0"
 
 [package.source]
 type = "url"
-url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.2.2/campus_common-0.2.2-py3-none-any.whl"
+url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.3.0/campus_common-0.3.0-py3-none-any.whl"
 
 [[package]]
 name = "campus-model"
-version = "0.1.1"
+version = "0.1.2"
 description = "Campus domain models: dataclass entities under campus/model - PEP 420 namespace portion"
 optional = false
 python-versions = ">=3.11.0,<3.15"
 groups = ["main"]
 files = [
-    {file = "campus_model-0.1.1-py3-none-any.whl", hash = "sha256:881d38ec7261b31f6f658fcc4aa8164d4b45684abd6a6b87b8de2b1146a7ad4b"},
+    {file = "campus_model-0.1.2-py3-none-any.whl", hash = "sha256:fe89bdb7947e8d9a47f5a32606bb9203f861ed74debeb52ef1f9265b9099f31c"},
 ]
 
 [package.dependencies]
-campus_common = {url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.2.2/campus_common-0.2.2-py3-none-any.whl"}
+campus_common = {url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.3.0/campus_common-0.3.0-py3-none-any.whl"}
 
 [package.source]
 type = "url"
-url = "https://github.com/nyjc-computing/campus-model/releases/download/v0.1.1/campus_model-0.1.1-py3-none-any.whl"
+url = "https://github.com/nyjc-computing/campus-model/releases/download/v0.1.2/campus_model-0.1.2-py3-none-any.whl"
 
 [[package]]
 name = "certifi"
@@ -757,4 +757,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "9be993e351d12d89d85f155ddb4e828a79c853cb65fe8f51360fc0437e063936"
+content-hash = "33e503f6a800aca47b9d0311237c21133b2044efdb6151b81e013e370b2f4a98"

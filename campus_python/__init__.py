@@ -9,7 +9,6 @@ __all__ = (
 )
 
 import logging
-import warnings
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -27,46 +26,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def _resolve_base_url(service: str, url_var: str) -> str:
+def _resolve_base_url(service: str) -> str:
     """Resolve the base URL for a Campus service via the shared registry.
 
     Delegates to campus.common.services.resolve_base_url (campus-common
-    0.2.2+), whose precedence is:
+    0.3.0+), whose precedence is:
         1. CAMPUS_<SERVICE>_URL (the `url_var` passed here)
         2. <SERVICE>_URL (bare alias)
         3. CAMPUS_BASE_URL, then BASE_URL — one origin fronting every
            service (gateway / single-server deployments)
-        4. ENV/CAMPUS_ENV tier defaults (development Railway
-           deployments, staging, production domains)
 
-    The HOSTNAME-migration DeprecationWarning (#52) is preserved here:
-    environments that would previously have produced a HOSTNAME-derived
-    URL (a DEPLOY service suffix or ENV/CAMPUS_ENV=testing) still warn
-    when no explicit configuration (override or base URL) is present.
+    The environment is the source of truth: an unconfigured service
+    raises ValueError naming the variables to set. Campus ships no
+    baked-in deployment topology, so there is no ENV-tier fallback and
+    no HOSTNAME-migration warning anymore (#52's migration is complete).
     """
-    base_url = services.resolve_base_url(f"campus.{service}")
-
-    configured = any(
-        env.get(varname)
-        for varname in (
-            url_var,
-            url_var.removeprefix("CAMPUS_"),
-            "CAMPUS_BASE_URL",
-            "BASE_URL",
-        )
-    )
-    campus_env = env.get("ENV", env.get("CAMPUS_ENV", "development"))
-    if not configured and (
-            env.get("DEPLOY", "").endswith(f".{service}") or campus_env == "testing"
-    ):
-        warnings.warn(
-            f"HOSTNAME-derived {service} base URLs are deprecated and no "
-            f"longer used; set {url_var} to configure the {service} base "
-            "URL explicitly, or CAMPUS_BASE_URL for gateway deployments.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-    return base_url
+    return services.resolve_base_url(f"campus.{service}")
 
 
 class Campus:
@@ -86,8 +61,9 @@ class Campus:
     2. Bare aliases: AUTH_URL / API_URL / AUDIT_URL.
     3. CAMPUS_BASE_URL, then BASE_URL — one origin fronting every
        service (gateway / single-server deployments).
-    4. ENV/CAMPUS_ENV defaults: development (Railway), staging,
-       production.
+
+    The environment is the source of truth: Campus ships no baked-in
+    deployment topology, so an unconfigured service raises ValueError.
 
     See the API Reference for usage examples.
     """
@@ -116,7 +92,7 @@ class Campus:
     def auth(self) -> AuthRoot:
         """Get the auth service resource."""
         if not hasattr(self, "_auth"):
-            base_url = _resolve_base_url("auth", "CAMPUS_AUTH_URL")
+            base_url = _resolve_base_url("auth")
             self._auth = AuthRoot(
                 json_client=CampusRequest(
                     base_url=base_url,
@@ -130,7 +106,7 @@ class Campus:
     def api(self) -> ApiRoot:
         """Get the api service resource."""
         if not hasattr(self, "_api"):
-            base_url = _resolve_base_url("api", "CAMPUS_API_URL")
+            base_url = _resolve_base_url("api")
             self._api = ApiRoot(
                 json_client=CampusRequest(
                     base_url=base_url,
@@ -151,7 +127,7 @@ class Campus:
         to avoid requiring app credentials.
         """
         if not hasattr(self, "_audit"):
-            base_url = _resolve_base_url("audit", "CAMPUS_AUDIT_URL")
+            base_url = _resolve_base_url("audit")
             client = CampusRequest(
                 base_url=base_url,
                 timeout=self.timeout,

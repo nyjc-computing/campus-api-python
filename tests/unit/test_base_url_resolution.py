@@ -1,10 +1,10 @@
 """Tests for Campus service base URL resolution.
 
-Pins the contract for issue #52: explicit URL config (CAMPUS_AUTH_URL /
-CAMPUS_API_URL) takes precedence over ENV-based defaults, and settings
-that previously produced HOSTNAME-derived URLs (DEPLOY service suffix,
-ENV/CAMPUS_ENV=testing) emit a DeprecationWarning and fall back to the
-ENV-based default instead.
+Pins the env-only contract (campus-common 0.3.0): the environment is
+the source of truth — CAMPUS_<SERVICE>_URL > <SERVICE>_URL >
+CAMPUS_BASE_URL > BASE_URL — Campus ships no baked-in topology, so an
+unconfigured service raises ValueError instead of falling back to
+hardcoded origins.
 """
 
 import os
@@ -53,15 +53,17 @@ class TestExplicitUrlConfig(BaseUrlResolutionTestCase):
         os.environ["CAMPUS_AUTH_URL"] = "https://auth.example.com"
         campus = self.new_client()
         self.assertEqual(campus.auth.base_url, "https://auth.example.com")
-        # api service is unaffected
-        self.assertEqual(campus.api.base_url, API_DEV_URL)
+        # api service is unconfigured: no invented URLs
+        with self.assertRaises(ValueError):
+            campus.api
 
     def test_explicit_api_url(self):
         os.environ["CAMPUS_API_URL"] = "http://localhost:8000"
         campus = self.new_client()
         self.assertEqual(campus.api.base_url, "http://localhost:8000")
-        # auth service is unaffected
-        self.assertEqual(campus.auth.base_url, AUTH_DEV_URL)
+        # auth service is unconfigured: no invented URLs
+        with self.assertRaises(ValueError):
+            campus.auth
 
     def test_explicit_url_overrides_env_default(self):
         os.environ["ENV"] = "production"
@@ -88,146 +90,23 @@ class TestExplicitUrlConfig(BaseUrlResolutionTestCase):
         self.assertEqual(campus.auth.base_url, "http://localhost:5000")
 
 
-class TestEnvDefaults(BaseUrlResolutionTestCase):
-    """ENV/CAMPUS_ENV-based defaults when no explicit URL is set."""
+class TestBaseConfig(BaseUrlResolutionTestCase):
+    """Gateway base URL applies to every service; no ENV-tier defaults."""
 
-    def test_development_default(self):
-        campus = self.new_client()
-        self.assertEqual(campus.auth.base_url, AUTH_DEV_URL)
-        self.assertEqual(campus.api.base_url, API_DEV_URL)
-
-    def test_staging_default(self):
-        os.environ["ENV"] = "staging"
-        campus = self.new_client()
-        self.assertEqual(campus.auth.base_url, "https://auth.campus.nyjc.dev")
-        self.assertEqual(campus.api.base_url, "https://api.campus.nyjc.dev")
-
-    def test_production_default(self):
-        os.environ["ENV"] = "production"
-        campus = self.new_client()
-        self.assertEqual(campus.auth.base_url, "https://auth.campus.nyjc.app")
-        self.assertEqual(campus.api.base_url, "https://api.campus.nyjc.app")
-
-    def test_campus_env_alias(self):
-        os.environ["CAMPUS_ENV"] = "staging"
-        campus = self.new_client()
-        self.assertEqual(campus.auth.base_url, "https://auth.campus.nyjc.dev")
-        self.assertEqual(campus.api.base_url, "https://api.campus.nyjc.dev")
-
-    def test_invalid_env_raises(self):
-        os.environ["ENV"] = "nonsense"
-        campus = self.new_client()
-        with self.assertRaises(ValueError):
-            campus.auth
-
-
-class TestHostnameDeprecation(BaseUrlResolutionTestCase):
-    """Settings that previously produced HOSTNAME-derived URLs now warn."""
-
-    def test_testing_env_warns_and_falls_back_to_development(self):
-        os.environ["ENV"] = "testing"
-        campus = self.new_client()
-        with self.assertWarns(DeprecationWarning):
-            campus.auth
-            campus.api
-        self.assertEqual(campus.auth.base_url, AUTH_DEV_URL)
-        self.assertEqual(campus.api.base_url, API_DEV_URL)
-
-    def test_deploy_auth_suffix_warns(self):
-        os.environ["DEPLOY"] = "campus.auth"
-        campus = self.new_client()
-        with self.assertWarns(DeprecationWarning):
-            campus.auth
-        # Falls back to the ENV-based default (development)
-        self.assertEqual(campus.auth.base_url, AUTH_DEV_URL)
-        # api service did not match the .auth suffix: no HOSTNAME URL before
-        self.assertEqual(campus.api.base_url, API_DEV_URL)
-
-    def test_deploy_api_suffix_warns(self):
-        os.environ["DEPLOY"] = "campus.api"
-        campus = self.new_client()
-        with self.assertWarns(DeprecationWarning):
-            campus.api
-        self.assertEqual(campus.api.base_url, API_DEV_URL)
-        self.assertEqual(campus.auth.base_url, AUTH_DEV_URL)
-
-    def test_warning_mentions_url_var(self):
-        os.environ["ENV"] = "testing"
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            self.new_client().auth
-        deprecations = [
-            w for w in caught
-            if issubclass(w.category, DeprecationWarning)
-        ]
-        self.assertEqual(len(deprecations), 1)
-        self.assertIn("CAMPUS_AUTH_URL", str(deprecations[0].message))
-
-    def test_unrelated_deploy_value_no_warning(self):
-        # A DEPLOY value without a service suffix never produced HOSTNAME URLs
-        os.environ["DEPLOY"] = "campus.other"
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            campus = self.new_client()
-        deprecations = [
-            w for w in caught
-            if issubclass(w.category, DeprecationWarning)
-        ]
-        self.assertEqual(deprecations, [])
-        self.assertEqual(campus.auth.base_url, AUTH_DEV_URL)
-
-
-class TestBaseUrlFallback(BaseUrlResolutionTestCase):
-    """Gateway tiers: CAMPUS_BASE_URL / BASE_URL apply to every service."""
-
-    def test_campus_base_url_applies_to_all_services(self):
-        os.environ["CAMPUS_BASE_URL"] = "https://gateway.example"
-        campus = self.new_client()
-        self.assertEqual(campus.auth.base_url, "https://gateway.example")
-        self.assertEqual(campus.api.base_url, "https://gateway.example")
-
-    def test_bare_base_url_applies_to_all_services(self):
+    def test_base_url_applies_to_all_services(self):
         os.environ["BASE_URL"] = "https://gateway.example"
         campus = self.new_client()
         self.assertEqual(campus.auth.base_url, "https://gateway.example")
         self.assertEqual(campus.api.base_url, "https://gateway.example")
 
-    def test_campus_base_url_beats_bare_base_url(self):
-        os.environ["CAMPUS_BASE_URL"] = "https://gateway-prefixed.example"
-        os.environ["BASE_URL"] = "https://gateway-bare.example"
+    def test_unconfigured_service_raises(self):
+        # No baked-in topology: env is the source of truth.
         campus = self.new_client()
-        self.assertEqual(campus.auth.base_url, "https://gateway-prefixed.example")
-
-    def test_per_service_override_beats_base_url(self):
-        os.environ["CAMPUS_BASE_URL"] = "https://gateway.example"
-        os.environ["CAMPUS_AUTH_URL"] = "https://auth.example.com"
-        campus = self.new_client()
-        self.assertEqual(campus.auth.base_url, "https://auth.example.com")
-        self.assertEqual(campus.api.base_url, "https://gateway.example")
-
-    def test_bare_alias_override(self):
-        os.environ["API_URL"] = "http://localhost:8000"
-        campus = self.new_client()
-        self.assertEqual(campus.api.base_url, "http://localhost:8000")
-        self.assertEqual(campus.auth.base_url, AUTH_DEV_URL)
-
-    def test_base_url_does_not_warn_on_legacy_settings(self):
-        # A gateway deployment configures BASE_URL deliberately; the
-        # HOSTNAME-migration warning is for un-configured environments.
-        os.environ["ENV"] = "testing"
-        os.environ["BASE_URL"] = "https://gateway.example"
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            campus = self.new_client()
+        with self.assertRaisesRegex(ValueError, "CAMPUS_AUTH_URL"):
             campus.auth
-        deprecations = [
-            w for w in caught
-            if issubclass(w.category, DeprecationWarning)
-        ]
-        self.assertEqual(deprecations, [])
 
-    def test_invalid_base_url_raises(self):
-        os.environ["BASE_URL"] = "gateway.example"
+    def test_testing_env_without_config_still_raises(self):
+        os.environ["ENV"] = "testing"
         campus = self.new_client()
         with self.assertRaises(ValueError):
             campus.auth

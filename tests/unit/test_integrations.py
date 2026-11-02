@@ -5,6 +5,7 @@ client.integrations.list() hits the public auth-service catalog at
 campus.model.Integration entries.
 """
 
+import os
 import unittest
 from unittest.mock import Mock
 
@@ -94,6 +95,20 @@ class TestIntegrationsList(unittest.TestCase):
 
 class TestCampusIntegrationsMounting(unittest.TestCase):
     """client.integrations is mounted on Campus and shares the auth client."""
+
+    def setUp(self):
+        # Mounting resolves the auth base URL; env is the source of truth.
+        self._saved = {v: os.environ.get(v) for v in ("BASE_URL", "CAMPUS_AUTH_URL", "AUTH_URL")}
+        for v in self._saved:
+            os.environ.pop(v, None)
+        os.environ["BASE_URL"] = "https://gateway.example"
+
+    def tearDown(self):
+        for v, value in self._saved.items():
+            if value is None:
+                os.environ.pop(v, None)
+            else:
+                os.environ[v] = value
 
     def test_integrations_mounted_on_campus(self):
         campus = campus_python.Campus(timeout=60, mode="device")
