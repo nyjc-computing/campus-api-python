@@ -17,8 +17,8 @@ requests = "^2.32.4"
 # The campus.* modules the SDK imports (campus.common env/schema/uid,
 # campus.model types incl. HttpHeader) ship in the campus-common and
 # campus-model distributions — the SDK imports no campus-suite module.
-campus-common = {url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.2.2/campus_common-0.2.2-py3-none-any.whl"}
-campus-model = {url = "https://github.com/nyjc-computing/campus-model/releases/download/v0.1.1/campus_model-0.1.1-py3-none-any.whl"}
+campus-common = {url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.3.0/campus_common-0.3.0-py3-none-any.whl"}
+campus-model = {url = "https://github.com/nyjc-computing/campus-model/releases/download/v0.1.2/campus_model-0.1.2-py3-none-any.whl"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
