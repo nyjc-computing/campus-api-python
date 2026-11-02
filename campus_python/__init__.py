@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 import campus.model
-from campus.common import env
+from campus.common import env, services
 
 from . import errors
 from .api.v1 import ApiRoot
@@ -26,49 +26,47 @@ from .json_client import CampusRequest
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Development Railway deployments, used when no explicit URL is configured
-AUTH_DEVELOPMENT_URL = "https://campusauth-development.up.railway.app"
-API_DEVELOPMENT_URL = "https://campusapi-development.up.railway.app"
-AUDIT_DEVELOPMENT_URL = "https://campusaudit-development.up.railway.app"
 
+def _resolve_base_url(service: str, url_var: str) -> str:
+    """Resolve the base URL for a Campus service via the shared registry.
 
-def _resolve_base_url(service: str, url_var: str, development_url: str) -> str:
-    """Resolve the base URL for a Campus service.
+    Delegates to campus.common.services.resolve_base_url (campus-common
+    0.2.2+), whose precedence is:
+        1. CAMPUS_<SERVICE>_URL (the `url_var` passed here)
+        2. <SERVICE>_URL (bare alias)
+        3. CAMPUS_BASE_URL, then BASE_URL — one origin fronting every
+           service (gateway / single-server deployments)
+        4. ENV/CAMPUS_ENV tier defaults (development Railway
+           deployments, staging, production domains)
 
-    Precedence:
-        1. Explicit URL config: the `url_var` environment variable
-           (CAMPUS_AUTH_URL / CAMPUS_API_URL).
-        2. ENV-based defaults: development Railway deployments,
-           staging and production domains.
-
-    Emits a DeprecationWarning if the environment would previously have
-    produced a HOSTNAME-derived URL (a DEPLOY service suffix or
-    ENV/CAMPUS_ENV=testing); those deployments must set `url_var`
-    explicitly or accept the ENV-based default (issue #52).
+    The HOSTNAME-migration DeprecationWarning (#52) is preserved here:
+    environments that would previously have produced a HOSTNAME-derived
+    URL (a DEPLOY service suffix or ENV/CAMPUS_ENV=testing) still warn
+    when no explicit configuration (override or base URL) is present.
     """
-    explicit_url = env.get(url_var)
-    if explicit_url:
-        return explicit_url
+    base_url = services.resolve_base_url(f"campus.{service}")
 
+    configured = any(
+        env.get(varname)
+        for varname in (
+            url_var,
+            url_var.removeprefix("CAMPUS_"),
+            "CAMPUS_BASE_URL",
+            "BASE_URL",
+        )
+    )
     campus_env = env.get("ENV", env.get("CAMPUS_ENV", "development"))
-    if env.get("DEPLOY", "").endswith(f".{service}") or campus_env == "testing":
+    if not configured and (
+            env.get("DEPLOY", "").endswith(f".{service}") or campus_env == "testing"
+    ):
         warnings.warn(
             f"HOSTNAME-derived {service} base URLs are deprecated and no "
             f"longer used; set {url_var} to configure the {service} base "
-            "URL explicitly.",
+            "URL explicitly, or CAMPUS_BASE_URL for gateway deployments.",
             DeprecationWarning,
             stacklevel=3,
         )
-
-    match campus_env:
-        case "development" | "testing":
-            return development_url
-        case "staging":
-            return f"https://{service}.campus.nyjc.dev"
-        case "production":
-            return f"https://{service}.campus.nyjc.app"
-        case _:
-            raise ValueError("Invalid ENV value")
+    return base_url
 
 
 class Campus:
@@ -82,11 +80,14 @@ class Campus:
     - mode="device": For public clients (e.g., CLI) that don't have secrets.
       No credentials required; only public OAuth endpoints are accessible.
 
-    Service base URLs are resolved per service (auth, api, audit) in
-    this order:
-    1. Explicit URL config: CAMPUS_AUTH_URL / CAMPUS_API_URL /
-       CAMPUS_AUDIT_URL env vars.
-    2. ENV/CAMPUS_ENV defaults: development (Railway), staging, production.
+    Service base URLs are resolved per service (auth, api, audit)
+    via the campus.common.services registry, in this order:
+    1. CAMPUS_AUTH_URL / CAMPUS_API_URL / CAMPUS_AUDIT_URL.
+    2. Bare aliases: AUTH_URL / API_URL / AUDIT_URL.
+    3. CAMPUS_BASE_URL, then BASE_URL — one origin fronting every
+       service (gateway / single-server deployments).
+    4. ENV/CAMPUS_ENV defaults: development (Railway), staging,
+       production.
 
     See the API Reference for usage examples.
     """
@@ -115,9 +116,7 @@ class Campus:
     def auth(self) -> AuthRoot:
         """Get the auth service resource."""
         if not hasattr(self, "_auth"):
-            base_url = _resolve_base_url(
-                "auth", "CAMPUS_AUTH_URL", AUTH_DEVELOPMENT_URL
-            )
+            base_url = _resolve_base_url("auth", "CAMPUS_AUTH_URL")
             self._auth = AuthRoot(
                 json_client=CampusRequest(
                     base_url=base_url,
@@ -131,9 +130,7 @@ class Campus:
     def api(self) -> ApiRoot:
         """Get the api service resource."""
         if not hasattr(self, "_api"):
-            base_url = _resolve_base_url(
-                "api", "CAMPUS_API_URL", API_DEVELOPMENT_URL
-            )
+            base_url = _resolve_base_url("api", "CAMPUS_API_URL")
             self._api = ApiRoot(
                 json_client=CampusRequest(
                     base_url=base_url,
@@ -154,9 +151,7 @@ class Campus:
         to avoid requiring app credentials.
         """
         if not hasattr(self, "_audit"):
-            base_url = _resolve_base_url(
-                "audit", "CAMPUS_AUDIT_URL", AUDIT_DEVELOPMENT_URL
-            )
+            base_url = _resolve_base_url("audit", "CAMPUS_AUDIT_URL")
             client = CampusRequest(
                 base_url=base_url,
                 timeout=self.timeout,

@@ -17,7 +17,13 @@ AUTH_DEV_URL = "https://campusauth-development.up.railway.app"
 API_DEV_URL = "https://campusapi-development.up.railway.app"
 
 # All env vars that influence URL resolution
-URL_VARS = ("CAMPUS_AUTH_URL", "CAMPUS_API_URL", "ENV", "CAMPUS_ENV", "DEPLOY")
+URL_VARS = (
+    "CAMPUS_AUTH_URL", "AUTH_URL",
+    "CAMPUS_API_URL", "API_URL",
+    "CAMPUS_AUDIT_URL", "AUDIT_URL",
+    "CAMPUS_BASE_URL", "BASE_URL",
+    "ENV", "CAMPUS_ENV", "DEPLOY",
+)
 
 
 class BaseUrlResolutionTestCase(unittest.TestCase):
@@ -169,6 +175,62 @@ class TestHostnameDeprecation(BaseUrlResolutionTestCase):
         ]
         self.assertEqual(deprecations, [])
         self.assertEqual(campus.auth.base_url, AUTH_DEV_URL)
+
+
+class TestBaseUrlFallback(BaseUrlResolutionTestCase):
+    """Gateway tiers: CAMPUS_BASE_URL / BASE_URL apply to every service."""
+
+    def test_campus_base_url_applies_to_all_services(self):
+        os.environ["CAMPUS_BASE_URL"] = "https://gateway.example"
+        campus = self.new_client()
+        self.assertEqual(campus.auth.base_url, "https://gateway.example")
+        self.assertEqual(campus.api.base_url, "https://gateway.example")
+
+    def test_bare_base_url_applies_to_all_services(self):
+        os.environ["BASE_URL"] = "https://gateway.example"
+        campus = self.new_client()
+        self.assertEqual(campus.auth.base_url, "https://gateway.example")
+        self.assertEqual(campus.api.base_url, "https://gateway.example")
+
+    def test_campus_base_url_beats_bare_base_url(self):
+        os.environ["CAMPUS_BASE_URL"] = "https://gateway-prefixed.example"
+        os.environ["BASE_URL"] = "https://gateway-bare.example"
+        campus = self.new_client()
+        self.assertEqual(campus.auth.base_url, "https://gateway-prefixed.example")
+
+    def test_per_service_override_beats_base_url(self):
+        os.environ["CAMPUS_BASE_URL"] = "https://gateway.example"
+        os.environ["CAMPUS_AUTH_URL"] = "https://auth.example.com"
+        campus = self.new_client()
+        self.assertEqual(campus.auth.base_url, "https://auth.example.com")
+        self.assertEqual(campus.api.base_url, "https://gateway.example")
+
+    def test_bare_alias_override(self):
+        os.environ["API_URL"] = "http://localhost:8000"
+        campus = self.new_client()
+        self.assertEqual(campus.api.base_url, "http://localhost:8000")
+        self.assertEqual(campus.auth.base_url, AUTH_DEV_URL)
+
+    def test_base_url_does_not_warn_on_legacy_settings(self):
+        # A gateway deployment configures BASE_URL deliberately; the
+        # HOSTNAME-migration warning is for un-configured environments.
+        os.environ["ENV"] = "testing"
+        os.environ["BASE_URL"] = "https://gateway.example"
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            campus = self.new_client()
+            campus.auth
+        deprecations = [
+            w for w in caught
+            if issubclass(w.category, DeprecationWarning)
+        ]
+        self.assertEqual(deprecations, [])
+
+    def test_invalid_base_url_raises(self):
+        os.environ["BASE_URL"] = "gateway.example"
+        campus = self.new_client()
+        with self.assertRaises(ValueError):
+            campus.auth
 
 
 if __name__ == "__main__":
