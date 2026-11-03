@@ -10,7 +10,6 @@ nothing when there is no active traced request.
 import os
 import unittest
 
-import flask
 import requests
 
 from campus_python import tracing

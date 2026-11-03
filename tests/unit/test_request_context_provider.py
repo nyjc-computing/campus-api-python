@@ -5,12 +5,12 @@ provider that supplies the request-context half of propagation
 themselves. Contract: the provider returns the in-request headers
 (dict, possibly empty) or None when there is no active request
 context — only then does the SDK apply the process boot journey.
+The SDK itself is framework-free: these tests drive the provider
+seam directly, with no flask involved.
 """
 
 import os
 import unittest
-
-import flask
 
 from campus_python import tracing
 from campus_python.tracing import (
@@ -28,29 +28,35 @@ SPAN_ID = "b" * 16
 
 
 class TestRequestContextProvider(unittest.TestCase):
-    """set_request_context_provider owns the in-request header half."""
+    """set_request_context_provider owns the request-context half."""
+
+    def setUp(self):
+        tracing._reset_process_journey()
 
     def tearDown(self):
         set_request_context_provider(None)
         tracing._reset_process_journey()
 
-    def test_provider_output_used_verbatim_inside_request(self):
-        """The provider's headers win; built-in flask.g reads are not
-        consulted."""
-        app = flask.Flask(__name__)
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            flask.g.journey_id = "uid-journey-g"
-            set_request_context_provider(
-                lambda: {JOURNEY_ID_HEADER: "uid-journey-provider"}
-            )
-            headers = propagation_headers()
+    def test_provider_output_used_verbatim(self):
+        """The provider's headers are taken verbatim — the SDK adds
+        nothing."""
+        set_request_context_provider(
+            lambda: {
+                TRACE_ID_HEADER: TRACE_ID,
+                PARENT_SPAN_ID_HEADER: SPAN_ID,
+                JOURNEY_ID_HEADER: "uid-journey-provider",
+            }
+        )
         self.assertEqual(
-            headers, {JOURNEY_ID_HEADER: "uid-journey-provider"}
+            propagation_headers(),
+            {
+                TRACE_ID_HEADER: TRACE_ID,
+                PARENT_SPAN_ID_HEADER: SPAN_ID,
+                JOURNEY_ID_HEADER: "uid-journey-provider",
+            },
         )
 
-    def test_provider_none_outside_request_applies_boot_journey(self):
+    def test_provider_none_applies_boot_journey(self):
         """None = no active request context: the SDK fills in the boot
         journey (#114) and nothing else."""
         tracing.set_process_journey("uid-journey-boot", name="boot")
@@ -60,34 +66,27 @@ class TestRequestContextProvider(unittest.TestCase):
         self.assertEqual(headers[JOURNEY_NAME_HEADER], "boot")
         self.assertNotIn(TRACE_ID_HEADER, headers)
 
-    def test_provider_empty_dict_in_request_stays_unjourneyed(self):
+    def test_provider_empty_dict_stays_unjourneyed(self):
         """An empty dict = in-request but journey-less: strict MVP keeps
         it unjourneyed — no boot-journey leakage."""
-        app = flask.Flask(__name__)
-        with app.test_request_context("/"):
-            set_request_context_provider(lambda: {})
-            self.assertEqual(propagation_headers(), {})
+        tracing.set_process_journey("uid-journey-boot")
+        set_request_context_provider(lambda: {})
+        self.assertEqual(propagation_headers(), {})
 
-    def test_no_provider_builtin_untouched_outside_request(self):
-        """Without a provider the legacy behavior holds: outside a
-        request context there are no trace headers."""
+    def test_uninstall_reverts_to_boot_journey_only(self):
+        """No provider = no request-context half: headers are
+        boot-journey-only (the former built-in flask reader is gone;
+        flask_campus installs the provider)."""
+        set_request_context_provider(None)
         headers = propagation_headers()
         self.assertNotIn(TRACE_ID_HEADER, headers)
         self.assertNotIn(PARENT_SPAN_ID_HEADER, headers)
-        self.assertNotIn(DEVICE_ID_HEADER, headers)
 
-
-    def test_uninstall_reverts_to_boot_journey_only(self):
-        """No provider = no request-context half: even inside a request
-        context, headers are boot-journey-only (the former built-in
-        flask reader is gone)."""
-        app = flask.Flask(__name__)
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            headers = propagation_headers()
-        self.assertNotIn("X-Request-ID", headers)
-        self.assertNotIn("X-Parent-Span-ID", headers)
+    def test_no_provider_no_trace_headers_without_context(self):
+        """Without a provider there are no trace headers, period."""
+        headers = propagation_headers()
+        self.assertNotIn(TRACE_ID_HEADER, headers)
+        self.assertNotIn(PARENT_SPAN_ID_HEADER, headers)
 
 
 class TestProcessDeviceAccessor(unittest.TestCase):
@@ -117,3 +116,7 @@ class TestProcessDeviceAccessor(unittest.TestCase):
         hosts that only read the device never mint)."""
         tracing.process_device()
         self.assertIsNone(tracing._process_state["journey_id"])
+
+
+if __name__ == "__main__":
+    unittest.main()
