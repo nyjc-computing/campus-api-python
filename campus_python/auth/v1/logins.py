@@ -12,6 +12,12 @@ import flask
 
 from ... import errors
 from ...interface import JsonDict, Resource, ResourceCollection
+from . import sessionstore
+
+# flask.session key this resource historically reads/writes its id in.
+# Hosts that own their own storage (flask_campus) use this key too, so
+# both paths stay consistent during the provider-seam rollout.
+LOGIN_STORAGE_KEY = "logins_login_id"
 
 
 class LoginSessions(ResourceCollection):
@@ -27,7 +33,14 @@ class LoginSessions(ResourceCollection):
             self,
             session_id: str | None = None
     ) -> "LoginSessions.Login":
-        """Get a login session resource by ID."""
+        """Get a login session resource by ID.
+
+        Without an explicit ID, the id resolves from the installed
+        session-id provider, then (legacy lane) the flask.session.
+        """
+        session_id = session_id or sessionstore.resolve_session_id(
+            sessionstore.LANE_LOGIN
+        )
         session_id = session_id or flask.session.get(self._session_key)
         if not session_id:
             raise errors.AuthenticationError(
@@ -35,13 +48,23 @@ class LoginSessions(ResourceCollection):
             )
         return LoginSessions.Login(session_id, parent=self)
 
-    def from_session(self) -> campus.model.LoginSession:
-        """Get a login session using the client-side session ID."""
-        if not self.has_session():
+    def from_session(
+            self,
+            session_id: str | None = None,
+    ) -> campus.model.LoginSession:
+        """Get a login session using a client-side session ID.
+
+        Resolution order: explicit session_id > the installed
+        session-id provider > the legacy flask.session read.
+        """
+        if not self.has_session() and session_id is None:
             raise errors.AuthenticationError(
                 error_description="No login session found."
             )
-        session_id = flask.session.get(self._session_key)
+        session_id = session_id or sessionstore.resolve_session_id(
+            sessionstore.LANE_LOGIN
+        )
+        session_id = session_id or flask.session.get(self._session_key)
         if not session_id:
             raise errors.AuthenticationError(
                 error_description="Login session ID is empty or invalid"
@@ -49,10 +72,16 @@ class LoginSessions(ResourceCollection):
         return LoginSessions.Login(session_id, parent=self).get()
 
     def has_session(self) -> bool:
-        """Check if there is a session ID stored in the flask session."""
+        """Check if a login id is resolvable for the current context.
+
+        True when the installed session-id provider supplies one, or
+        (legacy lane) when the flask.session carries the storage key.
+        """
+        if sessionstore.resolve_session_id(sessionstore.LANE_LOGIN):
+            return True
         return self._session_key in flask.session
 
-    def token(self) -> campus.model.OAuthToken:
+    def token(self, session_id: str | None = None) -> campus.model.OAuthToken:
         """Re-acquire the current login session's campus bearer (#117).
 
         One endpoint call (campus#964, invariant A10):
@@ -62,12 +91,15 @@ class LoginSessions(ResourceCollection):
         first mid-rotation). An expired grant token is rotated
         server-side; the response omits the refresh token.
 
+        The session id resolves explicitly > installed provider >
+        legacy flask.session read.
+
         Raises:
             AuthenticationError: If no login session is present.
             APIError: invalid_grant when the session or the user's
                 campus grant is gone — the cue to require re-login.
         """
-        return self[None].token()
+        return self[session_id].token()
 
     def new(
             self,

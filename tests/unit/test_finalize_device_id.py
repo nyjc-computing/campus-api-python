@@ -61,7 +61,7 @@ def run_finalize(auth: AuthRoot, device_id: str | None) -> dict:
     auth._users = MagicMock()
     logins = MagicMock()
     auth._logins = logins
-    # _exchange_code_for_token POSTs to /auth/v1/token
+    # exchange_code_for_token POSTs to /auth/v1/token
     token_response = Mock()
     token_response.json.return_value = TOKEN_RESOURCE
     cast(MagicMock, auth.client.post).return_value = token_response

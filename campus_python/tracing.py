@@ -103,6 +103,16 @@ def _process_device() -> str | None:
     return _process_state["device_id"]
 
 
+def process_device() -> str | None:
+    """This process's device tag (default: RAILWAY_DEPLOYMENT_ID).
+
+    Public accessor for propagation hosts (flask_campus) implementing
+    device gap-fill: a request that stashed no device of its own may
+    present the process device. Never mints a journey (#114).
+    """
+    return _process_device()
+
+
 def _process_snapshot() -> tuple[str | None, str | None, str | None]:
     """(journey_id, journey_name, device_id) after lazy init and mint.
 
@@ -202,6 +212,32 @@ DEVICE_ID_HEADER = "X-Campus-Device"
 # instrumented by either implementation is left alone by the other.
 _INSTRUMENTED_ATTR = "_campus_trace_instrumented"
 
+# Injectable request-context provider: hosts that own their own request
+# state (flask_campus) supply the request-context half of propagation
+# themselves, keeping the SDK free of any particular web framework.
+# Contract: the callable returns the headers for the active request
+# context, or None when there is no active request context (the SDK
+# then applies the process boot journey, #114). None-installed = the
+# built-in flask reader below. Install-once per process (flask_campus
+# at init_app); reads take the fast path without a lock.
+RequestContextProvider = typing.Callable[[], dict[str, str] | None]
+_request_context_provider: RequestContextProvider | None = None
+
+
+def set_request_context_provider(
+        provider: RequestContextProvider | None,
+) -> None:
+    """Install (or clear) the request-context propagation provider.
+
+    When installed, propagation_headers() takes the provider's output
+    verbatim for in-request calls (the provider owns the header
+    contract, including device gap-fill) and applies the process boot
+    journey only when the provider reports no active request context
+    (returns None). Pass None to revert to the built-in flask reader.
+    """
+    global _request_context_provider
+    _request_context_provider = provider
+
 
 def current_context() -> tuple[str, str] | None:
     """Return the (trace_id, span_id) of the host's active traced request.
@@ -225,42 +261,21 @@ def current_context() -> tuple[str, str] | None:
     return None
 
 
-def propagation_headers() -> dict[str, str]:
-    """Headers to attach to an outbound SDK call from the active context.
+def _builtin_request_context_headers() -> dict[str, str] | None:
+    """Headers from the host's active flask request, or None.
 
-    Empty outside a request context until #114 — now: out-of-request
-    calls carry the process boot journey (X-Journey-ID/X-Journey-Name)
-    and the process device (X-Campus-Device, default RAILWAY_DEPLOYMENT_ID),
-    so startup and background calls correlate under one journey per boot.
-    Inside a request, the caller's own journey always wins — a journey-less
-    request stays unjourneyed (strict MVP: the trace waterfall already
-    correlates the chain) — and the process device only fills the gap
-    when the request stashed none. The receiving campus service's
-    tracing middleware turns the trace headers into a child span of the
-    caller's span (#794, campus#816); the journeys middleware adopts
-    X-Journey-ID so the child span joins the caller's action journey
-    (campus#828), with X-Journey-Name carrying its human label
-    (campus#952); the tracing middleware adopts X-Campus-Device for the
-    child span's device tag when it knows nothing better (campus#837).
+    The built-in reader mirrors the flask.g contract stashed by
+    campus.audit.middleware's before_request hook (same header names,
+    same values). Returns None when flask is unavailable or there is
+    no active request context.
     """
-    headers: dict[str, str] = {}
     try:
         import flask
     except ImportError:  # pragma: no cover - host without flask
-        flask = None
-
-    if flask is None or not flask.has_request_context():
-        # Out of any request context (startup, background threads): the
-        # boot journey and process device are the only correlation there is.
-        journey_id, journey_name, device_id = _process_snapshot()
-        if journey_id:
-            headers[JOURNEY_ID_HEADER] = journey_id
-        if journey_name:
-            headers[JOURNEY_NAME_HEADER] = journey_name
-        if device_id:
-            headers[DEVICE_ID_HEADER] = device_id
-        return headers
-
+        return None
+    if not flask.has_request_context():
+        return None
+    headers: dict[str, str] = {}
     trace_id = getattr(flask.g, "trace_id", None)
     span_id = getattr(flask.g, "span_id", None)
     if trace_id and span_id:
@@ -278,6 +293,50 @@ def propagation_headers() -> dict[str, str]:
         device_id = _process_device()
     if device_id:
         headers[DEVICE_ID_HEADER] = str(device_id)
+    return headers
+
+
+def propagation_headers() -> dict[str, str]:
+    """Headers to attach to an outbound SDK call from the active context.
+
+    Empty outside a request context until #114 — now: out-of-request
+    calls carry the process boot journey (X-Journey-ID/X-Journey-Name)
+    and the process device (X-Campus-Device, default RAILWAY_DEPLOYMENT_ID),
+    so startup and background calls correlate under one journey per boot.
+    Inside a request, the caller's own journey always wins — a journey-less
+    request stays unjourneyed (strict MVP: the trace waterfall already
+    correlates the chain) — and the process device only fills the gap
+    when the request stashed none. The receiving campus service's
+    tracing middleware turns the trace headers into a child span of the
+    caller's span (#794, campus#816); the journeys middleware adopts
+    X-Journey-ID so the child span joins the caller's action journey
+    (campus#828), with X-Journey-Name carrying its human label
+    (campus#952); the tracing middleware adopts X-Campus-Device for the
+    child span's device tag when it knows nothing better (campus#837).
+
+    The in-request half resolves from the installed request-context
+    provider when one is set (set_request_context_provider), otherwise
+    from the built-in flask reader.
+    """
+    headers: dict[str, str] = {}
+    if _request_context_provider is not None:
+        request_headers = _request_context_provider()
+    else:
+        request_headers = _builtin_request_context_headers()
+
+    if request_headers is None:
+        # Out of any request context (startup, background threads): the
+        # boot journey and process device are the only correlation there is.
+        journey_id, journey_name, device_id = _process_snapshot()
+        if journey_id:
+            headers[JOURNEY_ID_HEADER] = journey_id
+        if journey_name:
+            headers[JOURNEY_NAME_HEADER] = journey_name
+        if device_id:
+            headers[DEVICE_ID_HEADER] = device_id
+        return headers
+
+    headers.update(request_headers)
     return headers
 
 
