@@ -29,6 +29,7 @@ operators); set_process_journey()/set_process_device() override in code.
 """
 
 import os
+import warnings
 import threading
 import typing
 import uuid
@@ -239,35 +240,19 @@ def set_request_context_provider(
     _request_context_provider = provider
 
 
-def current_context() -> tuple[str, str] | None:
-    """Return the (trace_id, span_id) of the host's active traced request.
-
-    Reads the flask.g values stashed by campus.audit.middleware's
-    before_request hook. Returns None when flask is unavailable, outside
-    a request context, or when the request carries no active span
-    (tracing disabled or middleware not installed) — such calls stay
-    unparented.
-    """
-    try:
-        import flask
-    except ImportError:  # pragma: no cover - host without flask
-        return None
-    if not flask.has_request_context():
-        return None
-    trace_id = getattr(flask.g, "trace_id", None)
-    span_id = getattr(flask.g, "span_id", None)
-    if trace_id and span_id:
-        return trace_id, span_id
-    return None
-
-
 def _builtin_request_context_headers() -> dict[str, str] | None:
     """Headers from the host's active flask request, or None.
+
+    .. deprecated:: 0.4.0
+        The built-in reader (and with it the SDK's flask dependency)
+        is removed in 0.5.0 — hosts install a request-context
+        provider via set_request_context_provider instead.
 
     The built-in reader mirrors the flask.g contract stashed by
     campus.audit.middleware's before_request hook (same header names,
     same values). Returns None when flask is unavailable or there is
-    no active request context.
+    no active request context (no warning — the out-of-request path
+    is permanent).
     """
     try:
         import flask
@@ -275,6 +260,16 @@ def _builtin_request_context_headers() -> dict[str, str] | None:
         return None
     if not flask.has_request_context():
         return None
+    warnings.warn(
+        "campus_python.tracing used its built-in flask reader for "
+        "in-request propagation; install "
+        "set_request_context_provider (flask_campus does this via "
+        "audit.middleware.init_app) — the built-in reader is "
+        "deprecated and will be removed in campus_api_python 0.5.0. "
+        "Ref: campus#1037, classroom#72.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     headers: dict[str, str] = {}
     trace_id = getattr(flask.g, "trace_id", None)
     span_id = getattr(flask.g, "span_id", None)
