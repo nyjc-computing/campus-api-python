@@ -235,6 +235,7 @@ URLs were removed in #127 — issue #52's migration is complete.)
 | `CAMPUS_API_URL` | No | All | API service base URL (overrides ENV default) |
 | `CAMPUS_AUDIT_URL` | No | All | Audit service base URL (overrides ENV default) |
 | `AUDIT_API_KEY` | Yes (audit) | All | Audit service API key (`audit_v1_...`); sent as the audit root's Bearer token |
+| `CAMPUS_CLIENT_TIMEOUT` | No | All | Request timeout in seconds for clients constructed without an explicit `timeout` (default 60). Invalid values are logged and ignored |
 | `CAMPUS_BASE_URL` / `BASE_URL` | No | All | One origin fronting every service (gateway / single-server deployments); consulted last |
 
 ## Development

@@ -25,6 +25,40 @@ from .json_client import CampusRequest
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Default request timeout (seconds) for Campus clients whose host does
+# not set one explicitly (tier-2 config: shared default = code constant
+# next to the client, override = env, per-deployment = env/vault).
+DEFAULT_CLIENT_TIMEOUT = 60
+
+
+def _resolve_client_timeout(explicit: int | None) -> int:
+    """Resolve the request timeout for a new Campus client.
+
+    Precedence: explicit argument > CAMPUS_CLIENT_TIMEOUT env var >
+    DEFAULT_CLIENT_TIMEOUT. An invalid env value fails open (default
+    applied, WARN logged) rather than breaking construction.
+    """
+    if explicit is not None:
+        return explicit
+    raw = env.get("CAMPUS_CLIENT_TIMEOUT")
+    if not raw:
+        return DEFAULT_CLIENT_TIMEOUT
+    try:
+        timeout = int(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid CAMPUS_CLIENT_TIMEOUT=%r; using default %d",
+            raw, DEFAULT_CLIENT_TIMEOUT,
+        )
+        return DEFAULT_CLIENT_TIMEOUT
+    if timeout < 1:
+        logger.warning(
+            "CAMPUS_CLIENT_TIMEOUT=%d < 1; using default %d",
+            timeout, DEFAULT_CLIENT_TIMEOUT,
+        )
+        return DEFAULT_CLIENT_TIMEOUT
+    return timeout
+
 
 def _resolve_base_url(service: str) -> str:
     """Resolve the base URL for a Campus service via the shared registry.
@@ -68,18 +102,21 @@ class Campus:
     See the API Reference for usage examples.
     """
 
-    def __init__(self, timeout: int, mode: str = "server"):
+    def __init__(self, timeout: int | None = None, mode: str = "server"):
         """Initialize unified Campus client with all service clients.
 
         Args:
-            timeout: Request timeout in seconds.
+            timeout: Request timeout in seconds. Resolution order:
+                explicit argument > CAMPUS_CLIENT_TIMEOUT env var >
+                DEFAULT_CLIENT_TIMEOUT (60). Invalid env values fail
+                open (default applied, WARN logged).
             mode: Client mode - "server" (default) or "device".
 
         Raises:
             OSError: If mode="server" and CLIENT_ID or CLIENT_SECRET
                 environment variables are not set.
         """
-        self.timeout = timeout
+        self.timeout = _resolve_client_timeout(timeout)
         self._mode = mode
 
         # Server mode requires credentials
