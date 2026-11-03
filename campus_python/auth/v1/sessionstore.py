@@ -27,6 +27,7 @@ __all__ = [
 ]
 
 import typing
+import warnings
 
 # Lane names, shared with AuthRoot's user cache namespacing.
 LANE_SESSION = "session"
@@ -34,6 +35,24 @@ LANE_LOGIN = "login"
 
 # Provider contract: lane name -> current session id or None.
 _session_id_provider: typing.Callable[[str], str | None] | None = None
+
+
+def warn_legacy_lane_read(site: str) -> None:
+    """Announce a legacy flask.session id read (no provider installed).
+
+    Fires only on the legacy read lane — hosts that installed a
+    session-id provider (flask_campus) never hit it, and the compat
+    writes stay silent. Removed with the flask lane in 0.5.0.
+    """
+    warnings.warn(
+        f"{site} read the login id from flask.session (legacy lane); "
+        "install campus_python.auth.v1.set_session_id_provider or "
+        "migrate to the flask_campus middleware — the legacy lane is "
+        "deprecated and will be removed in campus_api_python 0.5.0. "
+        "Ref: campus#1037, classroom#72.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 def set_session_id_provider(

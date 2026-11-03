@@ -41,7 +41,9 @@ class LoginSessions(ResourceCollection):
         session_id = session_id or sessionstore.resolve_session_id(
             sessionstore.LANE_LOGIN
         )
-        session_id = session_id or flask.session.get(self._session_key)
+        if session_id is None:
+            sessionstore.warn_legacy_lane_read("LoginSessions[None]")
+            session_id = flask.session.get(self._session_key)
         if not session_id:
             raise errors.AuthenticationError(
                 error_description="No login session ID found in session"
@@ -64,7 +66,9 @@ class LoginSessions(ResourceCollection):
         session_id = session_id or sessionstore.resolve_session_id(
             sessionstore.LANE_LOGIN
         )
-        session_id = session_id or flask.session.get(self._session_key)
+        if session_id is None:
+            sessionstore.warn_legacy_lane_read("LoginSessions.from_session")
+            session_id = flask.session.get(self._session_key)
         if not session_id:
             raise errors.AuthenticationError(
                 error_description="Login session ID is empty or invalid"
@@ -79,7 +83,10 @@ class LoginSessions(ResourceCollection):
         """
         if sessionstore.resolve_session_id(sessionstore.LANE_LOGIN):
             return True
-        return self._session_key in flask.session
+        if self._session_key in flask.session:
+            sessionstore.warn_legacy_lane_read("LoginSessions.has_session")
+            return True
+        return False
 
     def token(self, session_id: str | None = None) -> campus.model.OAuthToken:
         """Re-acquire the current login session's campus bearer (#117).

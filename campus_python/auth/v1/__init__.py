@@ -5,6 +5,7 @@ Campus Auth resource.
 
 import logging
 import time
+import warnings
 from typing import Any, Literal
 
 import flask
@@ -40,6 +41,17 @@ logger = logging.getLogger(__name__)
 # cache a session-carrying browser pays 1-2 synchronous auth API calls
 # before every route. Warm requests within the window pay none.
 USER_CACHE_TTL_SECONDS = 60.0
+
+def _warn_flask_lane(method: str) -> None:
+    warnings.warn(
+        f"AuthRoot.{method} is deprecated and will be removed in "
+        "campus_api_python 0.5.0: the browser login flow is owned by "
+        "the flask_campus middleware (campus.flask_campus.context) — "
+        "hosts still driving these methods directly should migrate. "
+        "Ref: campus#1037, classroom#72.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 class AuthRoot(ResourceRoot):
@@ -151,6 +163,9 @@ class AuthRoot(ResourceRoot):
     ) -> werkzeug.Response:
         """Begin an authorization flow.
 
+        .. deprecated:: 0.4.0
+            The login flow is owned by flask_campus; removed in 0.5.0.
+
         Returns a redirect response to the authorization endpoint.
 
         IMPORTANT: This must return a redirect response directly (not use
@@ -158,6 +173,7 @@ class AuthRoot(ResourceRoot):
         If we use requests, Google detects a server user agent and switches
         to OAuth Lite flow which breaks in browsers (500 error).
         """
+        _warn_flask_lane("authorize")
         from urllib.parse import urlencode
 
         # Use the app's own callback URL instead of going through campus proxy
@@ -190,8 +206,12 @@ class AuthRoot(ResourceRoot):
     ) -> werkzeug.Response:
         """Finalize an authorization flow.
 
+        .. deprecated:: 0.4.0
+            The login flow is owned by flask_campus; removed in 0.5.0.
+
         Returns a redirect response to the target.
         """
+        _warn_flask_lane("finalize")
         # 1. Validate auth session
         auth_session = self.sessions.from_code(code=code)
         if auth_session.id != state:
@@ -283,12 +303,16 @@ class AuthRoot(ResourceRoot):
     def logout(self) -> None:
         """Logout the current user by revoking their login session.
 
+        .. deprecated:: 0.4.0
+            The login flow is owned by flask_campus; removed in 0.5.0.
+
         Remote revocation is best-effort: the login session may already be
         gone server-side (expired, swept, or the client's auth service
         session cookie lost across app workers), but the local session
         state is always cleared so the user is signed out locally
         regardless of the revocation outcome.
         """
+        _warn_flask_lane("logout")
         flask.g.pop("user", None)
         flask.g.pop("device", None)
         if not self.logins.has_session():
@@ -374,6 +398,9 @@ class AuthRoot(ResourceRoot):
     def push_context(self) -> None:
         """Push auth/login context to flask g.
 
+        .. deprecated:: 0.4.0
+            The login flow is owned by flask_campus; removed in 0.5.0.
+
         Resolved users are cached in-process per session for
         user_cache_ttl seconds (#57): a session-carrying request
         otherwise pays 1-2 synchronous auth API calls before every
@@ -382,6 +409,7 @@ class AuthRoot(ResourceRoot):
         server-side — not through logout(), which evicts immediately —
         keeps resolving for up to the TTL window.
         """
+        _warn_flask_lane("push_context")
         flask.g.user = None
         flask.g.device = None
 

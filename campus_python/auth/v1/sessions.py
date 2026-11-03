@@ -55,6 +55,7 @@ class CampusSessions(ResourceCollection):
                 sessionstore.LANE_SESSION
             )
         if session_id is None:
+            sessionstore.warn_legacy_lane_read("Sessions.from_session")
             session_id = cast(
                 str, flask.session[self._session_key]
             )
@@ -68,7 +69,10 @@ class CampusSessions(ResourceCollection):
         """
         if sessionstore.resolve_session_id(sessionstore.LANE_SESSION):
             return True
-        return self._session_key in flask.session
+        if self._session_key in flask.session:
+            sessionstore.warn_legacy_lane_read("Sessions.has_session")
+            return True
+        return False
 
     def new(
             self,
