@@ -154,7 +154,11 @@ class Campus:
         return self._integrations
 
     def _get_token_from_session(self) -> campus.model.OAuthToken:
-        """Get the token from flask session.
+        """Re-acquire the login session user's campus bearer.
+
+        The login-session id resolves via the injected session-id
+        provider (flask_campus installs one reading its request-state
+        storage) or an explicit id — the SDK holds no request state.
 
         One endpoint call (campus#963/#964, invariant A10):
         POST /logins/<session_id>/token re-acquires the session user's

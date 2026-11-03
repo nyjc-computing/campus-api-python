@@ -9,8 +9,7 @@ explicit argument > provider > the legacy flask.session read.
 import unittest
 from unittest.mock import Mock, patch
 
-import flask
-
+from campus_python import errors
 from campus_python.auth.v1 import AuthRoot, set_session_id_provider
 from campus_python.auth.v1 import sessionstore
 from campus_python.auth.v1.logins import LOGIN_STORAGE_KEY
@@ -38,11 +37,6 @@ def ok_response(body: dict) -> Mock:
     return response
 
 
-def session_context():
-    """A Flask request context with a writable session."""
-    app = flask.Flask(__name__)
-    app.secret_key = "test-secret"
-    return app.test_request_context()
 
 
 class TestStorageKeyConstants(unittest.TestCase):
@@ -51,13 +45,11 @@ class TestStorageKeyConstants(unittest.TestCase):
     def setUp(self):
         self.auth, _ = make_auth()
 
-    def test_session_storage_key_matches_derivation(self):
-        self.assertEqual(
-            SESSION_STORAGE_KEY, self.auth.sessions._session_key
-        )
+    def test_session_storage_key(self):
+        self.assertEqual(SESSION_STORAGE_KEY, "campus_session_id")
 
-    def test_login_storage_key_matches_derivation(self):
-        self.assertEqual(LOGIN_STORAGE_KEY, self.auth.logins._session_key)
+    def test_login_storage_key(self):
+        self.assertEqual(LOGIN_STORAGE_KEY, "logins_login_id")
 
 
 class TestSessionIdProvider(unittest.TestCase):
@@ -69,8 +61,8 @@ class TestSessionIdProvider(unittest.TestCase):
     def tearDown(self):
         set_session_id_provider(None)
 
-    def test_provider_consulted_outside_any_request_context(self):
-        """The provider answers even where flask.session cannot."""
+    def test_provider_consulted_without_explicit_id(self):
+        """The provider answers whenever no explicit id is passed."""
         set_session_id_provider(
             lambda kind: "login-123"
             if kind == sessionstore.LANE_LOGIN
@@ -83,10 +75,15 @@ class TestSessionIdProvider(unittest.TestCase):
             self.auth.logins[None].path.endswith("logins/login-123/")
         )
 
-    def test_without_provider_outside_request_context_raises(self):
-        """No provider: the legacy flask.session lane is preserved."""
-        with self.assertRaises(RuntimeError):
-            self.auth.logins.has_session()
+    def test_without_provider_and_explicit_id_raises(self):
+        """No provider, no explicit id: AuthenticationError naming the
+        seam — the SDK holds no request state of its own."""
+        self.assertFalse(self.auth.logins.has_session())
+        self.assertFalse(self.auth.sessions.has_session())
+        with self.assertRaises(errors.AuthenticationError):
+            self.auth.logins[None]
+        with self.assertRaises(errors.AuthenticationError):
+            self.auth.sessions.from_session()
 
     def test_explicit_id_wins_over_provider(self):
         set_session_id_provider(
@@ -99,16 +96,15 @@ class TestSessionIdProvider(unittest.TestCase):
         )
 
     def test_provider_lanes_are_isolated(self):
-        """A provider answering only the session lane leaves logins to
-        the legacy lane."""
+        """A provider answering only the session lane leaves the login
+        lane unresolved."""
         set_session_id_provider(
             lambda kind: "sess-abc"
             if kind == sessionstore.LANE_SESSION
             else None
         )
         self.assertTrue(self.auth.sessions.has_session())
-        with session_context():
-            self.assertFalse(self.auth.logins.has_session())
+        self.assertFalse(self.auth.logins.has_session())
 
     def test_token_uses_provider_resolved_id(self):
         """logins.token() targets the provider's session id."""

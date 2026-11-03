@@ -3,16 +3,9 @@
 Campus Auth resource.
 """
 
-import logging
-import time
-import warnings
-from typing import Any, Literal
-
-import flask
-import werkzeug
+from typing import Literal
 
 from campus.common import env
-from campus.common.utils import uid
 import campus.model
 
 from ... import errors
@@ -34,26 +27,6 @@ from . import (
 )
 from .sessionstore import set_session_id_provider
 
-logger = logging.getLogger(__name__)
-
-# How long push_context() may reuse a session's resolved user (#57).
-# push_context runs as an app-wide before_request hook, so without the
-# cache a session-carrying browser pays 1-2 synchronous auth API calls
-# before every route. Warm requests within the window pay none.
-USER_CACHE_TTL_SECONDS = 60.0
-
-def _warn_flask_lane(method: str) -> None:
-    warnings.warn(
-        f"AuthRoot.{method} is deprecated and will be removed in "
-        "campus_api_python 0.5.0: the browser login flow is owned by "
-        "the flask_campus middleware (campus.flask_campus.context) — "
-        "hosts still driving these methods directly should migrate. "
-        "Ref: campus#1037, classroom#72.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-
-
 class AuthRoot(ResourceRoot):
     """Campus Auth resource."""
     url_prefix: str = "/auth/v1"
@@ -71,14 +44,6 @@ class AuthRoot(ResourceRoot):
         self._sessions = None
         self._users = None
         self._vaults = None
-        # (kind, session_id) -> (expires_at, user resource, device_id).
-        # kind namespaces the two session stores: "session" (auth
-        # sessions) and "login" (login sessions).
-        self._user_cache: dict[
-            tuple[str, str],
-            tuple[float, dict[str, Any], str | None],
-        ] = {}
-        self.user_cache_ttl = USER_CACHE_TTL_SECONDS
 
     @property
     def broker(self) -> broker.Broker:
@@ -157,111 +122,6 @@ class AuthRoot(ResourceRoot):
             self._vaults = vaults.Vaults(root=self)
         return self._vaults
 
-    def authorize(
-            self,
-            target: str,  # app URL
-    ) -> werkzeug.Response:
-        """Begin an authorization flow.
-
-        .. deprecated:: 0.4.0
-            The login flow is owned by flask_campus; removed in 0.5.0.
-
-        Returns a redirect response to the authorization endpoint.
-
-        IMPORTANT: This must return a redirect response directly (not use
-        requests.get) to preserve the browser's user agent and cookies.
-        If we use requests, Google detects a server user agent and switches
-        to OAuth Lite flow which breaks in browsers (500 error).
-        """
-        _warn_flask_lane("authorize")
-        from urllib.parse import urlencode
-
-        # Use the app's own callback URL instead of going through campus proxy
-        redirect_uri = target
-
-        auth_session = self.sessions.new(
-            redirect_uri=redirect_uri,
-            scopes=["campus.profile"],
-            target=target,
-        )
-
-        # Construct Campus OAuth Provider URL (using provider directly, not proxy)
-        authorize_url = self.base_url + self.make_path("authorize")
-        params = {
-            "client_id": env.CLIENT_ID,
-            "response_type": "code",  # OAuth2 authorization code flow
-            "redirect_uri": redirect_uri,  # Callback URL after auth
-            "state": auth_session.id,
-        }
-        full_url = f"{authorize_url}?{urlencode(params)}"
-
-        # Return redirect to preserve browser user agent and cookies
-        return flask.redirect(full_url)
-
-    def finalize(
-            self,
-            state: str,
-            code: str,
-            scope: str,
-    ) -> werkzeug.Response:
-        """Finalize an authorization flow.
-
-        .. deprecated:: 0.4.0
-            The login flow is owned by flask_campus; removed in 0.5.0.
-
-        Returns a redirect response to the target.
-        """
-        _warn_flask_lane("finalize")
-        # 1. Validate auth session
-        auth_session = self.sessions.from_code(code=code)
-        if auth_session.id != state:
-            raise errors.AuthenticationError(
-                error_description="State parameter does not match session ID."
-            )
-        if auth_session.user_id is None:
-            raise errors.AuthenticationError(
-                error_description="Unidentified user from auth session"
-            )
-
-        # 2. Exchange authorization code for access token
-        # This call to the token endpoint automatically stores credentials
-        token = self.exchange_code_for_token(
-            code=code,
-            redirect_uri=auth_session.redirect_uri
-        )
-
-        # 3. Finalize session and get target; the response embeds the
-        # session user for the owning client (#879). Pre-#879 services
-        # return no user (None).
-        target, session_user = self.sessions[auth_session.id].finalize()
-
-        # 4. Ensure user exists (the server provisions the user record
-        # during verify_login; a missing user is a hard error here).
-        # The embedded record (#879) usually answers this without the
-        # operator-gated users route; the explicit fetch remains as the
-        # fallback for older auth services.
-        if session_user is None:
-            self.users[auth_session.user_id].get()
-
-        # 5. Create login session
-        # 5. Create login session. The device id rides the auth session
-        # (#825): campus.auth observed the stable campus_device cookie at
-        # /authorize and recorded it there, so re-logins from the same
-        # browser profile land on the same device id. The minted fallback
-        # keeps non-cookie flows (and pre-#825 auth services) working —
-        # those degrade to per-login device ids.
-        self.logins.new(
-            user_id=auth_session.user_id,
-            device_id=(
-                auth_session.device_id
-                or uid.generate_category_uid("device", length=16)
-            ),
-            agent_string=flask.request.headers.get("User-Agent", ""),
-        )
-
-        # 6. Redirect to target
-        return flask.redirect(target)
-
     def exchange_code_for_token(
             self,
             code: str,
@@ -300,35 +160,6 @@ class AuthRoot(ResourceRoot):
         resp.raise_for_status()
         return campus.model.OAuthToken.from_resource(resp.json())
 
-    def logout(self) -> None:
-        """Logout the current user by revoking their login session.
-
-        .. deprecated:: 0.4.0
-            The login flow is owned by flask_campus; removed in 0.5.0.
-
-        Remote revocation is best-effort: the login session may already be
-        gone server-side (expired, swept, or the client's auth service
-        session cookie lost across app workers), but the local session
-        state is always cleared so the user is signed out locally
-        regardless of the revocation outcome.
-        """
-        _warn_flask_lane("logout")
-        flask.g.pop("user", None)
-        flask.g.pop("device", None)
-        if not self.logins.has_session():
-            return
-        try:
-            login_session = self.logins.from_session()
-            self.logins[login_session.id].revoke()
-            self._user_cache_pop("login", login_session.id)
-        except Exception as err:
-            logger.warning(
-                "Login session revocation failed (continuing with local "
-                "logout): %s", err
-            )
-            if self.logins._session_key in flask.session:
-                del flask.session[self.logins._session_key]
-
     def get_token(self) -> campus.model.OAuthToken:
         """Convenience method to get access token for a user.
 
@@ -358,115 +189,6 @@ class AuthRoot(ResourceRoot):
             response = requests.get("https://api.example.com/data", headers=headers)
         """
         return self.logins.token()
-
-    def _user_cache_get(
-            self, kind: str, session_id: str
-    ) -> tuple[campus.model.User, str | None] | None:
-        """Return the cached (user, device_id) for a session, or None.
-
-        Expired entries are dropped lazily on read. The resource dict is
-        rehydrated into a fresh User per hit so callers cannot poison
-        the cache by mutating flask.g.user.
-        """
-        entry = self._user_cache.get((kind, session_id))
-        if entry is None:
-            return None
-        expires_at, resource, device_id = entry
-        if time.monotonic() >= expires_at:
-            self._user_cache.pop((kind, session_id), None)
-            return None
-        return campus.model.User.from_resource(resource), device_id
-
-    def _user_cache_put(
-            self,
-            kind: str,
-            session_id: str,
-            user: campus.model.User,
-            device_id: str | None,
-    ) -> None:
-        """Cache a session's resolved user for user_cache_ttl seconds."""
-        self._user_cache[(kind, session_id)] = (
-            time.monotonic() + self.user_cache_ttl,
-            user.to_resource(),
-            device_id,
-        )
-
-    def _user_cache_pop(self, kind: str, session_id: str) -> None:
-        """Drop a session's cached user (logout, stale session)."""
-        self._user_cache.pop((kind, session_id), None)
-
-    def push_context(self) -> None:
-        """Push auth/login context to flask g.
-
-        .. deprecated:: 0.4.0
-            The login flow is owned by flask_campus; removed in 0.5.0.
-
-        Resolved users are cached in-process per session for
-        user_cache_ttl seconds (#57): a session-carrying request
-        otherwise pays 1-2 synchronous auth API calls before every
-        route, which can wedge sync workers under load. Warm requests
-        make zero upstream calls. Trade-off: a session revoked
-        server-side — not through logout(), which evicts immediately —
-        keeps resolving for up to the TTL window.
-        """
-        _warn_flask_lane("push_context")
-        flask.g.user = None
-        flask.g.device = None
-
-        # Try to load auth session if one exists
-        if self.sessions.has_session():
-            session_id = flask.session[self.sessions._session_key]
-            cached = self._user_cache_get("session", session_id)
-            if cached is not None:
-                flask.g.user, flask.g.device = cached
-                return
-            try:
-                auth_session = self.sessions.from_session()
-                if auth_session.user_id:
-                    # The auth service embeds the session user for the
-                    # owning client (#879); the operator-gated users
-                    # route remains the fallback for older services.
-                    # getattr guards installs whose campus-suite predates
-                    # the embedded-user model field.
-                    user = (
-                        getattr(auth_session, "user", None)
-                        or self.users[auth_session.user_id].get()
-                    )
-                    flask.g.user = user
-                    self._user_cache_put("session", session_id, user, None)
-            except errors.NotFoundError:
-                # Session no longer exists on server (expired, restart, etc.)
-                self._user_cache_pop("session", session_id)
-                # Clear the stale session reference from Flask session
-                if self.sessions._session_key in flask.session:
-                    del flask.session[self.sessions._session_key]
-
-        # Try to load login session if one exists
-        elif self.logins.has_session():
-            login_id = flask.session[self.logins._session_key]
-            cached = self._user_cache_get("login", login_id)
-            if cached is not None:
-                flask.g.user, flask.g.device = cached
-                return
-            try:
-                login_session = self.logins.from_session()
-                # Embedded login user (#879) with the same fallback.
-                login_user_id = login_session.user_id
-                user = getattr(login_session, "user", None)
-                if user is None and login_user_id is not None:
-                    user = self.users[login_user_id].get()
-                flask.g.user = user
-                flask.g.device = login_session.device_id
-                if user is not None:
-                    self._user_cache_put(
-                        "login", login_id, user, login_session.device_id
-                    )
-            except errors.NotFoundError:
-                # Login session no longer exists on server
-                self._user_cache_pop("login", login_id)
-                # Clear the stale session reference from Flask session
-                if self.logins._session_key in flask.session:
-                    del flask.session[self.logins._session_key]
 
     def token(
             self,

@@ -9,13 +9,11 @@ audit span. SDK calls made while handling that request should land as
 child spans of it, so the audit waterfall shows which host route fired
 each campus call.
 
-This module mirrors the propagation half of
-campus.audit.middleware.tracing (campus service repo): same header
-names, same flask.g contract (trace_id / span_id stashed by the
-middleware's before_request hook, and the same _campus_trace_instrumented
-idempotency marker). It is deliberately self-contained so the SDK does
-not import the server-side audit client stack just to emit headers —
-keep the two in lockstep; W3C traceparent interop would extend both.
+In-request headers come from the installed request-context provider
+(set_request_context_provider) — flask_campus installs one that reads
+the flask.g state campus.audit.middleware stashes. The SDK itself is
+framework-free: with no provider installed, calls are treated as
+out-of-request and carry only the boot journey below.
 
 Boot journeys (#114): every SDK call is a user request, whether that
 user is human or agent — so calls made outside any request context
@@ -29,7 +27,6 @@ operators); set_process_journey()/set_process_device() override in code.
 """
 
 import os
-import warnings
 import threading
 import typing
 import uuid
@@ -240,57 +237,6 @@ def set_request_context_provider(
     _request_context_provider = provider
 
 
-def _builtin_request_context_headers() -> dict[str, str] | None:
-    """Headers from the host's active flask request, or None.
-
-    .. deprecated:: 0.4.0
-        The built-in reader (and with it the SDK's flask dependency)
-        is removed in 0.5.0 — hosts install a request-context
-        provider via set_request_context_provider instead.
-
-    The built-in reader mirrors the flask.g contract stashed by
-    campus.audit.middleware's before_request hook (same header names,
-    same values). Returns None when flask is unavailable or there is
-    no active request context (no warning — the out-of-request path
-    is permanent).
-    """
-    try:
-        import flask
-    except ImportError:  # pragma: no cover - host without flask
-        return None
-    if not flask.has_request_context():
-        return None
-    warnings.warn(
-        "campus_python.tracing used its built-in flask reader for "
-        "in-request propagation; install "
-        "set_request_context_provider (flask_campus does this via "
-        "audit.middleware.init_app) — the built-in reader is "
-        "deprecated and will be removed in campus_api_python 0.5.0. "
-        "Ref: campus#1037, classroom#72.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    headers: dict[str, str] = {}
-    trace_id = getattr(flask.g, "trace_id", None)
-    span_id = getattr(flask.g, "span_id", None)
-    if trace_id and span_id:
-        headers[TRACE_ID_HEADER] = trace_id
-        headers[PARENT_SPAN_ID_HEADER] = span_id
-    journey_id = getattr(flask.g, "journey_id", None)
-    if journey_id:
-        headers[JOURNEY_ID_HEADER] = journey_id
-    journey_name = getattr(flask.g, "journey_name", None)
-    if journey_name:
-        headers[JOURNEY_NAME_HEADER] = journey_name
-    device_id = getattr(flask.g, "device", None)
-    if not device_id:
-        # Gap-fill only: a request with its own device keeps it.
-        device_id = _process_device()
-    if device_id:
-        headers[DEVICE_ID_HEADER] = str(device_id)
-    return headers
-
-
 def propagation_headers() -> dict[str, str]:
     """Headers to attach to an outbound SDK call from the active context.
 
@@ -310,14 +256,15 @@ def propagation_headers() -> dict[str, str]:
     child span's device tag when it knows nothing better (campus#837).
 
     The in-request half resolves from the installed request-context
-    provider when one is set (set_request_context_provider), otherwise
-    from the built-in flask reader.
+    provider (set_request_context_provider); with no provider there is
+    no request-context half — every call is treated as out-of-request
+    and carries only the boot journey (the former built-in flask
+    reader was removed in 0.5.0; flask_campus installs the provider).
     """
     headers: dict[str, str] = {}
-    if _request_context_provider is not None:
-        request_headers = _request_context_provider()
-    else:
-        request_headers = _builtin_request_context_headers()
+    request_headers = (
+        _request_context_provider() if _request_context_provider else None
+    )
 
     if request_headers is None:
         # Out of any request context (startup, background threads): the

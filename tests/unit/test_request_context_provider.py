@@ -68,17 +68,6 @@ class TestRequestContextProvider(unittest.TestCase):
             set_request_context_provider(lambda: {})
             self.assertEqual(propagation_headers(), {})
 
-    def test_uninstall_reverts_to_builtin_flask_reader(self):
-        app = flask.Flask(__name__)
-        set_request_context_provider(lambda: None)
-        set_request_context_provider(None)
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            headers = propagation_headers()
-        self.assertEqual(headers[TRACE_ID_HEADER], TRACE_ID)
-        self.assertEqual(headers[PARENT_SPAN_ID_HEADER], SPAN_ID)
-
     def test_no_provider_builtin_untouched_outside_request(self):
         """Without a provider the legacy behavior holds: outside a
         request context there are no trace headers."""
@@ -86,6 +75,19 @@ class TestRequestContextProvider(unittest.TestCase):
         self.assertNotIn(TRACE_ID_HEADER, headers)
         self.assertNotIn(PARENT_SPAN_ID_HEADER, headers)
         self.assertNotIn(DEVICE_ID_HEADER, headers)
+
+
+    def test_uninstall_reverts_to_boot_journey_only(self):
+        """No provider = no request-context half: even inside a request
+        context, headers are boot-journey-only (the former built-in
+        flask reader is gone)."""
+        app = flask.Flask(__name__)
+        with app.test_request_context("/"):
+            flask.g.trace_id = TRACE_ID
+            flask.g.span_id = SPAN_ID
+            headers = propagation_headers()
+        self.assertNotIn("X-Request-ID", headers)
+        self.assertNotIn("X-Parent-Span-ID", headers)
 
 
 class TestProcessDeviceAccessor(unittest.TestCase):

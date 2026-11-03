@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "campus-api-python"
-version = "0.4.0"
+version = "0.5.0"
 description = "Campus API for Python projects"
 authors = ["NYJC Computing <nyjc.computing@nyjc.edu.sg>"]
 
@@ -10,10 +10,13 @@ authors = ["NYJC Computing <nyjc.computing@nyjc.edu.sg>"]
 # - bugfix (3.14): unofficial ("not yet but eventually"); CI-tested with
 #   failures allowed; never deployed to prod.
 python = ">=3.11,<3.15"
-flask = "^3.0.0"
 # json_client is requests-based; this was previously satisfied
 # transitively by campus-suite (which the SDK no longer depends on).
 requests = "^2.32.4"
+# flask was a hard dep only for the browser login flow, which moved to
+# the flask_campus middleware (campus#1037); removed in 0.5.0 — the
+# SDK is now framework-free.
+
 # The campus.* modules the SDK imports (campus.common env/schema/uid,
 # campus.model types incl. HttpHeader) ship in the campus-common and
 # campus-model distributions — the SDK imports no campus-suite module.
