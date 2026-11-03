@@ -12,8 +12,14 @@ from campus.common import env, schema
 import campus.model
 
 from ...interface import JsonDict, Resource, ResourceCollection
+from . import sessionstore
 
 PROVIDER = "campus"
+
+# flask.session key this resource historically reads/writes its id in.
+# Hosts that own their own storage (flask_campus) use this key too, so
+# both paths stay consistent during the provider-seam rollout.
+SESSION_STORAGE_KEY = "campus_session_id"
 
 
 class CampusSessions(ResourceCollection):
@@ -38,13 +44,30 @@ class CampusSessions(ResourceCollection):
         resp.raise_for_status()
         return campus.model.AuthSession.from_resource(resp.json())
 
-    def from_session(self) -> campus.model.AuthSession:
-        """Get a session from client-side session id."""
-        session_id = flask.session[self._session_key]
+    def from_session(self, session_id: str | None = None) -> campus.model.AuthSession:
+        """Get a session from a client-side session id.
+
+        Resolution order: explicit session_id > the installed
+        session-id provider > the legacy flask.session read.
+        """
+        if session_id is None:
+            session_id = sessionstore.resolve_session_id(
+                sessionstore.LANE_SESSION
+            )
+        if session_id is None:
+            session_id = cast(
+                str, flask.session[self._session_key]
+            )
         return CampusSessions.Session(session_id, parent=self).get()
 
     def has_session(self) -> bool:
-        """Check if there is a session ID stored in the flask session."""
+        """Check if a session id is resolvable for the current context.
+
+        True when the installed session-id provider supplies one, or
+        (legacy lane) when the flask.session carries the storage key.
+        """
+        if sessionstore.resolve_session_id(sessionstore.LANE_SESSION):
+            return True
         return self._session_key in flask.session
 
     def new(

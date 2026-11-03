@@ -26,10 +26,12 @@ from . import (
     logins,
     oauth,
     root,
+    sessionstore,
     sessions,
     users,
     vaults,
 )
+from .sessionstore import set_session_id_provider
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +205,7 @@ class AuthRoot(ResourceRoot):
 
         # 2. Exchange authorization code for access token
         # This call to the token endpoint automatically stores credentials
-        token = self._exchange_code_for_token(
+        token = self.exchange_code_for_token(
             code=code,
             redirect_uri=auth_session.redirect_uri
         )
@@ -240,7 +242,7 @@ class AuthRoot(ResourceRoot):
         # 6. Redirect to target
         return flask.redirect(target)
 
-    def _exchange_code_for_token(
+    def exchange_code_for_token(
             self,
             code: str,
             redirect_uri: str

@@ -71,7 +71,7 @@ def make_auth() -> tuple[AuthRoot, Mock]:
 
 
 class TestTokenEndpointDeserialization(unittest.TestCase):
-    """auth.token() / _exchange_code_for_token() consume RFC payloads."""
+    """auth.token() / exchange_code_for_token() consume RFC payloads."""
 
     def test_rfc_token_payload_deserializes(self):
         token = campus.model.OAuthToken.from_resource(RFC_TOKEN_PAYLOAD)
