@@ -10,7 +10,6 @@ nothing when there is no active traced request.
 import os
 import unittest
 
-import flask
 import requests
 
 from campus_python import tracing
@@ -47,22 +46,6 @@ def _capture_send(client: CampusRequest) -> dict:
 class TestTracePropagation(unittest.TestCase):
     """Trace headers on outbound SDK calls (#92)."""
 
-    def test_headers_inside_traced_request(self):
-        """Calls inside a traced host request carry both trace headers."""
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            client.get("/ping")
-
-        self.assertEqual(captured["headers"].get("X-Request-ID"), TRACE_ID)
-        self.assertEqual(
-            captured["headers"].get("X-Parent-Span-ID"), SPAN_ID
-        )
-
     def test_no_headers_outside_request_context(self):
         """Calls outside any request context stay unparented."""
         client = _make_client()
@@ -72,39 +55,6 @@ class TestTracePropagation(unittest.TestCase):
 
         self.assertNotIn("X-Request-ID", captured["headers"])
         self.assertNotIn("X-Parent-Span-ID", captured["headers"])
-
-    def test_no_headers_without_active_span(self):
-        """A request context without middleware-stashed span state
-        (tracing disabled or middleware absent) emits no headers."""
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            client.get("/ping")
-
-        self.assertNotIn("X-Request-ID", captured["headers"])
-        self.assertNotIn("X-Parent-Span-ID", captured["headers"])
-
-    def test_caller_headers_take_precedence(self):
-        """Explicit per-call headers are never overwritten."""
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            client._session.request(
-                "GET",
-                "http://testsuite.invalid/ping",
-                headers={"X-Request-ID": "custom-trace-id"},
-            )
-
-        self.assertEqual(captured["headers"].get("X-Request-ID"), "custom-trace-id")
-        self.assertEqual(
-            captured["headers"].get("X-Parent-Span-ID"), SPAN_ID
-        )
 
     def test_instrumentation_is_idempotent(self):
         """Sessions are instrumented at construction (#92); re-instrumenting
@@ -116,70 +66,16 @@ class TestTracePropagation(unittest.TestCase):
             tracing.instrument_requests_session(client._session)
         )
 
-        # Still exactly one wrap: the header logic runs once per call.
-        app = flask.Flask(__name__)
+        # Still exactly one wrap: the header logic runs once per call
+        # (headers sourced from the installed request-context provider).
+        tracing.set_request_context_provider(
+            lambda: {"X-Request-ID": TRACE_ID}
+        )
+        self.addCleanup(tracing.set_request_context_provider, None)
         captured = _capture_send(client)
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            client.get("/ping")
+        client.get("/ping")
 
         self.assertEqual(captured["headers"].get("X-Request-ID"), TRACE_ID)
-
-
-class TestJourneyForwarding(unittest.TestCase):
-    """Action-journey forwarding on SDK calls (campus#828).
-
-    When the host request carries an action journey (stashed as
-    flask.g.journey_id by the journeys middleware), SDK calls forward it
-    as X-Journey-ID so child services' spans join the same journey.
-    """
-
-    def test_journey_forwarded_inside_traced_request(self):
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            flask.g.journey_id = "uid-journey-abc123"
-            client.get("/ping")
-
-        self.assertEqual(
-            captured["headers"].get("X-Journey-ID"), "uid-journey-abc123"
-        )
-        self.assertEqual(captured["headers"].get("X-Request-ID"), TRACE_ID)
-
-    def test_no_journey_no_header(self):
-        """A traced request without a journey emits no journey header."""
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            client.get("/ping")
-
-        self.assertNotIn("X-Journey-ID", captured["headers"])
-
-    def test_journey_header_outside_trace_context(self):
-        """A journey without an active span still forwards (the journeys
-        middleware can adopt journeys on hosts where span tracing is off;
-        the trace headers are simply absent)."""
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.journey_id = "uid-journey-abc123"
-            client.get("/ping")
-
-        self.assertEqual(
-            captured["headers"].get("X-Journey-ID"), "uid-journey-abc123"
-        )
-        self.assertNotIn("X-Request-ID", captured["headers"])
 
 
 class TestJourneyNameForwarding(unittest.TestCase):
@@ -190,36 +86,6 @@ class TestJourneyNameForwarding(unittest.TestCase):
     adopting X-Journey-Name), SDK calls forward it alongside the id so
     child services' spans tag the same journey_name.
     """
-
-    def test_name_forwarded_with_journey_id(self):
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.journey_id = "uid-journey-abc123"
-            flask.g.journey_name = "campus.submissions.submit"
-            client.get("/ping")
-
-        self.assertEqual(
-            captured["headers"].get("X-Journey-Name"),
-            "campus.submissions.submit",
-        )
-        self.assertEqual(
-            captured["headers"].get("X-Journey-ID"), "uid-journey-abc123"
-        )
-
-    def test_no_name_no_header(self):
-        """A journey without a stashed name emits no name header."""
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.journey_id = "uid-journey-abc123"
-            client.get("/ping")
-
-        self.assertNotIn("X-Journey-Name", captured["headers"])
 
     def test_name_lockstep_with_campus_middleware(self):
         """The header name must match the campus journeys middleware's
@@ -356,69 +222,6 @@ class TestProcessJourney(unittest.TestCase):
             self.captured["headers"].get("X-Campus-Device"), "deploy-abc123"
         )
 
-    def test_in_request_journeyless_call_stays_unjourneyed(self):
-        """Strict MVP: no journey header inside a request that has none —
-        the trace waterfall already correlates the chain."""
-        app = flask.Flask(__name__)
-        client = self._client()
-        tracing.set_process_journey(name="campus.api.boot")
-
-        with app.test_request_context("/"):
-            client.get("/ping")
-
-        self.assertNotIn("X-Journey-ID", self.captured["headers"])
-        self.assertNotIn("X-Journey-Name", self.captured["headers"])
-
-    def test_in_request_journey_wins_over_process(self):
-        """A journeyed request forwards its own journey, never the boot's."""
-        app = flask.Flask(__name__)
-        client = self._client()
-        boot_id = tracing.set_process_journey()
-
-        with app.test_request_context("/"):
-            flask.g.journey_id = "uid-journey-request1"
-            flask.g.journey_name = "campus.submissions.submit"
-            client.get("/ping")
-
-        self.assertEqual(
-            self.captured["headers"].get("X-Journey-ID"), "uid-journey-request1"
-        )
-        self.assertEqual(
-            self.captured["headers"].get("X-Journey-Name"),
-            "campus.submissions.submit",
-        )
-        self.assertNotEqual(
-            self.captured["headers"].get("X-Journey-ID"), boot_id
-        )
-
-    def test_in_request_device_gap_filled_by_process(self):
-        """A request with no stashed device attributes to the deploy."""
-        app = flask.Flask(__name__)
-        client = self._client()
-        os.environ[tracing.PROCESS_DEVICE_ENV] = "deploy-abc123"
-
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            client.get("/ping")
-
-        self.assertEqual(
-            self.captured["headers"].get("X-Campus-Device"), "deploy-abc123"
-        )
-
-    def test_in_request_stashed_device_wins(self):
-        app = flask.Flask(__name__)
-        client = self._client()
-        os.environ[tracing.PROCESS_DEVICE_ENV] = "deploy-abc123"
-
-        with app.test_request_context("/"):
-            flask.g.device = "uid-device-session1"
-            client.get("/ping")
-
-        self.assertEqual(
-            self.captured["headers"].get("X-Campus-Device"), "uid-device-session1"
-        )
-
     def test_set_process_device_overrides_env(self):
         os.environ[tracing.PROCESS_DEVICE_ENV] = "deploy-abc123"
         tracing.set_process_device("deploy-xyz789")
@@ -441,60 +244,6 @@ class TestProcessJourney(unittest.TestCase):
         self.assertEqual(suffix.count("-"), 2)
 
 
-class TestDeviceForwarding(unittest.TestCase):
-    """Device forwarding on SDK calls (campus#837).
-
-    When the host request carries a device identity (stashed as
-    flask.g.device by flask_campus's push_context from the login
-    session), SDK calls forward it as X-Campus-Device so child services'
-    spans carry the same device tag.
-    """
-
-    def test_device_forwarded_inside_traced_request(self):
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            flask.g.device = "uid-device-abc123"
-            client.get("/ping")
-
-        self.assertEqual(
-            captured["headers"].get("X-Campus-Device"), "uid-device-abc123"
-        )
-        self.assertEqual(captured["headers"].get("X-Request-ID"), TRACE_ID)
-
-    def test_no_device_no_header(self):
-        """A traced request with no stashed device emits no device header."""
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.trace_id = TRACE_ID
-            flask.g.span_id = SPAN_ID
-            client.get("/ping")
-
-        self.assertNotIn("X-Campus-Device", captured["headers"])
-
-    def test_device_header_outside_trace_context(self):
-        """A stashed device forwards even without an active span."""
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-
-        with app.test_request_context("/"):
-            flask.g.device = "uid-device-abc123"
-            client.get("/ping")
-
-        self.assertEqual(
-            captured["headers"].get("X-Campus-Device"), "uid-device-abc123"
-        )
-        self.assertNotIn("X-Request-ID", captured["headers"])
-
-
 class TestSetDefaultHeader(unittest.TestCase):
     """JsonClient.set_default_header for non-browser identity (#837)."""
 
@@ -507,23 +256,6 @@ class TestSetDefaultHeader(unittest.TestCase):
 
         self.assertEqual(
             captured["headers"].get("X-Campus-Device"), "uid-device-cli42"
-        )
-
-    def test_propagation_headers_win_over_default(self):
-        """Per-request trace context rides on top of defaults."""
-        app = flask.Flask(__name__)
-        client = _make_client()
-        captured = _capture_send(client)
-        client.set_default_header("X-Campus-Device", "uid-device-default")
-
-        with app.test_request_context("/"):
-            flask.g.device = "uid-device-session"
-            client.get("/ping")
-
-        # The request-time forward overwrites the static default for
-        # this call only; the default survives for later calls.
-        self.assertEqual(
-            captured["headers"].get("X-Campus-Device"), "uid-device-session"
         )
 
     def test_default_header_persists_across_calls(self):

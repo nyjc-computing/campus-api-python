@@ -18,11 +18,10 @@ import unittest
 from unittest.mock import Mock, patch
 
 import campus.model
-import flask
 import requests
 
 from campus_python import Campus, errors
-from campus_python.auth.v1 import AuthRoot
+from campus_python.auth.v1 import AuthRoot, set_session_id_provider
 from campus_python.json_client import CampusResponse
 
 RFC_REFRESH_PAYLOAD = {
@@ -74,11 +73,6 @@ def make_response(status_code: int, payload: dict) -> CampusResponse:
     return CampusResponse(raw)
 
 
-def session_context():
-    """A Flask request context with a writable session."""
-    app = flask.Flask(__name__)
-    app.secret_key = "test-secret"
-    return app.test_request_context()
 
 
 class TestGetTokenFromSession(unittest.TestCase):
@@ -114,9 +108,7 @@ class TestLoginSessionTokenRoute(unittest.TestCase):
         )
 
     def test_posts_to_session_token_route(self):
-        with session_context():
-            flask.session["logins_login_id"] = "login-1"
-            token = self.auth.logins.token()
+        token = self.auth.logins.token(session_id="login-1")
 
         self.assertEqual(token.access_token, "tok-live")
         self.assertEqual(token.scope, "campus.profile")
@@ -129,18 +121,21 @@ class TestLoginSessionTokenRoute(unittest.TestCase):
         self.assertIsNone(kwargs.get("json"))
 
     def test_get_token_uses_the_same_route(self):
-        with session_context():
-            flask.session["logins_login_id"] = "login-1"
-            token = self.auth.get_token()
+        # get_token() resolves the id via the injected session-id
+        # provider (flask_campus installs one reading its own storage).
+        set_session_id_provider(lambda _kind: "login-1")
+        self.addCleanup(set_session_id_provider, None)
+        token = self.auth.get_token()
 
         self.assertEqual(token.access_token, "tok-live")
         self.client.get.assert_not_called()
         self.client.patch.assert_not_called()
 
     def test_no_login_session_raises_without_http(self):
-        with session_context():
-            with self.assertRaises(errors.AuthenticationError):
-                self.auth.logins.token()
+        """No provider and no explicit id: AuthenticationError before
+        any HTTP."""
+        with self.assertRaises(errors.AuthenticationError):
+            self.auth.logins.token()
         self.client.post.assert_not_called()
 
     def test_invalid_grant_surfaces_oauth_error(self):
@@ -154,10 +149,8 @@ class TestLoginSessionTokenRoute(unittest.TestCase):
                 "request_id": None,
             }
         })
-        with session_context():
-            flask.session["logins_login_id"] = "login-1"
-            with self.assertRaises(errors.APIError) as ctx:
-                self.auth.logins.token()
+        with self.assertRaises(errors.APIError) as ctx:
+            self.auth.logins.token(session_id="login-1")
         self.assertEqual(ctx.exception.oauth_error, "invalid_grant")
 
 
@@ -175,9 +168,7 @@ class TestLoginTokenPresentsBasicOnly(unittest.TestCase):
         )
 
     def _call(self):
-        with session_context():
-            flask.session["logins_login_id"] = "login-1"
-            return self.auth.logins.token()
+        return self.auth.logins.token(session_id="login-1")
 
     def test_forces_basic_when_bearer_is_set(self):
         self.client.authorization = "Bearer outer-user-token"
@@ -203,10 +194,8 @@ class TestLoginTokenPresentsBasicOnly(unittest.TestCase):
         self.client.post.return_value = make_response(403, {
             "error": {"code": "FORBIDDEN", "message": "denied"}
         })
-        with session_context():
-            flask.session["logins_login_id"] = "login-1"
-            with self.assertRaises(errors.APIError):
-                self.auth.logins.token()
+        with self.assertRaises(errors.APIError):
+            self.auth.logins.token(session_id="login-1")
         self.client.set_bearer_authorization.assert_called_once_with(
             "outer-user-token"
         )

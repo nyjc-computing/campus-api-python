@@ -4,21 +4,21 @@ Campus Auth sessions resource (v1).
 """
 
 from datetime import datetime
-from typing import cast
-
-import flask
 
 from campus.common import env, schema
 import campus.model
 
+from ... import errors
 from ...interface import JsonDict, Resource, ResourceCollection
 from . import sessionstore
 
 PROVIDER = "campus"
 
-# flask.session key this resource historically reads/writes its id in.
-# Hosts that own their own storage (flask_campus) use this key too, so
-# both paths stay consistent during the provider-seam rollout.
+# Client-side storage key for this resource's session id. The SDK does
+# not touch any web-framework session store; hosts that keep the id in
+# their own request state (flask_campus) use this key, and install a
+# session-id provider (set_session_id_provider) so the resources below
+# resolve ids without an explicit argument.
 SESSION_STORAGE_KEY = "campus_session_id"
 
 
@@ -26,13 +26,7 @@ class CampusSessions(ResourceCollection):
     """Campus Auth Sessions resource."""
     path = f"sessions/{PROVIDER}/"
 
-    @property
-    def _session_key(self) -> str:
-        provider = self.path.rstrip("/").split("/")[-1]
-        return f"{provider}_session_id"
-
     def __getitem__(self, session_id: str) -> "CampusSessions.Session":
-        # Use the provided session_id parameter, not Flask session
         return CampusSessions.Session(session_id, parent=self)
 
     def from_code(self, code: str) -> campus.model.AuthSession:
@@ -45,34 +39,30 @@ class CampusSessions(ResourceCollection):
         return campus.model.AuthSession.from_resource(resp.json())
 
     def from_session(self, session_id: str | None = None) -> campus.model.AuthSession:
-        """Get a session from a client-side session id.
+        """Get a session by its client-side session id.
 
         Resolution order: explicit session_id > the installed
-        session-id provider > the legacy flask.session read.
+        session-id provider. There is no framework fallback: hosts
+        without a provider must pass the id explicitly.
         """
         if session_id is None:
             session_id = sessionstore.resolve_session_id(
                 sessionstore.LANE_SESSION
             )
-        if session_id is None:
-            sessionstore.warn_legacy_lane_read("Sessions.from_session")
-            session_id = cast(
-                str, flask.session[self._session_key]
+        if not session_id:
+            raise errors.AuthenticationError(
+                error_description=(
+                    "No session id available: pass session_id or "
+                    "install a session-id provider "
+                    "(campus_python.auth.v1.set_session_id_provider)."
+                )
             )
         return CampusSessions.Session(session_id, parent=self).get()
 
     def has_session(self) -> bool:
-        """Check if a session id is resolvable for the current context.
-
-        True when the installed session-id provider supplies one, or
-        (legacy lane) when the flask.session carries the storage key.
-        """
-        if sessionstore.resolve_session_id(sessionstore.LANE_SESSION):
-            return True
-        if self._session_key in flask.session:
-            sessionstore.warn_legacy_lane_read("Sessions.has_session")
-            return True
-        return False
+        """True when the installed session-id provider supplies a
+        session id for this lane."""
+        return bool(sessionstore.resolve_session_id(sessionstore.LANE_SESSION))
 
     def new(
             self,
@@ -96,9 +86,9 @@ class CampusSessions(ResourceCollection):
             json_data["user_id"] = str(user_id)
         resp = self.client.post(self.make_path(), json=json_data)
         resp.raise_for_status()
-        # session_id is used as state parameter and stored in session
-        authsession = campus.model.AuthSession.from_resource(resp.json())
-        flask.session[self._session_key] = authsession.id
+        # The returned session id doubles as the OAuth state parameter;
+        # storing it client-side is the host's business (flask_campus
+        # context owns its flask.session storage).
         return campus.model.AuthSession.from_resource(resp.json())
 
     def sweep(self, at_time: datetime | str | None = None) -> int:
@@ -121,7 +111,7 @@ class CampusSessions(ResourceCollection):
 
         @property
         def session_id(self) -> str:
-            return self.path.split("/")[-1]
+            return self.path.rstrip("/").split("/")[-1]
 
         def finalize(self) -> "tuple[str, campus.model.User | None]":
             # DELETE /sessions/{provider}/{session_id} ->
@@ -130,12 +120,6 @@ class CampusSessions(ResourceCollection):
                 self.make_path(end_slash=True)
             )
             resp.raise_for_status()
-            # Remove session ID from Flask session using correct key.
-            # The key may be absent (expired cookie, new worker, lost
-            # session) — clearing it must not fail the finalization (#59).
-            flask.session.pop(
-                cast(CampusSessions, self.parent)._session_key, None
-            )
             body = resp.json()
             # The auth service embeds the session user for the owning
             # client (#879); None from pre-#879 services.
