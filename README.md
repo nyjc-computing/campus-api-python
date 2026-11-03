@@ -4,7 +4,9 @@ Python client library for NYJC Campus API, providing unified access to campus se
 
 ## Overview
 
-The Campus API Python library is a comprehensive client for interacting with the NYJC Campus backend services. It provides a unified interface for server-to-server and device-based authentication, enabling secure access to various campus resources through a consistent API.
+The Campus API Python library (`campus_python`) is a comprehensive client for interacting with the NYJC Campus backend services. It provides a unified interface for server-to-server and device-based authentication, enabling secure access to various campus resources through a consistent API.
+
+**The SDK is framework-free**: it holds no web-framework dependency and no request state of its own. The browser login flow and client-side session storage live in the [`campus.flask_campus`](https://github.com/nyjc-computing/campus) middleware (see [Session & trace integration](#session--trace-integration-the-flask_campus-boundary) below); this library owns transport, tokens, and the injectable seams that let any host supply request-scoped identity.
 
 ## Features
 
@@ -13,7 +15,8 @@ The Campus API Python library is a comprehensive client for interacting with the
 - OAuth2 integration with Google Workspace (nyjc.edu.sg domain)
 - Comprehensive API coverage for assignments, circles, submissions, and timetable
 - Campus Audit client: API keys (mint, scope, rotate, revoke) and traces
-- Session management and secure request handling
+- User-session token lane (`with_user_session`) with one-shot 401 auto-refresh
+- Injectable session-id / request-context providers — request-scoped identity without any web-framework coupling (flask_campus installs both)
 - Error handling and logging support
 
 ## Tech Stack
@@ -22,9 +25,9 @@ The Campus API Python library is a comprehensive client for interacting with the
 - **Package Management:** Poetry
 - **Dependencies:**
   - `requests` - HTTP client (`json_client`)
-  - `flask` - Web framework (for integration)
   - `campus-common` / `campus-model` - Campus shared kernel and domain models (version-pinned release wheels)
-  - Additional dependencies managed via Poetry
+
+  (flask was removed in 0.5.0 — the browser login flow moved to the flask_campus middleware; see `campus.auth.v1.sessionstore` for the history.)
 
 ## Setup
 
@@ -84,7 +87,7 @@ campus-api-python/
 │   ├── __init__.py         # Main Campus client class
 │   ├── errors.py           # Error handling
 │   ├── interface.py        # Core interfaces
-│   ├── tracing.py          # Trace context propagation (X-Request-ID)
+│   ├── tracing.py          # Trace/journey/device propagation + injectable request-context provider
 │   ├── api/
 │   │   └── v1/             # API service clients
 │   │       ├── assignments.py
@@ -97,7 +100,9 @@ campus-api-python/
 │   │       ├── apikeys.py  # Audit API keys (mint, scope, rotate, revoke)
 │   │       └── traces.py   # Traces (list, search, ingest)
 │   ├── auth/
-│   │   └── v1/             # Authentication clients
+│   │   └── v1/             # Authentication clients (framework-free)
+│   │       ├── __init__.py # AuthRoot + user-session token lane
+│   │       ├── sessionstore.py  # Injected session-id resolution seam
 │   │       ├── broker.py
 │   │       ├── clients.py
 │   │       ├── connections.py
@@ -178,20 +183,47 @@ Raw `CampusRequest` users can install their own hook (e.g. public clients drivin
 client.set_unauthorized_hook(lambda: campus.auth.refresh(stored, client_id="campus-cli").access_token)
 ```
 
+### Session & trace integration (the flask_campus boundary)
+
+The SDK holds **no session state**. Flask-based Campus apps use the
+`campus.flask_campus` middleware, which owns the browser login flow
+and the client-side session storage; the SDK owns transport and
+tokens. The two layers join through two injectable providers:
+
+| Concern | Owner | How the SDK sees it |
+|---|---|---|
+| Login flow (authorize / code exchange / logout) | `campus.flask_campus.context` | orchestrates this SDK's pure API calls (`sessions.new`, `exchange_code_for_token`, `logins.new`, …) |
+| Session-id storage (browser session keys) | `campus.flask_campus.context` | `set_session_id_provider` — ids resolve **explicit argument > provider**; with neither, resource methods raise `AuthenticationError` naming the seam |
+| Request-context trace headers (span/journey/device) | `campus.flask_campus.propagation` (installed by `campus.audit.middleware.init_app`) | `tracing.set_request_context_provider` — provider output is attached verbatim to outbound calls; with no provider, calls carry only the process boot journey |
+| User-session token lane (`with_user_session` / `get_token`) | this SDK | pure API orchestration (bearer setup, 401 auto-refresh); the session id arrives via the provider above |
+
+Non-Flask hosts need none of this: the CLI authenticates via device
+flow, stores tokens in its own keyring, and sets bearers directly
+(`client.api.client.set_bearer_authorization(...)`). Out-of-request
+SDK calls always carry the process boot journey (`X-Journey-ID` /
+`X-Campus-Device`, #114) for audit attribution; see
+`campus_python.tracing`.
+
+> **History:** `AuthRoot.authorize/finalize/logout/push_context` and
+> the flask.session-backed storage used to live here. They were
+> deprecated in 0.4.0 and removed in 0.5.0 in favor of the
+> flask_campus middleware (campus#1037).
+
 ## Service Base URLs
 
-Each service client (`campus.auth`, `campus.api`, `campus.audit`) resolves its base URL in this order:
+Each service client (`campus.auth`, `campus.api`, `campus.audit`)
+resolves its base URL through the shared registry
+(`campus.common.services.resolve_base_url`, campus-common 0.3.0+).
+The environment is the source of truth — Campus ships no baked-in
+deployment topology:
 
-1. **Explicit URL config** — the `CAMPUS_AUTH_URL` / `CAMPUS_API_URL` / `CAMPUS_AUDIT_URL` environment variable, if set. Use this for local testing deployments and custom endpoints (e.g. `CAMPUS_AUTH_URL=http://localhost:5000`).
-2. **ENV-based defaults** — selected by `ENV` (or `CAMPUS_ENV`):
+1. `CAMPUS_AUTH_URL` / `CAMPUS_API_URL` / `CAMPUS_AUDIT_URL` — the per-service variable. Use this for local testing deployments and custom endpoints (e.g. `CAMPUS_AUTH_URL=http://localhost:5000`).
+2. `<SERVICE>_URL` — bare alias (`AUTH_URL`, `API_URL`, `AUDIT_URL`).
+3. `CAMPUS_BASE_URL`, then `BASE_URL` — one origin fronting every service (gateway / single-server deployments).
 
-| ENV value | auth | api | audit |
-|-----------|------|-----|-------|
-| `development` (default) | `https://campusauth-development.up.railway.app` | `https://campusapi-development.up.railway.app` | `https://campusaudit-development.up.railway.app` |
-| `staging` | `https://auth.campus.nyjc.dev` | `https://api.campus.nyjc.dev` | `https://audit.campus.nyjc.dev` |
-| `production` | `https://auth.campus.nyjc.app` | `https://api.campus.nyjc.app` | `https://audit.campus.nyjc.app` |
-
-> **Deprecated (issue #52):** base URLs are no longer derived from the `HOSTNAME` environment variable. Deployments that relied on the `DEPLOY` service suffix (e.g. `campus.auth`) or `ENV=testing` to produce `https://{HOSTNAME}` URLs now get a `DeprecationWarning` and the ENV-based default instead — set `CAMPUS_AUTH_URL` / `CAMPUS_API_URL` explicitly to point the client at those deployments.
+An unconfigured service raises `ValueError` naming the variables to
+set. (The former ENV-tier fallback table and the HOSTNAME-derived
+URLs were removed in #127 — issue #52's migration is complete.)
 
 ## Environment Variables
 
@@ -203,7 +235,7 @@ Each service client (`campus.auth`, `campus.api`, `campus.audit`) resolves its b
 | `CAMPUS_API_URL` | No | All | API service base URL (overrides ENV default) |
 | `CAMPUS_AUDIT_URL` | No | All | Audit service base URL (overrides ENV default) |
 | `AUDIT_API_KEY` | Yes (audit) | All | Audit service API key (`audit_v1_...`); sent as the audit root's Bearer token |
-| `ENV` / `CAMPUS_ENV` | No | All | Deployment environment selecting default URLs: `development` (default), `staging`, `production` |
+| `CAMPUS_BASE_URL` / `BASE_URL` | No | All | One origin fronting every service (gateway / single-server deployments); consulted last |
 
 ## Development
 
@@ -263,8 +295,7 @@ Check network connectivity and Campus service availability.
 
 ## Related Projects
 
-- [campus](https://github.com/nyjc-computing/campus) - Campus backend services
-- [campus-suite](https://github.com/nyjc-computing/campus-suite) - Campus suite components
+- [campus](https://github.com/nyjc-computing/campus) - Campus backend services; ships the `campus-suite` package, whose `campus.flask_campus` middleware is the supported way to build Flask apps on this SDK
 
 ## License
 
