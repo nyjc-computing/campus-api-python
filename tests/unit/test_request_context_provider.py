@@ -7,6 +7,7 @@ themselves. Contract: the provider returns the in-request headers
 context — only then does the SDK apply the process boot journey.
 """
 
+import os
 import unittest
 
 import flask
@@ -85,3 +86,32 @@ class TestRequestContextProvider(unittest.TestCase):
         self.assertNotIn(TRACE_ID_HEADER, headers)
         self.assertNotIn(PARENT_SPAN_ID_HEADER, headers)
         self.assertNotIn(DEVICE_ID_HEADER, headers)
+
+
+class TestProcessDeviceAccessor(unittest.TestCase):
+    """tracing.process_device() exposes the gap-fill device publicly."""
+
+    def setUp(self):
+        self.saved = os.environ.get("RAILWAY_DEPLOYMENT_ID")
+        tracing._reset_process_journey()
+
+    def tearDown(self):
+        if self.saved is None:
+            os.environ.pop("RAILWAY_DEPLOYMENT_ID", None)
+        else:
+            os.environ["RAILWAY_DEPLOYMENT_ID"] = self.saved
+        tracing._reset_process_journey()
+
+    def test_process_device_reads_env(self):
+        os.environ["RAILWAY_DEPLOYMENT_ID"] = "deploy-abc"
+        self.assertEqual(tracing.process_device(), "deploy-abc")
+
+    def test_process_device_unset_is_none(self):
+        os.environ.pop("RAILWAY_DEPLOYMENT_ID", None)
+        self.assertIsNone(tracing.process_device())
+
+    def test_process_device_never_mints_journey(self):
+        """Reading the device must not mint the boot journey (#114:
+        hosts that only read the device never mint)."""
+        tracing.process_device()
+        self.assertIsNone(tracing._process_state["journey_id"])

@@ -103,6 +103,16 @@ def _process_device() -> str | None:
     return _process_state["device_id"]
 
 
+def process_device() -> str | None:
+    """This process's device tag (default: RAILWAY_DEPLOYMENT_ID).
+
+    Public accessor for propagation hosts (flask_campus) implementing
+    device gap-fill: a request that stashed no device of its own may
+    present the process device. Never mints a journey (#114).
+    """
+    return _process_device()
+
+
 def _process_snapshot() -> tuple[str | None, str | None, str | None]:
     """(journey_id, journey_name, device_id) after lazy init and mint.
 
