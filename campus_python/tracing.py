@@ -32,23 +32,16 @@ import typing
 import uuid
 
 import requests
+from campus.common.protocol import DEVICE_ID_HEADER as DEVICE_ID_HEADER
+from campus.common.protocol import JOURNEY_ID_HEADER as JOURNEY_ID_HEADER
+from campus.common.protocol import JOURNEY_NAME_HEADER as JOURNEY_NAME_HEADER
+from campus.common.protocol import PARENT_SPAN_ID_HEADER as PARENT_SPAN_ID_HEADER
+from campus.common.protocol import TRACE_ID_HEADER as TRACE_ID_HEADER
 
-# Same headers as campus.audit.middleware.tracing (#794): X-Request-ID
-# carries the host request's trace id; X-Parent-Span-ID carries its span
-# id so the receiving campus service records the call as a child span.
-TRACE_ID_HEADER = "X-Request-ID"
-PARENT_SPAN_ID_HEADER = "X-Parent-Span-ID"
-
-# Mirror of campus.audit.middleware.journeys.ACTION_JOURNEY_HEADER
-# (campus#828): forwarded so a child service's span joins the caller's
-# action journey. Keep the two in lockstep.
-JOURNEY_ID_HEADER = "X-Journey-ID"
-
-# Mirror of campus.audit.middleware.journeys.ACTION_JOURNEY_NAME_HEADER
-# (campus#952): forwarded with the id so a child service's spans tag
-# the same human label (tags.journey_name) and journey cards show it
-# end to end. Keep the two in lockstep.
-JOURNEY_NAME_HEADER = "X-Journey-Name"
+# Wire-protocol header names are re-exported from campus.common.protocol
+# (campus#1041) — the single source of truth since the former per-side
+# definitions and their "keep in lockstep" comments. Callers import the
+# names from campus_python.tracing (e.g. campus-cli's DEVICE_ID_HEADER).
 
 # Environment for the boot journey (#114): off/false/0/no disables it
 # (tests, operators), any other non-empty value pins an explicit
@@ -197,14 +190,6 @@ def _reset_process_journey() -> None:
             journey_name=None,
             device_id=None,
         )
-
-# Mirror of campus.config.DEVICE_ID_HEADER (campus#837): forwarded so a
-# child service's span carries the caller's device identity when the
-# host stashed one (flask_campus's push_context sets g.device from the
-# login session). The receiving middleware reads it only when it knows
-# nothing better (g.device absent, no campus_device cookie). Keep the
-# two in lockstep.
-DEVICE_ID_HEADER = "X-Campus-Device"
 
 # Same marker attribute as campus.audit.middleware.tracing so a session
 # instrumented by either implementation is left alone by the other.
