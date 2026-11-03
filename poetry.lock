@@ -79,13 +79,13 @@ typecheck = ["mypy"]
 
 [[package]]
 name = "campus-common"
-version = "0.3.0"
+version = "0.3.1"
 description = "Campus shared kernel: env, errors, introspect, schema, utils, validation - PEP 420 namespace portion under campus/common"
 optional = false
 python-versions = ">=3.11.0,<3.15"
 groups = ["main"]
 files = [
-    {file = "campus_common-0.3.0-py3-none-any.whl", hash = "sha256:c227cdd1508db23964dadde3dc7ad4db4be008b40c18133fa0306abda6b337c1"},
+    {file = "campus_common-0.3.1-py3-none-any.whl", hash = "sha256:c71b103d900208514cccf6ef87526fad828e6ff9f119159cef849861e8314da2"},
 ]
 
 [package.dependencies]
@@ -93,25 +93,25 @@ bcrypt = ">=5.0.0,<6.0.0"
 
 [package.source]
 type = "url"
-url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.3.0/campus_common-0.3.0-py3-none-any.whl"
+url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.3.1/campus_common-0.3.1-py3-none-any.whl"
 
 [[package]]
 name = "campus-model"
-version = "0.1.2"
+version = "0.1.3"
 description = "Campus domain models: dataclass entities under campus/model - PEP 420 namespace portion"
 optional = false
 python-versions = ">=3.11.0,<3.15"
 groups = ["main"]
 files = [
-    {file = "campus_model-0.1.2-py3-none-any.whl", hash = "sha256:fe89bdb7947e8d9a47f5a32606bb9203f861ed74debeb52ef1f9265b9099f31c"},
+    {file = "campus_model-0.1.3-py3-none-any.whl", hash = "sha256:11d07e109031ba2ff3a4112e29bae28e17e1d6c416d9c1c9f6f7a6206fe6ccca"},
 ]
 
 [package.dependencies]
-campus_common = {url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.3.0/campus_common-0.3.0-py3-none-any.whl"}
+campus_common = {url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.3.1/campus_common-0.3.1-py3-none-any.whl"}
 
 [package.source]
 type = "url"
-url = "https://github.com/nyjc-computing/campus-model/releases/download/v0.1.2/campus_model-0.1.2-py3-none-any.whl"
+url = "https://github.com/nyjc-computing/campus-model/releases/download/v0.1.3/campus_model-0.1.3-py3-none-any.whl"
 
 [[package]]
 name = "certifi"
@@ -500,4 +500,4 @@ zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "1b61400c3cd206b628536a18af732aa5230f34b046d617018d496bfbab3a53ff"
+content-hash = "008188baf3d6f5651d2a95b1ec5f439036575cc6572a468c5ae9d25065cd1e8a"
