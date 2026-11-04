@@ -20,6 +20,18 @@ class Vaults(ResourceCollection):
     def __getitem__(self, label: str) -> "Vaults.Vault":
         return Vaults.Vault(label, parent=self)
 
+    def labels(self) -> "list[str]":
+        """List vault labels (admin view, campus#1055).
+
+        GET /vaults/ — the operator, the super-admin root, or
+        designated users holding any vault grant row plus the
+        vaults:read scope; client principals hold per-label access
+        only and cannot enumerate.
+        """
+        resp = self.client.get(self.make_path())
+        resp.raise_for_status()
+        return resp.json().get("labels", [])
+
     class Vault(Resource):
         """A single vault (label) exposing mapping-like access."""
 
