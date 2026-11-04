@@ -91,6 +91,45 @@ class CampusSessions(ResourceCollection):
         # context owns its flask.session storage).
         return campus.model.AuthSession.from_resource(resp.json())
 
+    def list(
+            self,
+            *,
+            provider: str | None = PROVIDER,
+            client_id: str | None = None,
+            user_id: str | None = None,
+            limit: int | None = None,
+            offset: int | None = None,
+    ) -> "list[campus.model.AuthSession]":
+        """List live sessions (admin view, campus#1055).
+
+        GET /sessions/ with optional provider/client_id/user_id
+        filters and limit/offset pagination. Requires the operator
+        principal or a designated admin user (sessions:read); client
+        principals are denied. Records carry metadata only — no
+        authorization_code, no user embeds — and finalized sessions
+        are absent (finalize deletes the record).
+        """
+        query: JsonDict = {}
+        if provider is not None:
+            query["provider"] = provider
+        if client_id is not None:
+            query["client_id"] = client_id
+        if user_id is not None:
+            query["user_id"] = str(user_id)
+        if limit is not None:
+            query["limit"] = limit
+        if offset is not None:
+            query["offset"] = offset
+        # The list route is provider-agnostic (/sessions/), unlike the
+        # campus-provider path this collection wraps.
+        collection_path = f"/{self.root.make_path('sessions').strip('/')}/"
+        resp = self.client.get(collection_path, query=query)
+        resp.raise_for_status()
+        return [
+            campus.model.AuthSession.from_resource(item)
+            for item in resp.json().get("sessions", [])
+        ]
+
     def sweep(self, at_time: datetime | str | None = None) -> int:
         json_data: JsonDict = {}
         match at_time:
