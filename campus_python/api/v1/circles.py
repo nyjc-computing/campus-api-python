@@ -7,7 +7,7 @@ from typing import Any
 
 import campus.model
 
-from ...interface import Resource, ResourceCollection
+from ...interface import Resource, ResourceCollection, payload
 
 
 class Circles(ResourceCollection):
@@ -33,16 +33,10 @@ class Circles(ResourceCollection):
             description: str = "",
             parents: dict[str, int] | None = None,
     ) -> campus.model.Circle:
-        payload: dict[str, Any] = {
-            "name": name,
-            "tag": tag,
-            "description": description,
-        }
-        if parents is not None:
-            payload["parents"] = parents
-        return campus.model.Circle.from_resource(
-            self._post_json(self.make_path(), json=payload)
-        )
+        return campus.model.Circle.from_resource(self._post_json(
+            self.make_path(),
+            json=payload(name=name, tag=tag, description=description, parents=parents)
+        ))
 
     class Circle(Resource):
         """Single campus API circle resource."""

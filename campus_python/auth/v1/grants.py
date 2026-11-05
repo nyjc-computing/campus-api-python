@@ -14,7 +14,7 @@ created_at. Vault rows carry bits (1=READ, 2=CREATE, 4=UPDATE,
 8=DELETE); management rows carry level (read < mod < write < admin).
 """
 
-from ...interface import JsonDict, ResourceCollection
+from ...interface import JsonDict, ResourceCollection, payload
 
 
 class Grants(ResourceCollection):
@@ -126,18 +126,16 @@ class Grants(ResourceCollection):
         Returns:
             The grant row (post-application state)
         """
-        body: JsonDict = {
-            "grantee_type": grantee_type,
-            "grantee_id": grantee_id,
-            "resource_type": resource_type,
-        }
-        if resource_id:
-            body["resource_id"] = resource_id
-        if bits is not None:
-            body["bits"] = bits
-        if level is not None:
-            body["level"] = level
-        return self._post_json(self.make_path(), json=body)["grant"]
+        # resource_id or None: "" means "no instance" here, and
+        # payload only drops None.
+        return self._post_json(self.make_path(), json=payload(
+            grantee_type=grantee_type,
+            grantee_id=grantee_id,
+            resource_type=resource_type,
+            resource_id=resource_id or None,
+            bits=bits,
+            level=level,
+        ))["grant"]
 
     def revoke(
             self,
@@ -166,18 +164,17 @@ class Grants(ResourceCollection):
         Returns:
             The remaining grant row, or None when the row was deleted
         """
-        body: JsonDict = {
-            "grantee_type": grantee_type,
-            "grantee_id": grantee_id,
-            "resource_type": resource_type,
-        }
-        if resource_id:
-            body["resource_id"] = resource_id
-        if bits is not None:
-            body["bits"] = bits
-        if level is not None:
-            body["level"] = level
-        return self._post_json(self.make_path("revoke", end_slash=False), json=body)["grant"]
+        return self._post_json(
+            self.make_path("revoke", end_slash=False),
+            json=payload(
+                grantee_type=grantee_type,
+                grantee_id=grantee_id,
+                resource_type=resource_type,
+                resource_id=resource_id or None,
+                bits=bits,
+                level=level,
+            ),
+        )["grant"]
 
     def delete(self, grant_id: str) -> None:
         """Delete a grant row outright by its id.

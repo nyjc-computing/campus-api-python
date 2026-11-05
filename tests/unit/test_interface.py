@@ -1,7 +1,13 @@
 import unittest
 from unittest.mock import Mock
 
-from campus_python.interface import Resource, ResourceCollection, ResourceRoot
+from campus_python.interface import (
+    Resource,
+    ResourceCollection,
+    ResourceRoot,
+    payload,
+    updates,
+)
 
 
 class TestResourceRootMakePath(unittest.TestCase):
@@ -303,6 +309,41 @@ class TestResourceMakeUrl(unittest.TestCase):
         self.assertEqual(
             resource.make_url("profile"),
             "https://api.example.com/api/v1/users/123/profile"
+        )
+
+
+class TestPayloadHelpers(unittest.TestCase):
+    """payload()/updates(): omit-None body builders shared by write routes."""
+
+    def test_payload_drops_none_fields(self):
+        self.assertEqual(
+            payload(title="T", description=None, questions=None),
+            {"title": "T"},
+        )
+
+    def test_payload_keeps_falsy_non_none_fields(self):
+        # Falsy values are "provided" and must survive: is_public=False,
+        # an empty-string description, a zero rate limit.
+        self.assertEqual(
+            payload(is_public=False, description="", rate_limit=0),
+            {"is_public": False, "description": "", "rate_limit": 0},
+        )
+
+    def test_payload_empty_when_everything_is_none(self):
+        self.assertEqual(payload(name=None, tag=None), {})
+
+    def test_updates_passes_fields_through(self):
+        self.assertEqual(
+            updates(name="n", scopes=["traces:read"]),
+            {"name": "n", "scopes": ["traces:read"]},
+        )
+
+    def test_updates_raises_when_every_field_is_none(self):
+        # Campus PATCH routes reject an empty body outright.
+        with self.assertRaises(ValueError) as ctx:
+            updates(name=None, description=None)
+        self.assertEqual(
+            str(ctx.exception), "At least one field must be provided for update"
         )
 
 

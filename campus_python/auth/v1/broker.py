@@ -12,7 +12,7 @@ AuthenticationError — so consumers can branch on them without
 hand-mapping statuses.
 """
 
-from ...interface import JsonDict, ResourceRoot
+from ...interface import JsonDict, ResourceRoot, payload
 
 
 class Broker(ResourceRoot):
@@ -57,7 +57,4 @@ class Broker(ResourceRoot):
             path = self.make_path(f"{provider}/{integration}/")
         else:
             path = self.make_path(f"{provider}/")
-        json_body: JsonDict = {}
-        if min_scopes is not None:
-            json_body["min_scopes"] = min_scopes
-        return self._post_json(path, json=json_body)
+        return self._post_json(path, json=payload(min_scopes=min_scopes))

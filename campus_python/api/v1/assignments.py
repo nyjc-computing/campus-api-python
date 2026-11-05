@@ -5,7 +5,7 @@ Campus API assignments resource (v1).
 
 import campus.model
 
-from ...interface import Resource, ResourceCollection
+from ...interface import Resource, ResourceCollection, payload, updates
 
 
 class Assignments(ResourceCollection):
@@ -43,17 +43,15 @@ class Assignments(ResourceCollection):
             questions: "list[dict] | None" = None,
             classroom_links: "list[dict] | None" = None,
     ) -> campus.model.Assignment:
-        payload: "dict[str, object]" = {"title": title}
-        if description is not None:
-            payload["description"] = description
-        if questions is not None:
-            payload["questions"] = questions
-        if classroom_links is not None:
-            payload["classroom_links"] = classroom_links
-
-        return campus.model.Assignment.from_resource(
-            self._post_json(self.make_path(), json=payload)
-        )
+        return campus.model.Assignment.from_resource(self._post_json(
+            self.make_path(),
+            json=payload(
+                title=title,
+                description=description,
+                questions=questions,
+                classroom_links=classroom_links,
+            )
+        ))
 
     class Assignment(Resource):
         """Single campus API assignment resource."""
@@ -70,15 +68,13 @@ class Assignments(ResourceCollection):
             body = self._get_json(self.make_path(end_slash=True))
             return campus.model.Assignment.from_resource(body)
 
-        def update(self, **updates) -> None:
+        def update(self, **fields) -> None:
             """Update this assignment with the given fields.
 
             The server rejects an empty PATCH body, so at least one
             field must be provided.
             """
-            if not updates:
-                raise ValueError("At least one field must be provided for update")
-            self._patch_json(self.make_path(end_slash=True), json=updates)
+            self._patch_json(self.make_path(end_slash=True), json=updates(**fields))
             return None
 
         class Links(Resource):
@@ -91,12 +87,9 @@ class Assignments(ResourceCollection):
                     coursework_id: str,
                     attachment_id: str | None = None,
             ) -> None:
-                payload = {
-                    "course_id": course_id,
-                    "coursework_id": coursework_id,
-                }
-                if attachment_id is not None:
-                    payload["attachment_id"] = attachment_id
-
-                self._post_json(self.make_path(), json=payload)
+                self._post_json(self.make_path(), json=payload(
+                    course_id=course_id,
+                    coursework_id=coursework_id,
+                    attachment_id=attachment_id,
+                ))
                 return None
