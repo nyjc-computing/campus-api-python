@@ -15,14 +15,7 @@ os.environ.setdefault("CLIENT_ID", "test-client-id")
 os.environ.setdefault("CLIENT_SECRET", "test-client-secret")
 
 from campus.model import HostedApp
-
-from campus_python.api.v1 import ApiRoot
-
-
-def make_api() -> tuple[ApiRoot, mock.Mock]:
-    """Create an ApiRoot backed by a mock JSON client."""
-    client = mock.Mock()
-    return ApiRoot(json_client=client), client
+from tests.support import make_api
 
 
 def record() -> dict:

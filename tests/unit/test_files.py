@@ -16,14 +16,8 @@ os.environ.setdefault("CLIENT_SECRET", "test-client-secret")
 
 import requests
 
-from campus_python.api.v1 import ApiRoot
 from campus_python.json_client import CampusRequest, CampusResponse
-
-
-def make_api() -> tuple[ApiRoot, mock.Mock]:
-    """Create an ApiRoot backed by a mock JSON client."""
-    client = mock.Mock()
-    return ApiRoot(json_client=client), client
+from tests.support import make_api
 
 
 class TestFilesList(unittest.TestCase):

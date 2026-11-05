@@ -12,11 +12,11 @@ Bool query values must reach the server as lowercase literals
 import os
 import unittest
 from typing import cast
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from campus_python import Campus
-from campus_python.audit.v1 import AuditRoot
 from campus_python.json_client import CampusRequest
+from tests.support import make_audit
 
 API_KEY_RESOURCE = {
     "id": "akm123",
@@ -34,12 +34,6 @@ TRACE_SUMMARY = {
     "path": "/api/v1/timetable/",
     "status_code": 200,
 }
-
-
-def make_audit() -> tuple[AuditRoot, Mock]:
-    """Create an AuditRoot backed by a mock JSON client."""
-    client = Mock()
-    return AuditRoot(json_client=client), client
 
 
 class TestAPIKeys(unittest.TestCase):

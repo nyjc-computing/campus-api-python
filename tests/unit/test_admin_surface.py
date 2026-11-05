@@ -9,17 +9,9 @@ and shapes exactly.
 
 import os
 import unittest
-from unittest.mock import Mock
+from tests.support import make_auth
 
 os.environ.setdefault("CLIENT_ID", "test-client-id")
-
-from campus_python.auth.v1 import AuthRoot
-
-
-def make_auth() -> "tuple[AuthRoot, Mock]":
-    """Create an AuthRoot backed by a mock JSON client."""
-    client = Mock()
-    return AuthRoot(json_client=client), client
 
 
 class TestSessionsList(unittest.TestCase):

@@ -10,11 +10,10 @@
 """
 
 import unittest
-from unittest.mock import Mock
 
 import campus.model
+from tests.support import make_auth
 
-from campus_python.auth.v1 import AuthRoot
 
 # Client resource shape emitted by campus weekly
 # (campus/auth/routes/clients.py responses).
@@ -45,12 +44,6 @@ CREDENTIALS_RESOURCE = {
         "scope": "campus.profile campus.identities",
     },
 }
-
-
-def make_auth() -> tuple[AuthRoot, Mock]:
-    """Create an AuthRoot backed by a mock JSON client."""
-    client = Mock()
-    return AuthRoot(json_client=client), client
 
 
 class TestClientAccessCheck(unittest.TestCase):

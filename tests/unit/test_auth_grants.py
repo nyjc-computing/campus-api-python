@@ -10,8 +10,8 @@ AccessGrant).
 
 import unittest
 from unittest.mock import Mock
+from tests.support import make_auth
 
-from campus_python.auth.v1 import AuthRoot
 
 # Grant row shape emitted by campus weekly
 # (campus/auth/routes/grants.py responses).
@@ -25,12 +25,6 @@ GRANT_ROW = {
     "level": "write",
     "created_at": "2026-10-10T15:10:00+00:00",
 }
-
-
-def make_auth() -> tuple[AuthRoot, Mock]:
-    """Create an AuthRoot backed by a mock JSON client."""
-    client = Mock()
-    return AuthRoot(json_client=client), client
 
 
 class TestGrantsList(unittest.TestCase):
