@@ -103,7 +103,10 @@ class Traces(ResourceCollection):
             client_id: Filter by OAuth client
             user_id: Filter by user
             journey_id: Filter by login-journey tag (campus#803)
-            since, until, limit, cursor: As in list()
+            since: ISO 8601 lower bound (as in list())
+            until: ISO 8601 upper bound (as in list())
+            limit: Page size (as in list())
+            cursor: Page token (as in list())
 
         Returns:
             {"traces": [...], "cursor": {"next": ..., "has_more": bool}}

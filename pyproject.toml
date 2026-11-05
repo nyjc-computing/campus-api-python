@@ -27,6 +27,10 @@ campus-model = {url = "https://github.com/nyjc-computing/campus-model/releases/d
 pytest = "^8.4.2"
 pyright = "^1.1.400"
 
+[tool.poetry.group.docs.dependencies]
+mkdocs-material = "^9.8.0"
+mkdocstrings = {extras = ["python"], version = "^1.0.8"}
+
 [[tool.poetry.packages]]
 include = "campus_python"
 
