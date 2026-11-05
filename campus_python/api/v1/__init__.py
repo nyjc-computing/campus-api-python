@@ -9,6 +9,7 @@ from . import (
     assignments,
     circles,
     files,
+    hostedapps,
     submissions,
     timetable,
 )
@@ -23,6 +24,7 @@ class ApiRoot(ResourceRoot):
         self._assignments = None
         self._circles = None
         self._files = None
+        self._hostedapps = None
         self._submissions = None
         self._timetables = None
 
@@ -46,6 +48,13 @@ class ApiRoot(ResourceRoot):
         if not self._files:
             self._files = files.Files(root=self)
         return self._files
+
+    @property
+    def hostedapps(self) -> hostedapps.HostedApps:
+        """Get the hosted-apps resource (by-slug consumer surface)."""
+        if not self._hostedapps:
+            self._hostedapps = hostedapps.HostedApps(root=self)
+        return self._hostedapps
 
     @property
     def submissions(self) -> submissions.Submissions:
