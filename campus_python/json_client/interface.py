@@ -52,6 +52,16 @@ class JsonResponse(ABC):
         """Returns the response body as a string."""
         ...
 
+    @property
+    @abstractmethod
+    def content(self) -> bytes:
+        """Returns the response body as bytes, undecoded.
+
+        File content (campus.api /files) is binary: callers decode,
+        never this property.
+        """
+        ...
+
     @abstractmethod
     def json(self) -> Any:
         """Returns the response body as JSON."""
@@ -181,6 +191,21 @@ class JsonClient(ABC):
             query: JsonDict | None = None
     ) -> JsonResponse:
         """Sends a PUT request."""
+
+    @abstractmethod
+    def put_data(
+            self: Self,
+            path: str,
+            data: bytes | str,
+            content_type: str | None = None
+    ) -> JsonResponse:
+        """Sends a PUT request with a raw (non-JSON) body.
+
+        The body is sent verbatim, with no JSON encoding; the
+        Content-Type header is caller-controlled. Used by file
+        uploads (campus.api /files by-slug), which carry raw bytes
+        with an explicit Content-Type.
+        """
 
     @abstractmethod
     def delete(

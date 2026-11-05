@@ -1,6 +1,6 @@
 # Campus API Python
 
-Python client library for NYJC Campus API, providing unified access to campus services including authentication, assignments, circles, submissions, and timetable management.
+Python client library for NYJC Campus API, providing unified access to campus services including authentication, assignments, circles, submissions, timetable, and files management.
 
 ## Overview
 
@@ -13,7 +13,7 @@ The Campus API Python library (`campus_python`) is a comprehensive client for in
 - Unified client interface for all Campus services
 - Support for server-to-server and device authentication modes
 - OAuth2 integration with Google Workspace (nyjc.edu.sg domain)
-- Comprehensive API coverage for assignments, circles, submissions, and timetable
+- Comprehensive API coverage for assignments, circles, submissions, timetable, and files
 - Campus Audit client: API keys (mint, scope, rotate, revoke) and traces
 - User-session token lane (`with_user_session`) with one-shot 401 auto-refresh
 - Injectable session-id / request-context providers — request-scoped identity without any web-framework coupling (flask_campus installs both)
@@ -92,6 +92,7 @@ campus-api-python/
 │   │   └── v1/             # API service clients
 │   │       ├── assignments.py
 │   │       ├── circles.py
+│   │       ├── files.py    # Files (by-slug list/meta/content/upsert/delete)
 │   │       ├── submissions.py
 │   │       └── timetable.py
 │   ├── audit/
