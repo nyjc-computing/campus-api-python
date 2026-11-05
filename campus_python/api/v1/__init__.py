@@ -8,6 +8,7 @@ from ...json_client.interface import JsonClient
 from . import (
     assignments,
     circles,
+    files,
     submissions,
     timetable,
 )
@@ -21,6 +22,7 @@ class ApiRoot(ResourceRoot):
         self._clients = None
         self._assignments = None
         self._circles = None
+        self._files = None
         self._submissions = None
         self._timetables = None
 
@@ -37,6 +39,13 @@ class ApiRoot(ResourceRoot):
         if not self._circles:
             self._circles = circles.Circles(root=self)
         return self._circles
+
+    @property
+    def files(self) -> files.Files:
+        """Get the files resource (by-slug consumer surface)."""
+        if not self._files:
+            self._files = files.Files(root=self)
+        return self._files
 
     @property
     def submissions(self) -> submissions.Submissions:

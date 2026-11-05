@@ -44,6 +44,10 @@ class CampusResponse(JsonResponse):
     def text(self) -> str:
         return self._response.text
 
+    @property
+    def content(self) -> bytes:
+        return self._response.content
+
     def json(self) -> Any:
         try:
             return self._response.json()
@@ -248,6 +252,28 @@ class CampusRequest(JsonClient):
         """Sends a PUT request."""
         url = self._build_url(path)
         return self._send("PUT", url, json=json, params=query)
+
+    def put_data(
+            self: Self,
+            path: str,
+            data: bytes | str,
+            content_type: str | None = None
+    ) -> JsonResponse:
+        """Sends a PUT request with a raw body (e.g. file bytes).
+
+        Unlike put(), the body is sent verbatim with no JSON encoding;
+        Content-Type is caller-controlled (requests' own default
+        applies when omitted).
+
+        Args:
+            path: Request path.
+            data: Raw request body.
+            content_type: Content-Type header for the body, or None to
+                leave it to the transport default.
+        """
+        url = self._build_url(path)
+        headers = {"Content-Type": content_type} if content_type else None
+        return self._send("PUT", url, data=data, headers=headers)
 
     def delete(
             self: Self,
