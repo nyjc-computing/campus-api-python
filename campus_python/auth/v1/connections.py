@@ -14,7 +14,7 @@ from ...interface import JsonDict, Resource, ResourceCollection
 
 class Connections(ResourceCollection):
     """Campus Auth Connections resource."""
-    path = "connections/"
+    path = "connections"
 
     def __getitem__(self, provider: str) -> "Connections.Connection":
         """Get a specific provider's connection resource."""
@@ -39,9 +39,7 @@ class Connections(ResourceCollection):
             List of connection metadata dicts
         """
         query = {"user_id": user_id} if user_id else None
-        resp = self.client.get(self.make_path(), query=query)
-        resp.raise_for_status()
-        return resp.json()["connections"]
+        return self._get_json(self.make_path(), query=query)["connections"]
 
     class Connection(Resource):
         """Single provider connection resource."""
@@ -65,11 +63,7 @@ class Connections(ResourceCollection):
                 user_id: Delegated target user (required for basic auth)
             """
             query = {"user_id": user_id} if user_id else None
-            resp = self.client.delete(
-                self.make_path(end_slash=True),
-                query=query,
-            )
-            resp.raise_for_status()
+            self._delete_json(self.make_path(end_slash=True), query=query)
             return None
 
         class Integration(Resource):
@@ -82,9 +76,5 @@ class Connections(ResourceCollection):
                     user_id: Delegated target user (required for basic auth)
                 """
                 query = {"user_id": user_id} if user_id else None
-                resp = self.client.delete(
-                    self.make_path(end_slash=True),
-                    query=query,
-                )
-                resp.raise_for_status()
+                self._delete_json(self.make_path(end_slash=True), query=query)
                 return None

@@ -8,15 +8,7 @@ sends the explicit-null body itself.
 """
 
 import unittest
-from unittest.mock import Mock
-
-from campus_python.api.v1 import ApiRoot
-
-
-def make_api() -> tuple[ApiRoot, Mock]:
-    """Create an ApiRoot backed by a mock JSON client."""
-    client = Mock()
-    return ApiRoot(json_client=client), client
+from tests.support import make_api
 
 
 class TestSubmissionsUnsubmit(unittest.TestCase):

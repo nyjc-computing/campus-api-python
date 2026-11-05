@@ -14,45 +14,39 @@ from ...interface import Resource, ResourceCollection
 
 class Users(ResourceCollection):
     """Vault Users resource."""
-    path = "users/"
+    path = "users"
 
     def __getitem__(self, user_id: str) -> "Users.User":
         """Get a specific user resource by ID."""
         return Users.User(user_id, parent=self)
 
     def list(self) -> "list[campus.model.User]":
-        resp = self.client.get(self.make_path())
-        # Raise error if status code is not 2XX or 3XX
-        resp.raise_for_status()
+        body = self._get_json(self.make_path())
         return [
             campus.model.User.from_resource(item)
-            for item in resp.json()["users"]
+            for item in body["users"]
         ]
 
     def new(self, *, email: str, name: str) -> campus.model.User:
-        resp = self.client.post(self.make_path(), json={
+        return campus.model.User.from_resource(self._post_json(self.make_path(), json={
             "email": email,
             "name": name,
-        })
-        resp.raise_for_status()
-        return campus.model.User.from_resource(resp.json())
+        }))
 
     class User(Resource):
         """Single vault user resource."""
 
         def activate(self) -> campus.model.User:
-            resp = self.client.post(self.make_path("activate", end_slash=False))
-            resp.raise_for_status()
-            return campus.model.User.from_resource(resp.json())
+            return campus.model.User.from_resource(
+                self._post_json(self.make_path("activate", end_slash=False))
+            )
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_path(end_slash=True))
-            resp.raise_for_status()
+            self._delete_json(self.make_path(end_slash=True))
 
         def get(self) -> campus.model.User:
-            resp = self.client.get(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            return campus.model.User.from_resource(resp.json())
+            body = self._get_json(self.make_path(end_slash=True))
+            return campus.model.User.from_resource(body)
 
         def update(self, *, name: str) -> campus.model.User:
             """Update the user's display name (campus-cli#42).
@@ -67,6 +61,7 @@ class Users(ResourceCollection):
             Returns:
                 The updated User
             """
-            resp = self.client.patch(self.make_path(end_slash=True), json={"name": name})
-            resp.raise_for_status()
-            return campus.model.User.from_resource(resp.json())
+            body = self._patch_json(
+                self.make_path(end_slash=True), json={"name": name}
+            )
+            return campus.model.User.from_resource(body)

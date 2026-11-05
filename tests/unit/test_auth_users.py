@@ -10,8 +10,8 @@ import unittest
 from unittest.mock import Mock
 
 import campus.model
+from tests.support import make_auth
 
-from campus_python.auth.v1 import AuthRoot
 
 # User resource shape emitted by campus weekly
 # (campus/auth/routes/users.py responses).
@@ -22,12 +22,6 @@ USER_RESOURCE = {
     "name": "Test User",
     "activated_at": None,
 }
-
-
-def make_auth() -> tuple[AuthRoot, Mock]:
-    """Create an AuthRoot backed by a mock JSON client."""
-    client = Mock()
-    return AuthRoot(json_client=client), client
 
 
 class TestUsersUpdatePatchVerb(unittest.TestCase):

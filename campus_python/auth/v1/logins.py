@@ -23,7 +23,7 @@ LOGIN_STORAGE_KEY = "logins_login_id"
 
 class LoginSessions(ResourceCollection):
     """Campus Auth Logins resource."""
-    path = "logins/"
+    path = "logins"
 
     def __getitem__(
             self,
@@ -105,10 +105,9 @@ class LoginSessions(ResourceCollection):
         if device_id is not None:
             json_data["device_id"] = device_id
 
-        resp = self.client.post(self.make_path(), json=json_data)
-        # Raise error if status code is not 2XX or 3XX
-        resp.raise_for_status()
-        return campus.model.LoginSession.from_resource(resp.json())
+        return campus.model.LoginSession.from_resource(
+            self._post_json(self.make_path(), json=json_data)
+        )
 
     class Login(Resource):
         """A single login session resource."""
@@ -118,28 +117,18 @@ class LoginSessions(ResourceCollection):
             return self.path.rstrip("/").split("/")[-1]
 
         def revoke(self) -> None:
-            resp = self.client.delete(
-                self.make_path(end_slash=True)
-            )
-            # Raise error if status code is not 2XX or 3XX
-            resp.raise_for_status()
+            self._delete_json(self.make_path(end_slash=True))
 
         def get(self) -> campus.model.LoginSession:
-            resp = self.client.get(
-                self.make_path(end_slash=True)
-            )
-            # Raise error if status code is not 2XX or 3XX
-            resp.raise_for_status()
-            return campus.model.LoginSession.from_resource(resp.json())
+            body = self._get_json(self.make_path(end_slash=True))
+            return campus.model.LoginSession.from_resource(body)
 
         def update(self, *, expiry_seconds: int) -> campus.model.LoginSession:
-            resp = self.client.patch(
+            body = self._patch_json(
                 self.make_path(end_slash=True),
                 json={"expiry_seconds": expiry_seconds}
             )
-            # Raise error if status code is not 2XX or 3XX
-            resp.raise_for_status()
-            return campus.model.LoginSession.from_resource(resp.json())
+            return campus.model.LoginSession.from_resource(body)
 
         def token(self) -> campus.model.OAuthToken:
             """Re-acquire the session user's campus bearer (#117).
@@ -171,15 +160,11 @@ class LoginSessions(ResourceCollection):
             prior_authorization = self.client.authorization
             self.client.reset_authorization()
             try:
-                resp = self.client.post(
-                    self.make_path("token")
-                )
+                body = self._post_json(self.make_path("token"))
             finally:
                 if prior_authorization is not None and prior_authorization.startswith(
                         "Bearer "):
                     self.client.set_bearer_authorization(
                         prior_authorization[len("Bearer "):]
                     )
-            # Raise error if status code is not 2XX or 3XX
-            resp.raise_for_status()
-            return campus.model.OAuthToken.from_resource(resp.json())
+            return campus.model.OAuthToken.from_resource(body)

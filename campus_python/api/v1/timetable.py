@@ -62,15 +62,11 @@ class Timetables(ResourceCollection):
 
     def get_current(self) -> str:
         """Get the timetable ID of current timetable."""
-        resp = self.client.get(self.make_path("current", end_slash=False))
-        resp.raise_for_status()
-        return resp.json()["value"]
+        return self._get_json(self.make_path("current", end_slash=False))["value"]
 
     def get_next(self) -> str:
         """Get the timetable ID of next timetable."""
-        resp = self.client.get(self.make_path("next", end_slash=False))
-        resp.raise_for_status()
-        return resp.json()["value"]
+        return self._get_json(self.make_path("next", end_slash=False))["value"]
 
     def set_current(self, timetable_id: str) -> None:
         """Set the current timetable.
@@ -78,11 +74,10 @@ class Timetables(ResourceCollection):
         Args:
             timetable_id: ID of the timetable to set as current
         """
-        resp = self.client.put(
+        self._put_json(
             self.make_path("current", end_slash=False),
             json={"value": timetable_id}
         )
-        resp.raise_for_status()
 
     def set_next(self, timetable_id: str) -> None:
         """Set the next timetable.
@@ -90,11 +85,10 @@ class Timetables(ResourceCollection):
         Args:
             timetable_id: ID of the timetable to set as next
         """
-        resp = self.client.put(
+        self._put_json(
             self.make_path("next", end_slash=False),
             json={"value": timetable_id}
         )
-        resp.raise_for_status()
 
     def new(self, metadata: dict, data: dict) -> dict:
         """Create a new timetable.
@@ -116,16 +110,15 @@ class Timetables(ResourceCollection):
                     if "lesson_groups" in data else ""
                 )
             )
-        resp = self.client.post(
+        body = self._post_json(
             self.make_path(),
             json={
                 "metadata": metadata,
                 "data": data
             }
         )
-        resp.raise_for_status()
         # POST /timetable/ wraps the created resource in a data envelope
-        return resp.json()["data"]
+        return body["data"]
 
     def list(self, **filters: typing.Any) -> "list[campus.model.TimetableMetadata]":
         """List timetables matching the provided filters.
@@ -136,11 +129,10 @@ class Timetables(ResourceCollection):
         Returns:
             list[campus.model.TimetableMetadata]: Matching timetable metadata objects.
         """
-        resp = self.client.get(self.make_path(), query=filters if filters else None)
-        resp.raise_for_status()
+        body = self._get_json(self.make_path(), query=filters if filters else None)
         return [
             campus.model.TimetableMetadata.from_resource(item)
-            for item in resp.json()["data"]
+            for item in body["data"]
         ]
 
     class Timetable(Resource):
@@ -162,39 +154,30 @@ class Timetables(ResourceCollection):
             GET /timetable/<id>/ wraps the resource in a
             ``{"timetable": ...}`` envelope.
             """
-            resp = self.client.get(
-                self.make_path(end_slash=True)
-            )
-            resp.raise_for_status()
-            return campus.model.Timetable.from_resource(
-                resp.json()["timetable"]
-            )
+            body = self._get_json(self.make_path(end_slash=True))
+            return campus.model.Timetable.from_resource(body["timetable"])
 
         class Entries(Resource):
             """Entries for a single timetable."""
-            path = "entries"
 
             def list(self) -> "list[campus.model.TimetableEntry]":
                 """Return a list of all entries for this timetable."""
-                resp = self.client.get(self.make_path())
-                resp.raise_for_status()
+                body = self._get_json(self.make_path())
                 return [
                     campus.model.TimetableEntry.from_resource(item)
-                    for item in resp.json()["entries"]
+                    for item in body["entries"]
                 ]
 
         class Metadata(Resource):
             """Metadata for a single timetable."""
-            path = "metadata"
 
             def get(self) -> campus.model.TimetableMetadata:
                 """Get the metadata for this timetable.
 
                 This does not include timetable entries.
                 """
-                resp = self.client.get(self.make_path())
-                resp.raise_for_status()
-                return campus.model.TimetableMetadata.from_resource(resp.json())
+                body = self._get_json(self.make_path())
+                return campus.model.TimetableMetadata.from_resource(body)
 
             def update(self, *, start_date: str, end_date: str) -> None:
                 """Update the metadata for this timetable.
@@ -205,9 +188,8 @@ class Timetables(ResourceCollection):
                     start_date: New start date (schema.DateTime-compatible)
                     end_date: New end date (schema.DateTime-compatible)
                 """
-                resp = self.client.patch(self.make_path(), json={
+                self._patch_json(self.make_path(), json={
                     "start_date": start_date,
                     "end_date": end_date,
                 })
-                resp.raise_for_status()
                 return None

@@ -9,15 +9,9 @@ writes session ids into.
 import unittest
 from unittest.mock import Mock
 
-from campus_python.auth.v1 import AuthRoot
 from campus_python.auth.v1.logins import LOGIN_STORAGE_KEY
 from campus_python.auth.v1.sessions import SESSION_STORAGE_KEY
-
-
-def make_auth() -> tuple[AuthRoot, Mock]:
-    """Create an AuthRoot backed by a mock JSON client."""
-    client = Mock()
-    return AuthRoot(json_client=client), client
+from tests.support import make_auth
 
 
 def ok_response(body: dict) -> Mock:

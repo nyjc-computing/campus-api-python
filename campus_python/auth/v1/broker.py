@@ -60,6 +60,4 @@ class Broker(ResourceRoot):
         json_body: JsonDict = {}
         if min_scopes is not None:
             json_body["min_scopes"] = min_scopes
-        resp = self.client.post(path, json=json_body)
-        resp.raise_for_status()
-        return resp.json()
+        return self._post_json(path, json=json_body)

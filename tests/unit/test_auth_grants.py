@@ -10,8 +10,8 @@ AccessGrant).
 
 import unittest
 from unittest.mock import Mock
+from tests.support import make_auth
 
-from campus_python.auth.v1 import AuthRoot
 
 # Grant row shape emitted by campus weekly
 # (campus/auth/routes/grants.py responses).
@@ -27,12 +27,6 @@ GRANT_ROW = {
 }
 
 
-def make_auth() -> tuple[AuthRoot, Mock]:
-    """Create an AuthRoot backed by a mock JSON client."""
-    client = Mock()
-    return AuthRoot(json_client=client), client
-
-
 class TestGrantsList(unittest.TestCase):
     """Grants.list() passes filters as query params."""
 
@@ -46,7 +40,9 @@ class TestGrantsList(unittest.TestCase):
         result = self.auth.grants.list()
         args, kwargs = self.client.get.call_args
         self.assertEqual(args[0], "/auth/v1/grants/")
-        self.assertIsNone(kwargs["query"])
+        # The shared verb helpers omit the query kwarg entirely when no
+        # filters are given.
+        self.assertIsNone(kwargs.get("query"))
         self.assertEqual(result["grants"], [GRANT_ROW])
 
     def test_list_forwards_filters(self):

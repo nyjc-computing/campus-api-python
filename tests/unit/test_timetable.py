@@ -11,14 +11,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 import campus.model
-
-from campus_python.api.v1 import ApiRoot
-
-
-def make_api() -> tuple[ApiRoot, Mock]:
-    """Create an ApiRoot backed by a mock JSON client."""
-    client = Mock()
-    return ApiRoot(json_client=client), client
+from tests.support import make_api
 
 
 class TestTimetablesList(unittest.TestCase):
@@ -34,7 +27,7 @@ class TestTimetablesList(unittest.TestCase):
             campus.model.TimetableMetadata, "from_resource", return_value=Mock()
         ) as from_resource:
             self.api.timetable.list()
-        self.client.get.assert_called_once_with("/api/v1/timetable/", query=None)
+        self.client.get.assert_called_once_with("/api/v1/timetable/")
         from_resource.assert_called_once_with(metadata[0])
 
     def test_list_returns_empty_list_for_empty_envelope(self):

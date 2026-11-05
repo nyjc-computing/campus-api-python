@@ -156,9 +156,9 @@ class AuthRoot(ResourceRoot):
             "client_secret": env.CLIENT_SECRET,
         }
         token_path = self.url_prefix + "/token"
-        resp = self.client.post(token_path, json=json_body)
-        resp.raise_for_status()
-        return campus.model.OAuthToken.from_resource(resp.json())
+        return campus.model.OAuthToken.from_resource(
+            self._post_json(token_path, json=json_body)
+        )
 
     def get_token(self) -> campus.model.OAuthToken:
         """Convenience method to get access token for a user.
@@ -250,9 +250,9 @@ class AuthRoot(ResourceRoot):
                 json_body["refresh_token"] = refresh_token
 
         token_path = self.url_prefix + "/oauth/token"
-        resp = self.client.post(token_path, json=json_body)
-        resp.raise_for_status()
-        return campus.model.OAuthToken.from_resource(resp.json())
+        return campus.model.OAuthToken.from_resource(
+            self._post_json(token_path, json=json_body)
+        )
 
     def refresh(
             self,

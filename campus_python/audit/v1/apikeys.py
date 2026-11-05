@@ -32,7 +32,7 @@ class APIKeys(ResourceCollection):
     Every write takes a privilege set: either a scope list or a named
     role the service resolves to one.
     """
-    path = "apikeys/"
+    path = "apikeys"
 
     def __getitem__(self, api_key_id: str) -> "APIKeys.APIKey":
         """Get a specific API key resource by ID."""
@@ -82,9 +82,7 @@ class APIKeys(ResourceCollection):
             payload["rate_limit"] = rate_limit
         if expires_at is not None:
             payload["expires_at"] = expires_at
-        resp = self.client.post(self.make_path(), json=payload)
-        resp.raise_for_status()
-        return resp.json()
+        return self._post_json(self.make_path(), json=payload)
 
     def list(
             self,
@@ -112,9 +110,7 @@ class APIKeys(ResourceCollection):
         query["active_only"] = str(active_only).lower()
         if limit is not None:
             query["limit"] = limit
-        resp = self.client.get(self.make_path(), query=query)
-        resp.raise_for_status()
-        return resp.json()
+        return self._get_json(self.make_path(), query=query)
 
     class APIKey(Resource):
         """Single campus audit API key resource.
@@ -125,9 +121,7 @@ class APIKeys(ResourceCollection):
 
         def get(self) -> JsonDict:
             """Get this API key's record (no key hash or plaintext)."""
-            resp = self.client.get(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            return resp.json()
+            return self._get_json(self.make_path(end_slash=True))
 
         def update(
                 self,
@@ -165,16 +159,13 @@ class APIKeys(ResourceCollection):
                 raise ValueError(
                     "At least one field must be provided for update"
                 )
-            resp = self.client.patch(
+            return self._patch_json(
                 self.make_path(end_slash=True), json=payload
             )
-            resp.raise_for_status()
-            return resp.json()
 
         def revoke(self) -> None:
             """Revoke this API key (the record is kept for audit)."""
-            resp = self.client.delete(self.make_path(end_slash=True))
-            resp.raise_for_status()
+            self._delete_json(self.make_path(end_slash=True))
             return None
 
         def regenerate(self) -> str:
@@ -185,8 +176,6 @@ class APIKeys(ResourceCollection):
             Returns:
                 The new plaintext key value, shown only here.
             """
-            resp = self.client.post(
+            return self._post_json(
                 self.make_path("regenerate", end_slash=False)
-            )
-            resp.raise_for_status()
-            return resp.json()["key"]
+            )["key"]

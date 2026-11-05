@@ -24,12 +24,12 @@ PR:
 
 import os
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import campus.model
 
 from campus_python import errors
-from campus_python.auth.v1 import AuthRoot
+from tests.support import make_auth
 
 # Exact token-endpoint response shape emitted by campus weekly
 # (device-code grant in campus/auth/routes/oauth.py; client_credentials
@@ -62,12 +62,6 @@ CREDENTIALS_RESOURCE = {
         "scope": "campus.profile campus.identities",
     },
 }
-
-
-def make_auth() -> tuple[AuthRoot, Mock]:
-    """Create an AuthRoot backed by a mock JSON client."""
-    client = Mock()
-    return AuthRoot(json_client=client), client
 
 
 class TestTokenEndpointDeserialization(unittest.TestCase):

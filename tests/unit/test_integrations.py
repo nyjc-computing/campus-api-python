@@ -7,12 +7,12 @@ campus.model.Integration entries.
 
 import os
 import unittest
-from unittest.mock import Mock
 
 import campus.model
 
 import campus_python
 from campus_python.integrations.v1 import IntegrationsRoot
+from tests.support import make_integrations
 
 REGISTRY_RESOURCE = {
     "integrations": [
@@ -38,12 +38,6 @@ REGISTRY_RESOURCE = {
         },
     ]
 }
-
-
-def make_integrations() -> tuple[IntegrationsRoot, Mock]:
-    """Create an IntegrationsRoot backed by a mock JSON client."""
-    client = Mock()
-    return IntegrationsRoot(json_client=client), client
 
 
 class TestIntegrationsPaths(unittest.TestCase):

@@ -151,7 +151,9 @@ class TestIngestHook(unittest.TestCase):
             resp.raise_for_status.side_effect = RuntimeError(f"{status}")
         client = Mock()
         client.post.return_value = resp
-        traces = Traces(client=client, root=Mock())
+        root = Mock()
+        root.make_path.return_value = "/audit/v1/traces"
+        traces = Traces(client=client, root=root)
         return traces
 
     def test_429_ingest_trips_breaker_and_raises(self):

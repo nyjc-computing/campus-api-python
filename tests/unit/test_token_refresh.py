@@ -73,8 +73,6 @@ def make_response(status_code: int, payload: dict) -> CampusResponse:
     return CampusResponse(raw)
 
 
-
-
 class TestGetTokenFromSession(unittest.TestCase):
     """The session bearer comes from the login-session token route."""
 

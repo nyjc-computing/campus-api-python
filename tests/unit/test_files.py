@@ -16,14 +16,8 @@ os.environ.setdefault("CLIENT_SECRET", "test-client-secret")
 
 import requests
 
-from campus_python.api.v1 import ApiRoot
 from campus_python.json_client import CampusRequest, CampusResponse
-
-
-def make_api() -> tuple[ApiRoot, mock.Mock]:
-    """Create an ApiRoot backed by a mock JSON client."""
-    client = mock.Mock()
-    return ApiRoot(json_client=client), client
+from tests.support import make_api
 
 
 class TestFilesList(unittest.TestCase):
@@ -36,7 +30,7 @@ class TestFilesList(unittest.TestCase):
         records = [{"id": "uid-file-1", "slug": "apps/quest-dom"}]
         self.client.get.return_value.json.return_value = {"data": records}
         self.assertEqual(self.api.files.list(), records)
-        self.client.get.assert_called_once_with("/api/v1/files/", query=None)
+        self.client.get.assert_called_once_with("/api/v1/files/")
 
     def test_list_passes_prefix_filter(self):
         self.client.get.return_value.json.return_value = {"data": []}

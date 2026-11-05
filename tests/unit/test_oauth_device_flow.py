@@ -14,13 +14,7 @@ import unittest
 from unittest.mock import Mock
 
 from campus_python import errors
-from campus_python.auth.v1 import AuthRoot
-
-
-def make_auth() -> tuple[AuthRoot, Mock]:
-    """Create an AuthRoot backed by a mock JSON client."""
-    client = Mock()
-    return AuthRoot(json_client=client), client
+from tests.support import json_response, make_auth
 
 
 class TestDeviceFlowPaths(unittest.TestCase):
@@ -68,9 +62,7 @@ class TestPollForTokenErrors(unittest.TestCase):
         self.auth, self.client = make_auth()
 
     def make_error_response(self, error) -> Mock:
-        response = Mock()
-        response.status_code = 400
-        response.json.return_value = error
+        response = json_response(error, status_code=400)
         self.client.post.return_value = response
         return response
 

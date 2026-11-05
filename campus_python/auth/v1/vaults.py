@@ -15,7 +15,7 @@ from ...interface import Resource, ResourceCollection
 
 class Vaults(ResourceCollection):
     """Campus Auth Vaults resource."""
-    path = "vaults/"
+    path = "vaults"
 
     def __getitem__(self, label: str) -> "Vaults.Vault":
         return Vaults.Vault(label, parent=self)
@@ -28,17 +28,13 @@ class Vaults(ResourceCollection):
         vaults:read scope; client principals hold per-label access
         only and cannot enumerate.
         """
-        resp = self.client.get(self.make_path())
-        resp.raise_for_status()
-        return resp.json().get("labels", [])
+        return self._get_json(self.make_path()).get("labels", [])
 
     class Vault(Resource):
         """A single vault (label) exposing mapping-like access."""
 
         def keys(self) -> "list[str]":
-            resp = self.client.get(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            body = resp.json()
+            body = self._get_json(self.make_path(end_slash=True))
             return body["keys"]
 
         def __delitem__(self, key: str) -> None:
@@ -59,6 +55,5 @@ class Vaults(ResourceCollection):
             return body["key"]
 
         def __setitem__(self, key: str, value: Any) -> None:
-            resp = self.client.post(self.make_path(key, end_slash=True), json={"value": value})
-            resp.raise_for_status()
+            self._post_json(self.make_path(key, end_slash=True), json={"value": value})
             return None

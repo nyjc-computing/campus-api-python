@@ -37,8 +37,6 @@ def ok_response(body: dict) -> Mock:
     return response
 
 
-
-
 class TestStorageKeyConstants(unittest.TestCase):
     """The storage-key constants pin the legacy flask.session keys."""
 

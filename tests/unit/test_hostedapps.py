@@ -15,14 +15,7 @@ os.environ.setdefault("CLIENT_ID", "test-client-id")
 os.environ.setdefault("CLIENT_SECRET", "test-client-secret")
 
 from campus.model import HostedApp
-
-from campus_python.api.v1 import ApiRoot
-
-
-def make_api() -> tuple[ApiRoot, mock.Mock]:
-    """Create an ApiRoot backed by a mock JSON client."""
-    client = mock.Mock()
-    return ApiRoot(json_client=client), client
+from tests.support import make_api
 
 
 def record() -> dict:
@@ -50,7 +43,7 @@ class TestHostedAppsList(unittest.TestCase):
         self.assertIsInstance(apps[0], HostedApp)
         self.assertEqual(apps[0].slug, "quest-dom")
         self.client.get.assert_called_once_with(
-            "/api/v1/hostedapps/", query=None
+            "/api/v1/hostedapps/"
         )
 
     def test_list_passes_prefix_filter(self):

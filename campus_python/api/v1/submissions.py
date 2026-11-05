@@ -43,11 +43,10 @@ class Submissions(ResourceCollection):
         if course_id:
             query["course_id"] = course_id
 
-        resp = self.client.get(self.make_path(), query=query)
-        resp.raise_for_status()
+        body = self._get_json(self.make_path(), query=query)
         return [
             campus.model.Submission.from_resource(item)
-            for item in resp.json()["data"]
+            for item in body["data"]
         ]
 
     def by_assignment(self, assignment_id: str) -> "list[campus.model.Submission]":
@@ -59,12 +58,11 @@ class Submissions(ResourceCollection):
         Returns:
             List of Submission objects
         """
-        path = f"{self.make_path()}/by-assignment/{assignment_id}/"
-        resp = self.client.get(path)
-        resp.raise_for_status()
+        path = self.make_path(f"by-assignment/{assignment_id}")
+        body = self._get_json(path)
         return [
             campus.model.Submission.from_resource(item)
-            for item in resp.json()["data"]
+            for item in body["data"]
         ]
 
     def by_student(self, student_id: str) -> "list[campus.model.Submission]":
@@ -76,12 +74,11 @@ class Submissions(ResourceCollection):
         Returns:
             List of Submission objects
         """
-        path = f"{self.make_path()}/by-student/{student_id}/"
-        resp = self.client.get(path)
-        resp.raise_for_status()
+        path = self.make_path(f"by-student/{student_id}")
+        body = self._get_json(path)
         return [
             campus.model.Submission.from_resource(item)
-            for item in resp.json()["data"]
+            for item in body["data"]
         ]
 
     def new(
@@ -111,9 +108,9 @@ class Submissions(ResourceCollection):
         if responses is not None:
             payload["responses"] = responses
 
-        resp = self.client.post(self.make_path(), json=payload)
-        resp.raise_for_status()
-        return campus.model.Submission.from_resource(resp.json())
+        return campus.model.Submission.from_resource(
+            self._post_json(self.make_path(), json=payload)
+        )
 
     class Submission(Resource):
         """Single campus API submission resource."""
@@ -130,15 +127,12 @@ class Submissions(ResourceCollection):
 
         def delete(self) -> None:
             """Delete this submission."""
-            resp = self.client.delete(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            return None
+            self._delete_json(self.make_path(end_slash=True))
 
         def get(self) -> campus.model.Submission:
             """Get this submission."""
-            resp = self.client.get(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            return campus.model.Submission.from_resource(resp.json())
+            body = self._get_json(self.make_path(end_slash=True))
+            return campus.model.Submission.from_resource(body)
 
         def update(
                 self,
@@ -167,15 +161,13 @@ class Submissions(ResourceCollection):
             if not payload:
                 raise ValueError("At least one field must be provided for update")
 
-            resp = self.client.patch(self.make_path(end_slash=True), json=payload)
-            resp.raise_for_status()
+            self._patch_json(self.make_path(end_slash=True), json=payload)
             return None
 
         def submit(self) -> None:
             """Finalize/submit this submission (marks submitted_at timestamp)."""
             path = self.make_path("submit", end_slash=False)
-            resp = self.client.post(path)
-            resp.raise_for_status()
+            self._post_json(path)
             return None
 
         def unsubmit(self) -> None:
@@ -185,15 +177,13 @@ class Submissions(ResourceCollection):
             the PATCH body; update() cannot express that because None
             means "omit the field" there.
             """
-            resp = self.client.patch(
+            self._patch_json(
                 self.make_path(end_slash=True), json={"submitted_at": None}
             )
-            resp.raise_for_status()
             return None
 
         class Responses(Resource):
             """Campus API Submission Responses resource."""
-            path = "responses"
 
             def add(
                     self,
@@ -211,13 +201,11 @@ class Submissions(ResourceCollection):
                     "question_id": question_id,
                     "response_text": response_text,
                 }
-                resp = self.client.post(self.make_path(), json=payload)
-                resp.raise_for_status()
+                self._post_json(self.make_path(), json=payload)
                 return None
 
         class Feedback(Resource):
             """Campus API Submission Feedback resource."""
-            path = "feedback"
 
             def add(
                     self,
@@ -235,6 +223,5 @@ class Submissions(ResourceCollection):
                     "question_id": question_id,
                     "feedback_text": feedback_text,
                 }
-                resp = self.client.post(self.make_path(), json=payload)
-                resp.raise_for_status()
+                self._post_json(self.make_path(), json=payload)
                 return None
