@@ -197,14 +197,16 @@ class JsonClient(ABC):
             self: Self,
             path: str,
             data: bytes | str,
-            content_type: str | None = None
+            content_type: str | None = None,
+            query: JsonDict | None = None
     ) -> JsonResponse:
         """Sends a PUT request with a raw (non-JSON) body.
 
         The body is sent verbatim, with no JSON encoding; the
         Content-Type header is caller-controlled. Used by file
         uploads (campus.api /files by-slug), which carry raw bytes
-        with an explicit Content-Type.
+        with an explicit Content-Type. `query` carries URL query
+        parameters (e.g. the files upsert's optional display name).
         """
 
     @abstractmethod
