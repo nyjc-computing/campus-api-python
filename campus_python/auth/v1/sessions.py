@@ -24,7 +24,7 @@ SESSION_STORAGE_KEY = "campus_session_id"
 
 class CampusSessions(ResourceCollection):
     """Campus Auth Sessions resource."""
-    path = f"sessions/{PROVIDER}/"
+    path = f"sessions/{PROVIDER}"
 
     def __getitem__(self, session_id: str) -> "CampusSessions.Session":
         return CampusSessions.Session(session_id, parent=self)

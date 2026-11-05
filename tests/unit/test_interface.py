@@ -184,12 +184,14 @@ class TestResourceCollectionMakeUrl(unittest.TestCase):
         """Test make_url() returns correct URL without part.
 
         According to API schema, collections have trailing slashes.
+        The URL is base_url + make_path(), with the root prefix
+        appearing exactly once.
         """
         collection = ResourceCollection(self.mock_client, root=self.root)
         collection.path = "users"
         self.assertEqual(
             collection.make_url(),
-            "https://api.example.com/api/v1/api/v1/users/"
+            "https://api.example.com/api/v1/users/"
         )
 
     def test_make_url_with_part(self):
@@ -201,7 +203,7 @@ class TestResourceCollectionMakeUrl(unittest.TestCase):
         collection.path = "users"
         self.assertEqual(
             collection.make_url("123"),
-            "https://api.example.com/api/v1/api/v1/users/123/"
+            "https://api.example.com/api/v1/users/123/"
         )
 
 
@@ -285,29 +287,22 @@ class TestResourceMakeUrl(unittest.TestCase):
     def test_make_url_without_part(self):
         """Test make_url() returns correct URL without part.
 
-        Note: This exhibits path duplication due to how Resource.make_url()
-        combines parent.make_url() with self.make_path(). The parent's make_url()
-        already includes the full path, then make_path() includes it again.
-        Updated to reflect trailing slash behavior from API schema.
+        The URL is base_url + make_path(): the item path as
+        constructed, trailing slash included, with the root prefix
+        appearing exactly once.
         """
         resource = Resource("123", parent=self.collection)
         self.assertEqual(
             resource.make_url(),
-            "https://api.example.com/api/v1/api/v1/users//api/v1/users/123/"
+            "https://api.example.com/api/v1/users/123/"
         )
 
     def test_make_url_with_part(self):
-        """Test make_url() returns correct URL with part.
-
-        Note: This exhibits path duplication due to how Resource.make_url()
-        combines parent.make_url() with self.make_path(). The parent's make_url()
-        already includes the full path, then make_path() includes it again.
-        Updated to reflect trailing slash behavior from API schema.
-        """
+        """Test make_url() returns correct URL with part."""
         resource = Resource("123", parent=self.collection)
         self.assertEqual(
             resource.make_url("profile"),
-            "https://api.example.com/api/v1/api/v1/users//api/v1/users/123/profile"
+            "https://api.example.com/api/v1/users/123/profile"
         )
 
 

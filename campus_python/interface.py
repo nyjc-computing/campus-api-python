@@ -18,6 +18,17 @@ from .json_client import JsonClient, JsonDict
 SLASH = "/"
 
 
+def join_path(*parts: str) -> str:
+    """Join path parts into a single absolute path.
+
+    Leading/trailing slashes are stripped from each part (inner
+    slashes survive — by-slug path tails rely on them), the parts are
+    joined with single slashes, and the result gets one leading slash.
+    """
+    cleaned = [part.strip(SLASH) for part in parts]
+    return SLASH + SLASH.join(part for part in cleaned if part)
+
+
 class Transport:
     """Shared HTTP verb helpers for classes backed by a JsonClient.
 
@@ -132,6 +143,11 @@ class ResourceRoot(Transport):
     def make_path(self, part: str | None = None) -> str:
         """Create a full path for the resource root or a sub-resource.
 
+        Only leading slashes are trimmed here: a url_prefix that
+        intentionally ends with a slash (e.g. /integrations/v1/) keeps
+        it, and a part with an inner path tail (e.g. broker's
+        "google/classroom") is preserved verbatim.
+
         Args:
             part (str | None): Optional sub-resource or action path.
         Returns:
@@ -177,22 +193,28 @@ class ResourceCollection(Transport):
     def make_path(self, part: str | None = None, end_slash: bool = True) -> str:
         """Create a full path for a resource collection.
 
+        Collection routes carry a trailing slash by default (the
+        upstream API schema); item ids, sub-resources and action parts
+        append after the collection segment.
+
         Args:
             part: Optional sub-resource or action path.
-            end_slash: Whether to add a trailing slash (default: True for collections).
+            end_slash: Whether to add a trailing slash.
 
         Returns:
             Full path for the resource collection or sub-resource.
         """
         if part:
-            base = f"/{self.root.make_path(self.path).strip(SLASH)}/{part.strip(SLASH)}"
-            return f"{base}/" if end_slash else base
+            path = join_path(self.root.make_path(self.path), part)
         else:
-            return f"/{self.root.make_path(self.path).strip(SLASH)}/"
+            path = join_path(self.root.make_path(self.path))
+        if end_slash and not path.endswith(SLASH):
+            path += SLASH
+        return path
 
     def make_url(self, part: str | None = None) -> str:
-        """Create a full URL for a sub-resource or action."""
-        return f"{self.root.make_url()}{self.make_path(part)}"
+        """Create a full URL for the collection or a sub-resource."""
+        return f"{self.client.base_url}{self.make_path(part)}"
 
 
 class Resource(Transport):
@@ -231,19 +253,23 @@ class Resource(Transport):
         raise AttributeError(f"No client defined for {self}")
 
     def make_path(self, part: str | None = None, end_slash=False) -> str:
-        """Create a full path for a sub-resource or action."""
+        """Create a full path for a sub-resource or action.
+
+        Item paths built from a parent collection carry the
+        collection's trailing slash; dead-end sub-resource and action
+        parts append after the item segment without one by default.
+        With no part, the instance path is returned as constructed —
+        only a leading slash is trimmed, so an item's trailing slash
+        survives.
+        """
         if part:
-            full_path = (
-                f"/{self.path.strip(SLASH)}"
-                f"/{part.strip(SLASH)}"
-                f"{SLASH if end_slash else ''}"
-            )
+            path = join_path(self.path, part)
         else:
-            full_path = f"/{self.path.lstrip(SLASH)}"
-        if end_slash and not full_path.endswith(SLASH):
-            full_path += SLASH
-        return full_path
+            path = SLASH + self.path.lstrip(SLASH)
+        if end_slash and not path.endswith(SLASH):
+            path += SLASH
+        return path
 
     def make_url(self, part: str | None = None) -> str:
-        """Create a full URL for a sub-resource or action."""
-        return f"{self.parent.make_url()}{self.make_path(part)}"
+        """Create a full URL for this resource or a sub-resource."""
+        return f"{self.client.base_url}{self.make_path(part)}"

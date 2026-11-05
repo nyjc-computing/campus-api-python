@@ -19,7 +19,7 @@ from ...interface import JsonDict, ResourceCollection
 
 class Grants(ResourceCollection):
     """Campus Auth access-grant store."""
-    path = "grants/"
+    path = "grants"
 
     def list(
             self,

@@ -58,7 +58,7 @@ class Submissions(ResourceCollection):
         Returns:
             List of Submission objects
         """
-        path = f"{self.make_path()}/by-assignment/{assignment_id}/"
+        path = self.make_path(f"by-assignment/{assignment_id}")
         body = self._get_json(path)
         return [
             campus.model.Submission.from_resource(item)
@@ -74,7 +74,7 @@ class Submissions(ResourceCollection):
         Returns:
             List of Submission objects
         """
-        path = f"{self.make_path()}/by-student/{student_id}/"
+        path = self.make_path(f"by-student/{student_id}")
         body = self._get_json(path)
         return [
             campus.model.Submission.from_resource(item)
@@ -184,7 +184,6 @@ class Submissions(ResourceCollection):
 
         class Responses(Resource):
             """Campus API Submission Responses resource."""
-            path = "responses"
 
             def add(
                     self,
@@ -207,7 +206,6 @@ class Submissions(ResourceCollection):
 
         class Feedback(Resource):
             """Campus API Submission Feedback resource."""
-            path = "feedback"
 
             def add(
                     self,

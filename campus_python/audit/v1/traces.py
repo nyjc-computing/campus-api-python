@@ -23,7 +23,7 @@ def _safe_json(resp: Any) -> Any:
 
 class Traces(ResourceCollection):
     """Campus Audit traces resource."""
-    path = "traces/"
+    path = "traces"
 
     def __getitem__(self, trace_id: str) -> "Traces.Trace":
         """Get a specific trace resource by ID."""

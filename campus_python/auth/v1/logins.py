@@ -23,7 +23,7 @@ LOGIN_STORAGE_KEY = "logins_login_id"
 
 class LoginSessions(ResourceCollection):
     """Campus Auth Logins resource."""
-    path = "logins/"
+    path = "logins"
 
     def __getitem__(
             self,

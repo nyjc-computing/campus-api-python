@@ -159,7 +159,6 @@ class Timetables(ResourceCollection):
 
         class Entries(Resource):
             """Entries for a single timetable."""
-            path = "entries"
 
             def list(self) -> "list[campus.model.TimetableEntry]":
                 """Return a list of all entries for this timetable."""
@@ -171,7 +170,6 @@ class Timetables(ResourceCollection):
 
         class Metadata(Resource):
             """Metadata for a single timetable."""
-            path = "metadata"
 
             def get(self) -> campus.model.TimetableMetadata:
                 """Get the metadata for this timetable.

@@ -10,7 +10,7 @@ from ...interface import Resource, ResourceCollection
 
 class Assignments(ResourceCollection):
     """Campus API Assignments resource."""
-    path = "assignments/"
+    path = "assignments"
 
     def __getitem__(self, assignment_id: str) -> "Assignments.Assignment":
         """Get a specific assignment resource by ID."""
@@ -83,7 +83,6 @@ class Assignments(ResourceCollection):
 
         class Links(Resource):
             """Campus API Assignment Links resource."""
-            path = "links"
 
             def add(
                     self,

@@ -14,7 +14,7 @@ from ...interface import JsonDict, Resource, ResourceCollection
 
 class Connections(ResourceCollection):
     """Campus Auth Connections resource."""
-    path = "connections/"
+    path = "connections"
 
     def __getitem__(self, provider: str) -> "Connections.Connection":
         """Get a specific provider's connection resource."""

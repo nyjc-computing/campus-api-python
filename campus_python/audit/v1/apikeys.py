@@ -32,7 +32,7 @@ class APIKeys(ResourceCollection):
     Every write takes a privilege set: either a scope list or a named
     role the service resolves to one.
     """
-    path = "apikeys/"
+    path = "apikeys"
 
     def __getitem__(self, api_key_id: str) -> "APIKeys.APIKey":
         """Get a specific API key resource by ID."""
