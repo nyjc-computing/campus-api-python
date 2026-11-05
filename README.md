@@ -239,6 +239,37 @@ URLs were removed in #127 — issue #52's migration is complete.)
 | `CAMPUS_CLIENT_TIMEOUT` | No | All | Request timeout in seconds for clients constructed without an explicit `timeout` (default 60). Invalid values are logged and ignored |
 | `CAMPUS_BASE_URL` / `BASE_URL` | No | All | One origin fronting every service (gateway / single-server deployments); consulted last |
 
+## Releases & Versioning
+
+The SDK follows the fleet's strict 0.x scheme: **patch** releases
+(0.6.x) are additive, **minor** releases (0.7.0) are the breaking line
+(see `docs/PACKAGING.md` in the campus repo for the fleet-wide
+protocol). Every release publishes a wheel at
+
+```
+https://github.com/nyjc-computing/campus-api-python/releases/download/vX.Y.Z/campus_api_python-X.Y.Z-py3-none-any.whl
+```
+
+**Cutting a release:**
+
+1. Bump `version` in `pyproject.toml` and merge to `main`.
+2. Push an annotated tag — its message becomes the release body:
+
+   ```bash
+   git tag -a vX.Y.Z -m "<release notes>"
+   git push origin vX.Y.Z
+   ```
+
+3. CI builds the wheel (with a fresh-venv install smoke) and attaches
+   it to the GitHub release.
+
+**Consuming a release:** pin the wheel by URL in `pyproject.toml` and
+re-lock (the URL is resolved by pip, so the release must exist first):
+
+```toml
+campus-api-python = {url = "https://github.com/nyjc-computing/campus-api-python/releases/download/vX.Y.Z/campus_api_python-X.Y.Z-py3-none-any.whl"}
+```
+
 ## Development
 
 ### Updating Dependencies
@@ -248,7 +279,9 @@ The SDK depends on the campus-common and campus-model **release wheels**
 campus-suite module. To pick up a new wheel release: edit the URL, run
 `poetry lock`, then `poetry install` (or `poetry sync` to also remove
 packages the old lock pulled in). Read the release's CHANGELOG first —
-both dists use strict 0.x versioning (pre-1.0 minors may break).
+both dists use strict 0.x versioning (pre-1.0 minors may break). The
+SDK itself is release-published the same way (see
+[Releases & Versioning](#releases--versioning)).
 
 ### Testing
 
@@ -258,7 +291,9 @@ Run the test suite:
 poetry run pytest
 ```
 
-GitHub Actions runs the unit tests against both Python 3.11 and Python 3.12.
+GitHub Actions runs the unit tests on Python 3.11–3.13 (required) and
+3.14 (bugfix-tier, signal only), plus pyright and a fresh-venv wheel
+build smoke on every PR; pushes of `v*` tags cut releases.
 
 Unit tests are located in `tests/unit/`.
 
