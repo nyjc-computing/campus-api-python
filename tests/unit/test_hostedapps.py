@@ -50,7 +50,7 @@ class TestHostedAppsList(unittest.TestCase):
         self.assertIsInstance(apps[0], HostedApp)
         self.assertEqual(apps[0].slug, "quest-dom")
         self.client.get.assert_called_once_with(
-            "/api/v1/hostedapps/", query=None
+            "/api/v1/hostedapps/"
         )
 
     def test_list_passes_prefix_filter(self):

@@ -54,10 +54,7 @@ class Grants(ResourceCollection):
             query["resource_type"] = resource_type
         if resource_id is not None:
             query["resource_id"] = resource_id
-        resp = self.client.get(self.make_path(), query=query or None)
-        # Raise error if status code is not 2XX or 3XX
-        resp.raise_for_status()
-        return resp.json()
+        return self._get_json(self.make_path(), query=query or None)
 
     def check(
             self,
@@ -95,9 +92,8 @@ class Grants(ResourceCollection):
             query["bits"] = bits
         if level is not None:
             query["level"] = level
-        resp = self.client.get(self.make_path("check", end_slash=False), query=query)
-        resp.raise_for_status()
-        return bool(resp.json().get("granted"))
+        body = self._get_json(self.make_path("check", end_slash=False), query=query)
+        return bool(body.get("granted"))
 
     def grant(
             self,
@@ -141,9 +137,7 @@ class Grants(ResourceCollection):
             body["bits"] = bits
         if level is not None:
             body["level"] = level
-        resp = self.client.post(self.make_path(), json=body)
-        resp.raise_for_status()
-        return resp.json()["grant"]
+        return self._post_json(self.make_path(), json=body)["grant"]
 
     def revoke(
             self,
@@ -183,9 +177,7 @@ class Grants(ResourceCollection):
             body["bits"] = bits
         if level is not None:
             body["level"] = level
-        resp = self.client.post(self.make_path("revoke", end_slash=False), json=body)
-        resp.raise_for_status()
-        return resp.json()["grant"]
+        return self._post_json(self.make_path("revoke", end_slash=False), json=body)["grant"]
 
     def delete(self, grant_id: str) -> None:
         """Delete a grant row outright by its id.
@@ -196,5 +188,4 @@ class Grants(ResourceCollection):
         Args:
             grant_id: The grant row's id (from list())
         """
-        resp = self.client.delete(self.make_path(grant_id, end_slash=False))
-        resp.raise_for_status()
+        self._delete_json(self.make_path(grant_id, end_slash=False))

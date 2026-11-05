@@ -34,10 +34,8 @@ class IntegrationsRoot(ResourceRoot):
             enable/disable flags are added server-side later, they
             surface behind this same resource.
         """
-        resp = self.client.get(self.make_path())
-        # Raise error if status code is not 2XX or 3XX
-        resp.raise_for_status()
+        body = self._get_json(self.make_path())
         return [
             campus.model.Integration.from_resource(item)
-            for item in resp.json().get("integrations", [])
+            for item in body.get("integrations", [])
         ]

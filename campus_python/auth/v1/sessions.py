@@ -31,12 +31,10 @@ class CampusSessions(ResourceCollection):
 
     def from_code(self, code: str) -> campus.model.AuthSession:
         """Get a session using authorization code."""
-        resp = self.client.post(
+        return campus.model.AuthSession.from_resource(self._post_json(
             self.make_path("authorization_code", end_slash=False),
             json={"code": code}
-        )
-        resp.raise_for_status()
-        return campus.model.AuthSession.from_resource(resp.json())
+        ))
 
     def from_session(self, session_id: str | None = None) -> campus.model.AuthSession:
         """Get a session by its client-side session id.
@@ -84,12 +82,12 @@ class CampusSessions(ResourceCollection):
             json_data["target"] = target
         if user_id is not None:
             json_data["user_id"] = str(user_id)
-        resp = self.client.post(self.make_path(), json=json_data)
-        resp.raise_for_status()
         # The returned session id doubles as the OAuth state parameter;
         # storing it client-side is the host's business (flask_campus
         # context owns its flask.session storage).
-        return campus.model.AuthSession.from_resource(resp.json())
+        return campus.model.AuthSession.from_resource(
+            self._post_json(self.make_path(), json=json_data)
+        )
 
     def list(
             self,
@@ -123,11 +121,10 @@ class CampusSessions(ResourceCollection):
         # The list route is provider-agnostic (/sessions/), unlike the
         # campus-provider path this collection wraps.
         collection_path = f"/{self.root.make_path('sessions').strip('/')}/"
-        resp = self.client.get(collection_path, query=query)
-        resp.raise_for_status()
+        body = self._get_json(collection_path, query=query)
         return [
             campus.model.AuthSession.from_resource(item)
-            for item in resp.json().get("sessions", [])
+            for item in body.get("sessions", [])
         ]
 
     def sweep(self, at_time: datetime | str | None = None) -> int:
@@ -141,9 +138,8 @@ class CampusSessions(ResourceCollection):
                 json_data["at_time"] = schema.DateTime(at_time)
             case None:
                 json_data["at_time"] = schema.DateTime.utcnow()
-        resp = self.client.post(self.make_path("sweep", end_slash=False), json=json_data)
-        resp.raise_for_status()
-        return int(resp.json()["swept_count"])
+        body = self._post_json(self.make_path("sweep", end_slash=False), json=json_data)
+        return int(body["swept_count"])
 
     class Session(Resource):
         """A single provider session (/sessions/campus/{session_id})."""
@@ -155,11 +151,7 @@ class CampusSessions(ResourceCollection):
         def finalize(self) -> "tuple[str, campus.model.User | None]":
             # DELETE /sessions/{provider}/{session_id} ->
             # {"target": <url>, "user": {...}|null}
-            resp = self.client.delete(
-                self.make_path(end_slash=True)
-            )
-            resp.raise_for_status()
-            body = resp.json()
+            body = self._delete_json(self.make_path(end_slash=True))
             # The auth service embeds the session user for the owning
             # client (#879); None from pre-#879 services.
             user = campus.model.User.from_resource(body["user"]) \
@@ -167,17 +159,10 @@ class CampusSessions(ResourceCollection):
             return body["target"], user
 
         def get(self) -> campus.model.AuthSession:
-            resp = self.client.get(
-                self.make_path(end_slash=True)
-            )
-            resp.raise_for_status()
-            return campus.model.AuthSession.from_resource(resp.json())
+            body = self._get_json(self.make_path(end_slash=True))
+            return campus.model.AuthSession.from_resource(body)
 
         def update(self, **updates) -> None:
             # Only user_id and authorization_code are expected by the API
-            resp = self.client.patch(
-                self.make_path(end_slash=True),
-                json=updates
-            )
-            resp.raise_for_status()
+            self._patch_json(self.make_path(end_slash=True), json=updates)
             return None

@@ -36,9 +36,9 @@ class Root(ResourceCollection):
         }
         """
         if token:
-            resp = self.client.post(self.make_path(), json={"token": token})
+            body = self._post_json(self.make_path(), json={"token": token})
         elif client_id and client_secret:
-            resp = self.client.post(
+            body = self._post_json(
                 self.make_path(),
                 json={"client_id": client_id, "client_secret": client_secret}
             )
@@ -46,8 +46,6 @@ class Root(ResourceCollection):
             raise errors.AuthenticationError(
                 error_description="Missing or incomplete authentication information."
             )
-        resp.raise_for_status()
-        body = resp.json()
         body["client"] = campus.model.Client.from_resource(body["client"])
         if "user" in body:
             body["user"] = campus.model.User.from_resource(body["user"])

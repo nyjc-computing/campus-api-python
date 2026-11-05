@@ -116,9 +116,7 @@ class OAuth(ResourceRoot):
         json_body = {
             "client_id": client_id,
         }
-        resp = self.client.post(self.make_path("device_authorize"), json=json_body)
-        resp.raise_for_status()
-        return resp.json()
+        return self._post_json(self.make_path("device_authorize"), json=json_body)
 
     def poll_for_token(
             self,
@@ -282,11 +280,9 @@ class OAuth(ResourceRoot):
             "user_code": user_code,
             "user_id": user_id,
         }
-        resp = self.client.post(
+        return self._post_json(
             self.make_path("device/authorize"), json=json_body
         )
-        resp.raise_for_status()
-        return resp.json()
 
     def revoke(
             self,
@@ -311,6 +307,5 @@ class OAuth(ResourceRoot):
         }
         if token_type_hint is not None:
             json_body["token_type_hint"] = token_type_hint
-        resp = self.client.post(self.make_path("revoke"), json=json_body)
-        resp.raise_for_status()
+        self._post_json(self.make_path("revoke"), json=json_body)
         return None

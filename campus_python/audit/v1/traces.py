@@ -78,11 +78,7 @@ class Traces(ResourceCollection):
             query["limit"] = limit
         if cursor is not None:
             query["cursor"] = cursor
-        resp = self.client.get(
-            self.make_path(), query=query or None
-        )
-        resp.raise_for_status()
-        return resp.json()
+        return self._get_json(self.make_path(), query=query or None)
 
     def search(
             self,
@@ -133,11 +129,9 @@ class Traces(ResourceCollection):
             query["limit"] = limit
         if cursor is not None:
             query["cursor"] = cursor
-        resp = self.client.get(
+        return self._get_json(
             self.make_path("search", end_slash=False), query=query or None
         )
-        resp.raise_for_status()
-        return resp.json()
 
     class Trace(Resource):
         """Single campus audit trace resource."""
@@ -153,9 +147,7 @@ class Traces(ResourceCollection):
             Returns:
                 {"trace_id": ..., "root_span": <nested span tree>}
             """
-            resp = self.client.get(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            return resp.json()
+            return self._get_json(self.make_path(end_slash=True))
 
         class Spans(Resource):
             """Spans of a single trace."""
@@ -166,14 +158,10 @@ class Traces(ResourceCollection):
 
             def list(self) -> "list[JsonDict]":
                 """List all spans in this trace (flat)."""
-                resp = self.client.get(self.make_path(end_slash=True))
-                resp.raise_for_status()
-                return resp.json()["spans"]
+                return self._get_json(self.make_path(end_slash=True))["spans"]
 
         class Span(Resource):
             """Single span of a trace, with full request/response detail."""
 
             def get(self) -> JsonDict:
-                resp = self.client.get(self.make_path(end_slash=True))
-                resp.raise_for_status()
-                return resp.json()
+                return self._get_json(self.make_path(end_slash=True))

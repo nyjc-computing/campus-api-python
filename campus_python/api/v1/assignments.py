@@ -29,12 +29,10 @@ class Assignments(ResourceCollection):
         if created_by:
             params["created_by"] = created_by
 
-        resp = self.client.get(self.make_path(), query=params)
-        # Raise error if status code is not 2XX or 3XX
-        resp.raise_for_status()
+        body = self._get_json(self.make_path(), query=params)
         return [
             campus.model.Assignment.from_resource(item)
-            for item in resp.json()["data"]
+            for item in body["data"]
         ]
 
     def new(
@@ -53,9 +51,9 @@ class Assignments(ResourceCollection):
         if classroom_links is not None:
             payload["classroom_links"] = classroom_links
 
-        resp = self.client.post(self.make_path(), json=payload)
-        resp.raise_for_status()
-        return campus.model.Assignment.from_resource(resp.json())
+        return campus.model.Assignment.from_resource(
+            self._post_json(self.make_path(), json=payload)
+        )
 
     class Assignment(Resource):
         """Single campus API assignment resource."""
@@ -66,14 +64,11 @@ class Assignments(ResourceCollection):
             return Assignments.Assignment.Links("links", parent=self)
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            return None
+            self._delete_json(self.make_path(end_slash=True))
 
         def get(self) -> campus.model.Assignment:
-            resp = self.client.get(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            return campus.model.Assignment.from_resource(resp.json())
+            body = self._get_json(self.make_path(end_slash=True))
+            return campus.model.Assignment.from_resource(body)
 
         def update(self, **updates) -> None:
             """Update this assignment with the given fields.
@@ -83,8 +78,7 @@ class Assignments(ResourceCollection):
             """
             if not updates:
                 raise ValueError("At least one field must be provided for update")
-            resp = self.client.patch(self.make_path(end_slash=True), json=updates)
-            resp.raise_for_status()
+            self._patch_json(self.make_path(end_slash=True), json=updates)
             return None
 
         class Links(Resource):
@@ -105,6 +99,5 @@ class Assignments(ResourceCollection):
                 if attachment_id is not None:
                     payload["attachment_id"] = attachment_id
 
-                resp = self.client.post(self.make_path(), json=payload)
-                resp.raise_for_status()
+                self._post_json(self.make_path(), json=payload)
                 return None

@@ -32,11 +32,10 @@ class HostedApps(ResourceCollection):
             Hosted app models.
         """
         query = {"prefix": prefix} if prefix else None
-        resp = self.client.get(self.make_path(), query=query)
-        resp.raise_for_status()
+        body = self._get_json(self.make_path(), query=query)
         return [
             campus.model.HostedApp.from_resource(record)
-            for record in resp.json()["data"]
+            for record in body["data"]
         ]
 
     def get_meta(self, slug: str) -> campus.model.HostedApp:
@@ -48,9 +47,8 @@ class HostedApps(ResourceCollection):
         Returns:
             The hosted app model.
         """
-        resp = self.client.get(self._by_slug_path(slug), query={"meta": "1"})
-        resp.raise_for_status()
-        return campus.model.HostedApp.from_resource(resp.json())
+        body = self._get_json(self._by_slug_path(slug), query={"meta": "1"})
+        return campus.model.HostedApp.from_resource(body)
 
     def get_content(self, slug: str) -> bytes:
         """Get a hosted app's bytes by slug — the CURRENT version.
@@ -101,9 +99,10 @@ class HostedApps(ResourceCollection):
             The hosted app model (201 shape on create, 200 shape on
             replace; identical fields).
         """
+        query = {"name": name} if name else None
         resp = self.client.put_data(
             self._by_slug_path(slug), data, content_type=content_type,
-            query={"name": name} if name else None,
+            query=query,
         )
         resp.raise_for_status()
         return campus.model.HostedApp.from_resource(resp.json())
@@ -114,8 +113,7 @@ class HostedApps(ResourceCollection):
         Args:
             slug: The slug to delete.
         """
-        resp = self.client.delete(self._by_slug_path(slug))
-        resp.raise_for_status()
+        self._delete_json(self._by_slug_path(slug))
         return None
 
     def _by_slug_path(self, slug: str) -> str:

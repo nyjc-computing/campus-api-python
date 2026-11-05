@@ -34,7 +34,7 @@ class TestTimetablesList(unittest.TestCase):
             campus.model.TimetableMetadata, "from_resource", return_value=Mock()
         ) as from_resource:
             self.api.timetable.list()
-        self.client.get.assert_called_once_with("/api/v1/timetable/", query=None)
+        self.client.get.assert_called_once_with("/api/v1/timetable/")
         from_resource.assert_called_once_with(metadata[0])
 
     def test_list_returns_empty_list_for_empty_envelope(self):

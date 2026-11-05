@@ -19,12 +19,10 @@ class Circles(ResourceCollection):
         return Circles.Circle(circle_id, parent=self)
 
     def list(self) -> "list[campus.model.Circle]":
-        resp = self.client.get(self.make_path())
-        # Raise error if status code is not 2XX or 3XX
-        resp.raise_for_status()
+        body = self._get_json(self.make_path())
         return [
             campus.model.Circle.from_resource(item)
-            for item in resp.json()["data"]
+            for item in body["data"]
         ]
 
     def new(
@@ -42,9 +40,9 @@ class Circles(ResourceCollection):
         }
         if parents is not None:
             payload["parents"] = parents
-        resp = self.client.post(self.make_path(), json=payload)
-        resp.raise_for_status()
-        return campus.model.Circle.from_resource(resp.json())
+        return campus.model.Circle.from_resource(
+            self._post_json(self.make_path(), json=payload)
+        )
 
     class Circle(Resource):
         """Single campus API circle resource."""
@@ -55,14 +53,11 @@ class Circles(ResourceCollection):
             return Circles.Circle.CircleMembers("members", parent=self)
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            return None
+            self._delete_json(self.make_path(end_slash=True))
 
         def get(self) -> campus.model.Circle:
-            resp = self.client.get(self.make_path(end_slash=True))
-            resp.raise_for_status()
-            return campus.model.Circle.from_resource(resp.json())
+            body = self._get_json(self.make_path(end_slash=True))
+            return campus.model.Circle.from_resource(body)
 
         def update(
                 self,
@@ -84,8 +79,7 @@ class Circles(ResourceCollection):
             payload: dict[str, Any] = {"name": name}
             if description is not None:
                 payload["description"] = description
-            resp = self.client.patch(self.make_path(end_slash=True), json=payload)
-            resp.raise_for_status()
+            self._patch_json(self.make_path(end_slash=True), json=payload)
             return None
 
         class CircleMembers(Resource):
@@ -94,25 +88,19 @@ class Circles(ResourceCollection):
 
             def list(self) -> dict[str, int]:
                 """Return the circle's {member_id: access_value} mapping."""
-                resp = self.client.get(self.make_path(end_slash=True))
-                resp.raise_for_status()
-                return resp.json()
+                return self._get_json(self.make_path(end_slash=True))
 
             def add(self, member_id: str, access_value: int) -> None:
-                resp = self.client.post(
+                self._post_json(
                     self.make_path("add"),
                     json={"member_id": member_id, "access_value": access_value}
                 )
-                resp.raise_for_status()
-                return None
 
             def remove(self, member_id: str) -> None:
-                resp = self.client.delete(
+                self._delete_json(
                     self.make_path("remove"),
                     json={"member_id": member_id}
                 )
-                resp.raise_for_status()
-                return None
 
             def set(self, member_id: str, access_value: int) -> None:
                 """Create or update a member's access value (upsert).
@@ -122,9 +110,8 @@ class Circles(ResourceCollection):
                 collection directly — the server's set semantics apply
                 (no error when the access value is unchanged).
                 """
-                resp = self.client.patch(
+                self._patch_json(
                     self.make_path(end_slash=True),
                     json={"member_id": member_id, "access_value": access_value}
                 )
-                resp.raise_for_status()
                 return None

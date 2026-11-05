@@ -39,9 +39,7 @@ class TestConnectionsList(unittest.TestCase):
 
     def test_list_gets_connections_collection(self):
         connections = self.auth.connections.list()
-        self.client.get.assert_called_once_with(
-            "/auth/v1/connections/", query=None
-        )
+        self.client.get.assert_called_once_with("/auth/v1/connections/")
         self.assertEqual(connections, [CONNECTION])
 
     def test_list_sends_delegated_user_id_query(self):
@@ -59,9 +57,7 @@ class TestConnectionsDelete(unittest.TestCase):
 
     def test_provider_delete_uses_trailing_slash(self):
         self.auth.connections["google"].delete()
-        self.client.delete.assert_called_once_with(
-            "/auth/v1/connections/google/", query=None
-        )
+        self.client.delete.assert_called_once_with("/auth/v1/connections/google/")
 
     def test_provider_delete_sends_delegated_user_id(self):
         self.auth.connections["google"].delete(user_id="user-1")
@@ -71,9 +67,7 @@ class TestConnectionsDelete(unittest.TestCase):
 
     def test_integration_delete_targets_namespaced_route(self):
         self.auth.connections["google"]["classroom"].delete()
-        self.client.delete.assert_called_once_with(
-            "/auth/v1/connections/google/classroom/", query=None
-        )
+        self.client.delete.assert_called_once_with("/auth/v1/connections/google/classroom/")
 
     def test_integration_delete_sends_delegated_user_id(self):
         self.auth.connections["google"]["classroom"].delete(user_id="user-1")

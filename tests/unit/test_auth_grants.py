@@ -46,7 +46,9 @@ class TestGrantsList(unittest.TestCase):
         result = self.auth.grants.list()
         args, kwargs = self.client.get.call_args
         self.assertEqual(args[0], "/auth/v1/grants/")
-        self.assertIsNone(kwargs["query"])
+        # The shared verb helpers omit the query kwarg entirely when no
+        # filters are given.
+        self.assertIsNone(kwargs.get("query"))
         self.assertEqual(result["grants"], [GRANT_ROW])
 
     def test_list_forwards_filters(self):

@@ -36,7 +36,7 @@ class TestFilesList(unittest.TestCase):
         records = [{"id": "uid-file-1", "slug": "apps/quest-dom"}]
         self.client.get.return_value.json.return_value = {"data": records}
         self.assertEqual(self.api.files.list(), records)
-        self.client.get.assert_called_once_with("/api/v1/files/", query=None)
+        self.client.get.assert_called_once_with("/api/v1/files/")
 
     def test_list_passes_prefix_filter(self):
         self.client.get.return_value.json.return_value = {"data": []}

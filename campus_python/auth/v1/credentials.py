@@ -53,12 +53,9 @@ class Credentials(ResourceCollection):
             query: JsonDict = {"token_id": token_id}
             if include_token:
                 query["include"] = "token"
-            resp = self.client.get(
-                self.make_path(end_slash=True),
-                query=query
+            return campus.model.UserCredentials.from_resource(
+                self._get_json(self.make_path(end_slash=True), query=query)
             )
-            resp.raise_for_status()
-            return campus.model.UserCredentials.from_resource(resp.json())
 
         def list(self) -> "list[campus.model.UserCredentials]":
             """List credential records (admin view, campus#1055).
@@ -67,12 +64,10 @@ class Credentials(ResourceCollection):
             releases raw tokens in bulk, include opt-ins are honored
             on per-record reads exclusively.
             """
-            resp = self.client.get(self.make_path(end_slash=True))
-            # Raise error if status code is not 2XX or 3XX
-            resp.raise_for_status()
+            body = self._get_json(self.make_path(end_slash=True))
             return [
                 campus.model.UserCredentials.from_resource(item)
-                for item in resp.json().get("credentials", [])
+                for item in body.get("credentials", [])
             ]
 
         class User(Resource):
@@ -87,12 +82,10 @@ class Credentials(ResourceCollection):
                 integration's stored record for (provider, user).
                 """
                 target = client_id or env.CLIENT_ID
-                resp = self.client.delete(
+                self._delete_json(
                     self.make_path(end_slash=True),
                     json={"client_id": target}
                 )
-                # Raise error if status code is not 2XX or 3XX
-                resp.raise_for_status()
 
             def get(self, include_token: bool = False) -> campus.model.UserCredentials:
                 """Get this user's credential record (redacted by
@@ -102,13 +95,9 @@ class Credentials(ResourceCollection):
                 query: JsonDict = {"client_id": client_id}
                 if include_token:
                     query["include"] = "token"
-                resp = self.client.get(
-                    self.make_path(end_slash=True),
-                    query=query
+                return campus.model.UserCredentials.from_resource(
+                    self._get_json(self.make_path(end_slash=True), query=query)
                 )
-                # Raise error if status code is not 2XX or 3XX
-                resp.raise_for_status()
-                return campus.model.UserCredentials.from_resource(resp.json())
 
             def new(
                     self,
@@ -124,13 +113,12 @@ class Credentials(ResourceCollection):
                 Returns:
                     The created UserCredentials
                 """
-                resp = self.client.post(
-                    self.make_path(end_slash=True),
-                    json={"scopes": scopes, "expires_in": expires_in}
+                return campus.model.UserCredentials.from_resource(
+                    self._post_json(
+                        self.make_path(end_slash=True),
+                        json={"scopes": scopes, "expires_in": expires_in}
+                    )
                 )
-                # Raise error if status code is not 2XX or 3XX
-                resp.raise_for_status()
-                return campus.model.UserCredentials.from_resource(resp.json())
 
             def update(self, token: campus.model.OAuthToken) -> None:
                 client_id = env.CLIENT_ID
@@ -138,6 +126,4 @@ class Credentials(ResourceCollection):
                     "client_id": client_id,
                     "token": token.to_resource()
                 }
-                resp = self.client.patch(self.make_path(end_slash=True), json=json_data)
-                # Raise error if status code is not 2XX or 3XX
-                resp.raise_for_status()
+                self._patch_json(self.make_path(end_slash=True), json=json_data)

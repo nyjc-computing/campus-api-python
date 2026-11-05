@@ -18,12 +18,10 @@ class Clients(ResourceCollection):
         return Clients.Client(client_id, parent=self)
 
     def list(self) -> "list[campus.model.Client]":
-        resp = self.client.get(self.make_path())
-        # Raise error if status code is not 2XX or 3XX
-        resp.raise_for_status()
+        body = self._get_json(self.make_path())
         return [
             campus.model.Client.from_resource(item)
-            for item in resp.json()["clients"]
+            for item in body["clients"]
         ]
 
     def new(
@@ -65,10 +63,9 @@ class Clients(ResourceCollection):
             json_data["upstream_scopes"] = upstream_scopes
         if token_bridge is not None:
             json_data["token_bridge"] = token_bridge
-        resp = self.client.post(self.make_path(), json=json_data)
-        # Raise error if status code is not 2XX or 3XX
-        resp.raise_for_status()
-        return campus.model.Client.from_resource(resp.json())
+        return campus.model.Client.from_resource(
+            self._post_json(self.make_path(), json=json_data)
+        )
 
     class Client(Resource):
         """Campus Auth Client resource."""
@@ -85,15 +82,11 @@ class Clients(ResourceCollection):
             return self.path.strip("/")
 
         def delete(self) -> None:
-            resp = self.client.delete(self.make_path())
-            # Raise error if status code is not 2XX or 3XX
-            resp.raise_for_status()
+            self._delete_json(self.make_path())
 
         def get(self) -> campus.model.Client:
-            resp = self.client.get(self.make_path())
-            # Raise error if status code is not 2XX or 3XX
-            resp.raise_for_status()
-            return campus.model.Client.from_resource(resp.json())
+            body = self._get_json(self.make_path())
+            return campus.model.Client.from_resource(body)
 
         def revoke(self) -> str:
             """Revoke the client secret and return the new one.
@@ -101,10 +94,7 @@ class Clients(ResourceCollection):
             Returns:
                 The newly generated client secret.
             """
-            resp = self.client.post(self.make_path("revoke", end_slash=False))
-            # Raise error if status code is not 2XX or 3XX
-            resp.raise_for_status()
-            return resp.json()["secret"]
+            return self._post_json(self.make_path("revoke", end_slash=False))["secret"]
 
         def update(
                 self,
@@ -148,10 +138,9 @@ class Clients(ResourceCollection):
                 json_data["upstream_scopes"] = upstream_scopes
             if token_bridge is not None:
                 json_data["token_bridge"] = token_bridge
-            resp = self.client.patch(self.make_path(), json=json_data)
-            # Raise error if status code is not 2XX or 3XX
-            resp.raise_for_status()
-            return campus.model.Client.from_resource(resp.json())
+            return campus.model.Client.from_resource(
+                self._patch_json(self.make_path(), json=json_data)
+            )
 
         class ClientAccess(Resource):
             """Campus Auth Client Access resource."""
@@ -163,15 +152,11 @@ class Clients(ResourceCollection):
                 # GET rule is /<client_id>/access/ (trailing slash) and the
                 # auth app sets strict_slashes — the slash is required.
                 if vault:
-                    resp = self.client.get(
+                    return self._get_json(
                         self.make_path(end_slash=True),
                         query={"vault": vault}
                     )
-                else:
-                    resp = self.client.get(self.make_path(end_slash=True))
-                # Raise error if status code is not 2XX or 3XX
-                resp.raise_for_status()
-                return resp.json()
+                return self._get_json(self.make_path(end_slash=True))
 
             def check(
                     self,
@@ -183,49 +168,37 @@ class Clients(ResourceCollection):
                 GET /<client_id>/access/check?vault=&permission=
                 Returns: {"vault": ..., "permission": <bool>}
                 """
-                resp = self.client.get(
+                return self._get_json(
                     self.make_path("check", end_slash=False),
                     query={"vault": vault, "permission": permission}
                 )
-                # Raise error if status code is not 2XX or 3XX
-                resp.raise_for_status()
-                return resp.json()
 
             def grant(
                     self,
                     vault: str,
                     permission: int,
             ) -> JsonDict:
-                resp = self.client.post(self.make_path("grant", end_slash=False), json={
+                return self._post_json(self.make_path("grant", end_slash=False), json={
                     "vault": vault,
                     "permission": permission,
                 })
-                # Raise error if status code is not 2XX or 3XX
-                resp.raise_for_status()
-                return resp.json()
 
             def revoke(
                     self,
                     vault: str,
                     permission: int,
             ) -> JsonDict:
-                resp = self.client.post(self.make_path("revoke", end_slash=False), json={
+                return self._post_json(self.make_path("revoke", end_slash=False), json={
                     "vault": vault,
                     "permission": permission,
                 })
-                # Raise error if status code is not 2XX or 3XX
-                resp.raise_for_status()
-                return resp.json()
 
             def update(
                     self,
                     vault: str,
                     permission: int,
             ) -> JsonDict:
-                resp = self.client.patch(self.make_path(end_slash=True), json={
+                return self._patch_json(self.make_path(end_slash=True), json={
                     "vault": vault,
                     "permission": permission,
                 })
-                # Raise error if status code is not 2XX or 3XX
-                resp.raise_for_status()
-                return resp.json()

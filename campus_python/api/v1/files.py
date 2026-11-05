@@ -29,10 +29,8 @@ class Files(ResourceCollection):
             validated dicts upstream, not campus.model classes.
         """
         query = {"prefix": prefix} if prefix else None
-        resp = self.client.get(self.make_path(), query=query)
-        resp.raise_for_status()
         # GET /files/ wraps the records in a {"data": [...]} envelope.
-        return resp.json()["data"]
+        return self._get_json(self.make_path(), query=query)["data"]
 
     def get_meta(self, slug: str) -> dict:
         """Get a file's metadata record by slug.
@@ -44,9 +42,7 @@ class Files(ResourceCollection):
             The file metadata resource (id, slug, content_type, size,
             timestamps, attribution).
         """
-        resp = self.client.get(self._by_slug_path(slug), query={"meta": "1"})
-        resp.raise_for_status()
-        return resp.json()
+        return self._get_json(self._by_slug_path(slug), query={"meta": "1"})
 
     def get_content(self, slug: str) -> bytes:
         """Get a file's bytes by slug.
@@ -96,9 +92,10 @@ class Files(ResourceCollection):
             The file metadata resource (201 shape on create, 200
             shape on replace; identical dict fields).
         """
+        query = {"name": name} if name else None
         resp = self.client.put_data(
             self._by_slug_path(slug), data, content_type=content_type,
-            query={"name": name} if name else None,
+            query=query,
         )
         resp.raise_for_status()
         return resp.json()
@@ -109,8 +106,7 @@ class Files(ResourceCollection):
         Args:
             slug: The slug to delete.
         """
-        resp = self.client.delete(self._by_slug_path(slug))
-        resp.raise_for_status()
+        self._delete_json(self._by_slug_path(slug))
         return None
 
     def _by_slug_path(self, slug: str) -> str:
