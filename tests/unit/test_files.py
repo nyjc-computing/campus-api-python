@@ -97,6 +97,21 @@ class TestFilesBySlug(unittest.TestCase):
             "/api/v1/files/by-slug/apps/quest-dom",
             b"<html></html>",
             content_type="text/html",
+            query=None,
+        )
+
+    def test_put_by_slug_passes_display_name_as_query(self):
+        """The optional display name rides upstream's PUT ?name= param."""
+        self.client.put_data.return_value.json.return_value = {}
+        self.api.files.put_by_slug(
+            "apps/quest-dom", b"<html></html>",
+            content_type="text/html", name="Quest DOM explorer",
+        )
+        self.client.put_data.assert_called_once_with(
+            "/api/v1/files/by-slug/apps/quest-dom",
+            b"<html></html>",
+            content_type="text/html",
+            query={"name": "Quest DOM explorer"},
         )
 
     def test_put_by_slug_without_content_type(self):
@@ -106,6 +121,7 @@ class TestFilesBySlug(unittest.TestCase):
             "/api/v1/files/by-slug/apps/quest-dom",
             b"<html></html>",
             content_type=None,
+            query=None,
         )
 
     def test_delete_by_slug(self):
@@ -139,6 +155,7 @@ class TestPutDataRawBody(unittest.TestCase):
         )
         self.assertEqual(kwargs["data"], b"<html></html>")
         self.assertEqual(kwargs["headers"], {"Content-Type": "text/html"})
+        self.assertIsNone(kwargs["params"])
         self.assertNotIn("json", kwargs)
 
     def test_put_data_without_content_type_leaves_header_unset(self):

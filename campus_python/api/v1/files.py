@@ -73,6 +73,7 @@ class Files(ResourceCollection):
             slug: str,
             data: bytes | str,
             content_type: str | None = None,
+            name: str | None = None,
     ) -> dict:
         """Create or replace a file's content by slug (upsert).
 
@@ -88,13 +89,16 @@ class Files(ResourceCollection):
             content_type: MIME type to store and serve back (e.g.
                 "text/html"); defaults to the transport's choice and
                 upstream stores application/octet-stream when absent.
+            name: Optional display name, stored on the record for new
+                files (upstream's PUT ?name= parameter).
 
         Returns:
             The file metadata resource (201 shape on create, 200
             shape on replace; identical dict fields).
         """
         resp = self.client.put_data(
-            self._by_slug_path(slug), data, content_type=content_type
+            self._by_slug_path(slug), data, content_type=content_type,
+            query={"name": name} if name else None,
         )
         resp.raise_for_status()
         return resp.json()
