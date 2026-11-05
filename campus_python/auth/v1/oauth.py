@@ -36,7 +36,7 @@ from collections.abc import Callable
 from typing import Literal
 
 from ... import errors
-from ...interface import ResourceRoot
+from ...interface import ResourceRoot, payload
 
 # Fallback poll interval (seconds) when the server omits interval from
 # the device_authorize response (RFC 8628 §3.2 default is 5).
@@ -301,11 +301,9 @@ class OAuth(ResourceRoot):
         whether the token was found or already revoked, so callers
         cannot use this endpoint to confirm a token's validity.
         """
-        json_body: dict = {
-            "token": token,
-            "client_id": client_id,
-        }
-        if token_type_hint is not None:
-            json_body["token_type_hint"] = token_type_hint
-        self._post_json(self.make_path("revoke"), json=json_body)
+        self._post_json(self.make_path("revoke"), json=payload(
+            token=token,
+            client_id=client_id,
+            token_type_hint=token_type_hint,
+        ))
         return None

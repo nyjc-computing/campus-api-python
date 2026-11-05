@@ -29,6 +29,35 @@ def join_path(*parts: str) -> str:
     return SLASH + SLASH.join(part for part in cleaned if part)
 
 
+def payload(**fields: Any) -> dict[str, Any]:
+    """Build a JSON request body from keyword fields.
+
+    Fields set to None are omitted — the "not provided" convention
+    across Campus write routes (an omitted field is left unchanged
+    upstream). Fields that ARE provided are sent verbatim, including
+    falsy ones (0, "", False).
+
+    Not for bodies that must carry an explicit null: build those by
+    hand (e.g. submissions.unsubmit's {"submitted_at": null}).
+    """
+    return {key: value for key, value in fields.items() if value is not None}
+
+
+def updates(**fields: Any) -> dict[str, Any]:
+    """Build a PATCH body from keyword fields, dropping None fields.
+
+    Raises ValueError when every field is None — Campus PATCH routes
+    reject an empty body outright.
+
+    The same explicit-null caveat as payload applies: a PATCH that
+    must set a field to null cannot go through here.
+    """
+    body = payload(**fields)
+    if not body:
+        raise ValueError("At least one field must be provided for update")
+    return body
+
+
 class Transport:
     """Shared HTTP verb helpers for classes backed by a JsonClient.
 

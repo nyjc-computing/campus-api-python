@@ -3,11 +3,9 @@
 Campus API submissions resource (v1).
 """
 
-from typing import Any
-
 import campus.model
 
-from ...interface import Resource, ResourceCollection
+from ...interface import Resource, ResourceCollection, payload, updates
 
 
 class Submissions(ResourceCollection):
@@ -100,17 +98,15 @@ class Submissions(ResourceCollection):
         Returns:
             Created Submission object
         """
-        payload: dict[str, Any] = {
-            "assignment_id": assignment_id,
-            "student_id": student_id,
-            "course_id": course_id,
-        }
-        if responses is not None:
-            payload["responses"] = responses
-
-        return campus.model.Submission.from_resource(
-            self._post_json(self.make_path(), json=payload)
-        )
+        return campus.model.Submission.from_resource(self._post_json(
+            self.make_path(),
+            json=payload(
+                assignment_id=assignment_id,
+                student_id=student_id,
+                course_id=course_id,
+                responses=responses,
+            )
+        ))
 
     class Submission(Resource):
         """Single campus API submission resource."""
@@ -150,18 +146,11 @@ class Submissions(ResourceCollection):
                 feedback: New list of feedback
                 submitted_at: New submitted_at timestamp
             """
-            payload = {}
-            if responses is not None:
-                payload["responses"] = responses
-            if feedback is not None:
-                payload["feedback"] = feedback
-            if submitted_at is not None:
-                payload["submitted_at"] = submitted_at
-
-            if not payload:
-                raise ValueError("At least one field must be provided for update")
-
-            self._patch_json(self.make_path(end_slash=True), json=payload)
+            self._patch_json(self.make_path(end_slash=True), json=updates(
+                responses=responses,
+                feedback=feedback,
+                submitted_at=submitted_at,
+            ))
             return None
 
         def submit(self) -> None:

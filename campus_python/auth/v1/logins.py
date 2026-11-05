@@ -10,7 +10,7 @@ from campus.common import env
 import campus.model
 
 from ... import errors
-from ...interface import JsonDict, Resource, ResourceCollection
+from ...interface import Resource, ResourceCollection, payload
 from . import sessionstore
 
 # Client-side storage key for this resource's login-session id. The SDK
@@ -97,17 +97,15 @@ class LoginSessions(ResourceCollection):
         (flask_campus context owns its flask.session storage).
         """
         client_id = env.CLIENT_ID
-        json_data: JsonDict = {
-            "client_id": str(client_id),
-            "user_id": str(user_id),
-            "agent_string": agent_string,
-        }
-        if device_id is not None:
-            json_data["device_id"] = device_id
-
-        return campus.model.LoginSession.from_resource(
-            self._post_json(self.make_path(), json=json_data)
-        )
+        return campus.model.LoginSession.from_resource(self._post_json(
+            self.make_path(),
+            json=payload(
+                client_id=str(client_id),
+                user_id=str(user_id),
+                agent_string=agent_string,
+                device_id=device_id,
+            )
+        ))
 
     class Login(Resource):
         """A single login session resource."""

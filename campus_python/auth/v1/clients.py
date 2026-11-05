@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import campus.model
 
-from ...interface import JsonDict, Resource, ResourceCollection
+from ...interface import JsonDict, Resource, ResourceCollection, payload
 
 
 class Clients(ResourceCollection):
@@ -51,21 +51,18 @@ class Clients(ResourceCollection):
         Returns:
             The created Client
         """
-        json_data: JsonDict = {
-            "name": name,
-            "description": description,
-            "is_public": is_public,
-            "redirect_uris": redirect_uris or []
-        }
-        if allowed_scopes is not None:
-            json_data["allowed_scopes"] = allowed_scopes
-        if upstream_scopes is not None:
-            json_data["upstream_scopes"] = upstream_scopes
-        if token_bridge is not None:
-            json_data["token_bridge"] = token_bridge
-        return campus.model.Client.from_resource(
-            self._post_json(self.make_path(), json=json_data)
-        )
+        return campus.model.Client.from_resource(self._post_json(
+            self.make_path(),
+            json=payload(
+                name=name,
+                description=description,
+                is_public=is_public,
+                redirect_uris=redirect_uris or [],
+                allowed_scopes=allowed_scopes,
+                upstream_scopes=upstream_scopes,
+                token_bridge=token_bridge,
+            )
+        ))
 
     class Client(Resource):
         """Campus Auth Client resource."""
@@ -125,22 +122,17 @@ class Clients(ResourceCollection):
             Returns:
                 The updated Client
             """
-            json_data = {}
-            if name is not None:
-                json_data["name"] = name
-            if description is not None:
-                json_data["description"] = description
-            if redirect_uris is not None:
-                json_data["redirect_uris"] = redirect_uris
-            if allowed_scopes is not None:
-                json_data["allowed_scopes"] = allowed_scopes
-            if upstream_scopes is not None:
-                json_data["upstream_scopes"] = upstream_scopes
-            if token_bridge is not None:
-                json_data["token_bridge"] = token_bridge
-            return campus.model.Client.from_resource(
-                self._patch_json(self.make_path(), json=json_data)
-            )
+            return campus.model.Client.from_resource(self._patch_json(
+                self.make_path(),
+                json=payload(
+                    name=name,
+                    description=description,
+                    redirect_uris=redirect_uris,
+                    allowed_scopes=allowed_scopes,
+                    upstream_scopes=upstream_scopes,
+                    token_bridge=token_bridge,
+                )
+            ))
 
         class ClientAccess(Resource):
             """Campus Auth Client Access resource."""

@@ -23,7 +23,7 @@ service is the authority, and it refuses an unknown role with the
 names of the roles it does have. No role resolves to a wildcard.
 """
 
-from ...interface import JsonDict, Resource, ResourceCollection
+from ...interface import JsonDict, Resource, ResourceCollection, payload, updates
 
 
 class APIKeys(ResourceCollection):
@@ -70,19 +70,14 @@ class APIKeys(ResourceCollection):
             The created key record; its plaintext `api_key` value is
             shown only here.
         """
-        payload: JsonDict = {
-            "name": name,
-            "owner_id": owner_id,
-        }
-        if scopes is not None:
-            payload["scopes"] = scopes
-        if role is not None:
-            payload["role"] = role
-        if rate_limit is not None:
-            payload["rate_limit"] = rate_limit
-        if expires_at is not None:
-            payload["expires_at"] = expires_at
-        return self._post_json(self.make_path(), json=payload)
+        return self._post_json(self.make_path(), json=payload(
+            name=name,
+            owner_id=owner_id,
+            scopes=scopes,
+            role=role,
+            rate_limit=rate_limit,
+            expires_at=expires_at,
+        ))
 
     def list(
             self,
@@ -146,22 +141,12 @@ class APIKeys(ResourceCollection):
             Returns:
                 The updated key record
             """
-            payload: JsonDict = {}
-            if name is not None:
-                payload["name"] = name
-            if scopes is not None:
-                payload["scopes"] = scopes
-            if role is not None:
-                payload["role"] = role
-            if rate_limit is not None:
-                payload["rate_limit"] = rate_limit
-            if not payload:
-                raise ValueError(
-                    "At least one field must be provided for update"
-                )
-            return self._patch_json(
-                self.make_path(end_slash=True), json=payload
-            )
+            return self._patch_json(self.make_path(end_slash=True), json=updates(
+                name=name,
+                scopes=scopes,
+                role=role,
+                rate_limit=rate_limit,
+            ))
 
         def revoke(self) -> None:
             """Revoke this API key (the record is kept for audit)."""
