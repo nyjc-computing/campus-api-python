@@ -8,6 +8,14 @@ The Campus API Python library (`campus_python`) is a comprehensive client for in
 
 **The SDK is framework-free**: it holds no web-framework dependency and no request state of its own. The browser login flow and client-side session storage live in the [`campus.flask_campus`](https://github.com/nyjc-computing/campus) middleware (see [Session & trace integration](#session--trace-integration-the-flask_campus-boundary) below); this library owns transport, tokens, and the injectable seams that let any host supply request-scoped identity.
 
+## Documentation
+
+Full documentation (guides + generated API reference) lives at
+**https://nyjc-computing.github.io/campus-api-python/** — built from
+`docs/` with MkDocs (Material for MkDocs + mkdocstrings) and deployed
+by CI on every push to `main`. Run it locally with
+`poetry install --with docs && poetry run mkdocs serve`.
+
 ## Features
 
 - Unified client interface for all Campus services

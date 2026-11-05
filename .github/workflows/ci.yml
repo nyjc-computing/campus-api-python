@@ -73,6 +73,39 @@ jobs:
       - name: Run Pyright
         run: poetry run pyright
 
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    # gh-deploy pushes the gh-pages branch — main pushes only. PRs get
+    # the strict build as a docs-rot gate without needing the write
+    # permission.
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies (incl. docs group)
+        run: poetry install --with docs
+
+      - name: Build documentation (strict)
+        run: poetry run mkdocs build --strict
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          poetry run mkdocs gh-deploy --force --strict
+
   build-and-audit:
     name: Build & Audit
     needs: [test]

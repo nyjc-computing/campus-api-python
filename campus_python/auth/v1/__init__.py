@@ -171,9 +171,6 @@ class AuthRoot(ResourceRoot):
         so the returned token is always live; the response carries no
         refresh token.
 
-        Args:
-            None
-
         Returns:
             OAuthToken for the user
 
