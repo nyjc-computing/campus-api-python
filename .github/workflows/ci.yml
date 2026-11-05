@@ -115,7 +115,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          # The annotated tag object itself is needed for the notes.
+          # The annotated tag object itself is needed for the notes;
+          # it is re-fetched explicitly in the release step below
+          # (checkout resolves the tag ref to its target commit).
           fetch-depth: 0
 
       - name: Set up Python
@@ -133,8 +135,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NOTES="$(git tag -l --format='%(contents)' "${GITHUB_REF_NAME}")"
+          # actions/checkout resolves the tag ref to its target commit,
+          # so %(contents) falls back to the commit message unless the
+          # annotated tag object is re-fetched explicitly. The tag
+          # annotation is the release body.
+          git fetch --force origin \
+            "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}" \
+            --no-recurse-submodules
+          git tag -l --format='%(contents)' "${GITHUB_REF_NAME}" > NOTES.md
           gh release create "${GITHUB_REF_NAME}" \
             --title "${GITHUB_REF_NAME}" \
-            --notes "${NOTES:-Release ${GITHUB_REF_NAME}}" \
+            --notes-file NOTES.md \
             dist/campus_api_python-*.whl
