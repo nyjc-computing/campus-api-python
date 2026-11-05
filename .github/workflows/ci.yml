@@ -1,0 +1,140 @@
+name: CI
+
+# Triggers mirror the carved dists (flask-campus / campus-common): no
+# paths-ignore or branch filters — required checks must be REPORTED on
+# every PR, pushes to main re-run the suite, and a pushed v* tag runs
+# the release job (the annotated tag message becomes the release body).
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Test (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    # Bugfix-tier leg: 3.14 runs for signal but never blocks.
+    continue-on-error: ${{ matrix.python-version == '3.14' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run unit tests
+        run: poetry run pytest
+
+  pyright:
+    name: Pyright
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run Pyright
+        run: poetry run pyright
+
+  build-and-audit:
+    name: Build & Audit
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Build wheel
+        run: poetry build
+
+      # The install-surface smoke: prove the built wheel (not the src
+      # tree) is installable — pip resolves campus-common/campus-model
+      # from the direct URLs baked into the wheel metadata.
+      - name: Fresh-venv wheel smoke
+        run: |
+          python -m venv smoke-venv
+          smoke-venv/bin/pip install --quiet dist/campus_api_python-*.whl
+          smoke-venv/bin/python -c "from campus_python import Campus; from campus_python.api.v1.files import Files; print('smoke OK:', Files.path)"
+
+  release:
+    name: Release (tag)
+    # Tag pushes only: build the wheel and publish the GitHub release.
+    # The annotated tag message is the release body — cut a release by
+    # bumping pyproject, merging, then `git tag -a vX.Y.Z -m "<notes>"`.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, pyright, build-and-audit]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # The annotated tag object itself is needed for the notes.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Build wheel
+        run: poetry build
+
+      - name: Create GitHub release with wheel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="$(git tag -l --format='%(contents)' "${GITHUB_REF_NAME}")"
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "${NOTES:-Release ${GITHUB_REF_NAME}}" \
+            dist/campus_api_python-*.whl
