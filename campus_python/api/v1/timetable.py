@@ -60,34 +60,76 @@ class Timetables(ResourceCollection):
         """Get a specific timetable resource by ID."""
         return Timetables.Timetable(timetable_id, parent=self)
 
-    def get_current(self) -> str:
-        """Get the timetable ID of current timetable."""
-        return self._get_json(self.make_path("current", end_slash=False))["value"]
+    def view(self) -> dict:
+        """Get the deployment's timetable pointer state.
 
-    def get_next(self) -> str:
-        """Get the timetable ID of next timetable."""
-        return self._get_json(self.make_path("next", end_slash=False))["value"]
+        Returns:
+            {"current": timetable_id | None, "next": timetable_id |
+            None, "effective_from": datetime | None} — the pending
+            switch applies at its effective_from without any client
+            action (#1075).
+        """
+        return self._get_json(self.make_path())
 
-    def set_current(self, timetable_id: str) -> None:
-        """Set the current timetable.
+    def patch(
+        self,
+        *,
+        current: str | None = None,
+        next: str | None = None,  # noqa: A002 - API field name
+        effective_from: str | None = None,
+    ) -> dict:
+        """Patch exactly one timetable pointer (#1075).
+
+        Pass keyword arguments, exactly one of `current` or `next`.
 
         Args:
-            timetable_id: ID of the timetable to set as current
-        """
-        self._put_json(
-            self.make_path("current", end_slash=False),
-            json={"value": timetable_id}
-        )
+            current: Timetable ID to make current, effective now.
+            next: Timetable ID to schedule as the pending switch
+                (reschedules any previous pending switch).
+            effective_from: When the pending switch applies (ISO
+                datetime, or YYYY-MM-DD for 07:00 school time). Only
+                valid with `next`; absent stages an undated switch
+                that flips only when pointed at manually.
 
-    def set_next(self, timetable_id: str) -> None:
-        """Set the next timetable.
-
-        Args:
-            timetable_id: ID of the timetable to set as next
+        Returns:
+            The resulting pointer state (same shape as view()).
         """
-        self._put_json(
-            self.make_path("next", end_slash=False),
-            json={"value": timetable_id}
+        present = {
+            key: value
+            for key, value in (("current", current), ("next", next))
+            if value is not None
+        }
+        if len(present) != 1:
+            raise ValueError(
+                "Patch exactly one pointer: pass current=<id> or "
+                "next=<id> (use cancel_next() to cancel a pending "
+                "switch)"
+            )
+        body: dict = dict(present)
+        if "next" in body and effective_from is not None:
+            body["effective_from"] = effective_from
+        return self._patch_json(self.make_path(), json=body)
+
+    def cancel_next(self) -> dict:
+        """Cancel the pending scheduled switch (API: {next: null}).
+
+        Returns:
+            The resulting pointer state.
+        """
+        return self._patch_json(self.make_path(), json={"next": None})
+
+    def me(self, at: str | None = None) -> dict:
+        """Resolve the signed-in user's effective timetable view (#592).
+
+        Returns:
+            {"current": {timetable_id, lessongroup_id, source},
+            "next": null | {..., effective_from, change_type}}; entries
+            render via timetable[id].entries filtered by
+            lessongroup_id.
+        """
+        query = {"at": at} if at else None
+        return self._get_json(
+            self.make_path("me", end_slash=False), query=query
         )
 
     def new(self, metadata: dict, data: dict) -> dict:
@@ -120,16 +162,23 @@ class Timetables(ResourceCollection):
         # POST /timetable/ wraps the created resource in a data envelope
         return body["data"]
 
-    def list(self, **filters: typing.Any) -> "list[campus.model.TimetableMetadata]":
-        """List timetables matching the provided filters.
+    def list_metadata(
+        self, **filters: typing.Any
+    ) -> "list[campus.model.TimetableMetadata]":
+        """List timetable metadata records.
 
         Args:
             **filters: Arbitrary filter parameters applied to the query.
 
         Returns:
-            list[campus.model.TimetableMetadata]: Matching timetable metadata objects.
+            list[campus.model.TimetableMetadata]: Matching
+            timetable metadata objects. (GET /timetable/ itself now
+            serves the pointer state; the list lives at
+            /timetable/metadata/.)
         """
-        body = self._get_json(self.make_path(), query=filters if filters else None)
+        body = self._get_json(
+            self.make_path("metadata"), query=filters if filters else None
+        )
         return [
             campus.model.TimetableMetadata.from_resource(item)
             for item in body["data"]
