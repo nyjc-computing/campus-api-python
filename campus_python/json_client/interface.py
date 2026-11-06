@@ -80,7 +80,14 @@ class JsonResponse(ABC):
         return 500 <= self.status_code < 600
 
     def raise_for_status(self) -> None:
-        # Try to provide the same mapping as the interface's raise_for_status
+        """Raise the mapped APIError subclass on a 4xx/5xx status.
+
+        Parses the Campus error envelope (and the legacy error_code
+        form) into the registered error class for the status code;
+        OAuth errors are recovered from AUTH_* codes when the server
+        strips envelope details. Response headers and body ride along
+        as error notes.
+        """
         if not (self.is_client_error() or self.is_server_error()):
             return
 

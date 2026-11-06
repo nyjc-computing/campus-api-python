@@ -112,16 +112,31 @@ class LoginSessions(ResourceCollection):
 
         @property
         def session_id(self) -> str:
+            """The login session id embedded in this resource's path."""
             return self.path.rstrip("/").split("/")[-1]
 
         def revoke(self) -> None:
+            """Revoke this login session (log the user out)."""
             self._delete_json(self.make_path(end_slash=True))
 
         def get(self) -> campus.model.LoginSession:
+            """Get this login session.
+
+            Returns:
+                The LoginSession.
+            """
             body = self._get_json(self.make_path(end_slash=True))
             return campus.model.LoginSession.from_resource(body)
 
         def update(self, *, expiry_seconds: int) -> campus.model.LoginSession:
+            """Extend or shorten this login session.
+
+            Args:
+                expiry_seconds: New session lifetime in seconds.
+
+            Returns:
+                The updated LoginSession.
+            """
             body = self._patch_json(
                 self.make_path(end_slash=True),
                 json={"expiry_seconds": expiry_seconds}

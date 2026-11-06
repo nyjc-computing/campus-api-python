@@ -43,6 +43,17 @@ class Assignments(ResourceCollection):
             questions: "list[dict] | None" = None,
             classroom_links: "list[dict] | None" = None,
     ) -> campus.model.Assignment:
+        """Create a new assignment.
+
+        Args:
+            title: Assignment title (required by the server).
+            description: Assignment description.
+            questions: Question definitions.
+            classroom_links: Google Classroom course/coursework links.
+
+        Returns:
+            The created Assignment.
+        """
         return campus.model.Assignment.from_resource(self._post_json(
             self.make_path(),
             json=payload(
@@ -62,9 +73,15 @@ class Assignments(ResourceCollection):
             return Assignments.Assignment.Links("links", parent=self)
 
         def delete(self) -> None:
+            """Delete this assignment."""
             self._delete_json(self.make_path(end_slash=True))
 
         def get(self) -> campus.model.Assignment:
+            """Get this assignment.
+
+            Returns:
+                The Assignment.
+            """
             body = self._get_json(self.make_path(end_slash=True))
             return campus.model.Assignment.from_resource(body)
 
@@ -87,6 +104,13 @@ class Assignments(ResourceCollection):
                     coursework_id: str,
                     attachment_id: str | None = None,
             ) -> None:
+                """Attach a Google Classroom course/coursework link.
+
+                Args:
+                    course_id: Classroom course ID.
+                    coursework_id: Classroom coursework ID.
+                    attachment_id: Optional Drive attachment ID.
+                """
                 self._post_json(self.make_path(), json=payload(
                     course_id=course_id,
                     coursework_id=coursework_id,

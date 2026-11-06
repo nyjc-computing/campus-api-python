@@ -121,6 +121,14 @@ class Credentials(ResourceCollection):
                 )
 
             def update(self, token: campus.model.OAuthToken) -> None:
+                """Replace this user's stored token for the provider.
+
+                The client_id rides on the body from the environment;
+                the token is sent as its full resource form.
+
+                Args:
+                    token: The new OAuthToken to store.
+                """
                 client_id = env.CLIENT_ID
                 json_data: JsonDict = {
                     "client_id": client_id,
