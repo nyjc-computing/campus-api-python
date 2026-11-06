@@ -134,6 +134,9 @@ def test_list_unwraps_data_envelope(self):
         - join_path
         - payload
         - updates
+      filters:
+        - "!^__repr__$"
+        - "!^__str__$"
 
 ::: campus_python.api.v1.byslug
     options:
