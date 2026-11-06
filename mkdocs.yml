@@ -48,6 +48,12 @@ plugins:
             show_root_heading: true
             show_source: true
             show_signature_annotations: true
+            # Render undocumented members too (heading + signature).
+            # With the default (false), roughly twenty public methods —
+            # notably the whole Vaults.Vault mapping API and several
+            # delete/get/add methods — silently vanish from the
+            # reference. Undocumented ≠ non-public.
+            show_if_no_docstring: true
 
 markdown_extensions:
   - admonition
