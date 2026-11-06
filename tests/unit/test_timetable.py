@@ -20,19 +20,21 @@ class TestTimetablesList(unittest.TestCase):
     def setUp(self):
         self.api, self.client = make_api()
 
-    def test_list_unwraps_data_envelope(self):
+    def test_list_metadata_unwraps_data_envelope(self):
         metadata = [{"id": "uid-timetable-1", "start_date": "2026-01-01"}]
         self.client.get.return_value.json.return_value = {"data": metadata}
         with patch.object(
             campus.model.TimetableMetadata, "from_resource", return_value=Mock()
         ) as from_resource:
-            self.api.timetable.list()
-        self.client.get.assert_called_once_with("/api/v1/timetable/")
+            self.api.timetable.list_metadata()
+        self.client.get.assert_called_once_with(
+            "/api/v1/timetable/metadata/"
+        )
         from_resource.assert_called_once_with(metadata[0])
 
-    def test_list_returns_empty_list_for_empty_envelope(self):
+    def test_list_metadata_returns_empty_list_for_empty_envelope(self):
         self.client.get.return_value.json.return_value = {"data": []}
-        self.assertEqual(self.api.timetable.list(), [])
+        self.assertEqual(self.api.timetable.list_metadata(), [])
 
 
 class TestTimetablesNew(unittest.TestCase):

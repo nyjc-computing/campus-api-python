@@ -10,6 +10,7 @@ from . import (
     circles,
     files,
     hostedapps,
+    subjcombi,
     submissions,
     timetable,
 )
@@ -26,6 +27,7 @@ class ApiRoot(ResourceRoot):
         self._files = None
         self._hostedapps = None
         self._submissions = None
+        self._subjcombi = None
         self._timetables = None
 
     @property
@@ -55,6 +57,13 @@ class ApiRoot(ResourceRoot):
         if not self._hostedapps:
             self._hostedapps = hostedapps.HostedApps(root=self)
         return self._hostedapps
+
+    @property
+    def subjcombi(self) -> subjcombi.Subjcombi:
+        """Get the subjcombi resource (user→lessongroup mappings)."""
+        if not self._subjcombi:
+            self._subjcombi = subjcombi.Subjcombi(root=self)
+        return self._subjcombi
 
     @property
     def submissions(self) -> submissions.Submissions:
