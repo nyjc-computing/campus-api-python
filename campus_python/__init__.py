@@ -8,6 +8,7 @@ __all__ = (
     "errors",
 )
 
+import base64
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -268,8 +269,22 @@ class Campus:
 
         Yields:
             Campus: JSON client with user credentials set.
+
+        Nesting-safe (#159): an inner with_user_session opened on the
+        same Campus instance while an outer one is still active (e.g.
+        an auth-broker release reached from a route that already holds
+        the user session) restores the outer session's authorization
+        and 401 hook at its exit instead of resetting the shared
+        clients to app credentials mid-block.
         """
         token = self._get_token_from_session()
+        # Capture the entry authorization so the teardown restores it:
+        # unconditional revoke_session() here strips an OUTER session's
+        # user bearer when this block is nested (#159).
+        prior_authorization = {
+            client: client.authorization
+            for client in (self.api.client, self.auth.client)
+        }
         self.use_token(token)
 
         hooked_clients = []
@@ -308,14 +323,29 @@ class Campus:
                 # The 401 hook is an optional JsonClient capability
                 # (see json_client.interface) — feature-detect it.
                 if isinstance(client, CampusRequest):
+                    prior_hook = client._unauthorized_hook
                     client.set_unauthorized_hook(refresh_bearer)
-                    hooked_clients.append(client)
+                    hooked_clients.append((client, prior_hook))
 
         try:
             yield self
         except Exception:
             raise
         finally:
-            for client in hooked_clients:
-                client.set_unauthorized_hook(None)
-            self.revoke_session()
+            # Restore rather than clear: an enclosing session's hook
+            # must survive this block (#159). Top-level sessions had no
+            # prior hook, so this is equivalent to clearing.
+            for client, prior_hook in hooked_clients:
+                client.set_unauthorized_hook(prior_hook)
+            for client, prior in prior_authorization.items():
+                if prior is None:
+                    client.reset_authorization()
+                elif prior.startswith("Bearer "):
+                    client.set_bearer_authorization(prior[len("Bearer "):])
+                elif prior.startswith("Basic "):
+                    decoded = base64.b64decode(
+                        prior[len("Basic "):]).decode("utf-8")
+                    client_id, _, secret = decoded.partition(":")
+                    client.set_basic_authorization(client_id, secret)
+                else:
+                    client.reset_authorization()
