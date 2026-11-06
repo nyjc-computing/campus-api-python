@@ -35,11 +35,13 @@ plugins:
       handlers:
         python:
           options:
-            # The service packages (api/auth/audit/integrations) are
-            # deliberate implicit-namespace packages, which griffe's
-            # static analysis cannot descend into; dynamic (import-
-            # based) analysis resolves them fine.
-            force_inspection: true
+            # Static (AST) analysis. It needs the __init__.py markers on
+            # the service packages (api/auth/audit/integrations) — griffe
+            # cannot descend into implicit-namespace subpackages of a
+            # regular parent. Dynamic inspection (force_inspection) also
+            # works but materializes interpreter-specific runtime dunders
+            # (__firstlineno__, __annotations__, ...) on 3.13+, which
+            # render as junk on reference pages.
             docstring_style: google
             docstring_section_style: table
             members_order: source
