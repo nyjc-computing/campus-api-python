@@ -18,6 +18,11 @@ class Clients(ResourceCollection):
         return Clients.Client(client_id, parent=self)
 
     def list(self) -> "list[campus.model.Client]":
+        """List all OAuth clients.
+
+        Returns:
+            List of Client objects.
+        """
         body = self._get_json(self.make_path())
         return [
             campus.model.Client.from_resource(item)
@@ -79,9 +84,15 @@ class Clients(ResourceCollection):
             return self.path.strip("/")
 
         def delete(self) -> None:
+            """Delete this client."""
             self._delete_json(self.make_path())
 
         def get(self) -> campus.model.Client:
+            """Get this client.
+
+            Returns:
+                The Client.
+            """
             body = self._get_json(self.make_path())
             return campus.model.Client.from_resource(body)
 
@@ -141,6 +152,14 @@ class Clients(ResourceCollection):
                     self,
                     vault: str | None = None
             ) -> JsonDict:
+                """Get this client's vault access mapping.
+
+                Args:
+                    vault: Scope the mapping to one vault label.
+
+                Returns:
+                    {vault_label: permission} for the accessible vaults.
+                """
                 # GET rule is /<client_id>/access/ (trailing slash) and the
                 # auth app sets strict_slashes — the slash is required.
                 if vault:
@@ -170,6 +189,15 @@ class Clients(ResourceCollection):
                     vault: str,
                     permission: int,
             ) -> JsonDict:
+                """Grant this client a permission on a vault.
+
+                Args:
+                    vault: Vault label.
+                    permission: Permission level to grant.
+
+                Returns:
+                    The resulting access record.
+                """
                 return self._post_json(self.make_path("grant", end_slash=False), json={
                     "vault": vault,
                     "permission": permission,
@@ -180,6 +208,15 @@ class Clients(ResourceCollection):
                     vault: str,
                     permission: int,
             ) -> JsonDict:
+                """Revoke this client's permission on a vault.
+
+                Args:
+                    vault: Vault label.
+                    permission: Permission level to revoke.
+
+                Returns:
+                    The resulting access record.
+                """
                 return self._post_json(self.make_path("revoke", end_slash=False), json={
                     "vault": vault,
                     "permission": permission,
@@ -190,6 +227,17 @@ class Clients(ResourceCollection):
                     vault: str,
                     permission: int,
             ) -> JsonDict:
+                """Set this client's permission on a vault (upsert).
+
+                PATCHes the access collection directly.
+
+                Args:
+                    vault: Vault label.
+                    permission: Permission level to set.
+
+                Returns:
+                    The resulting access record.
+                """
                 return self._patch_json(self.make_path(end_slash=True), json={
                     "vault": vault,
                     "permission": permission,

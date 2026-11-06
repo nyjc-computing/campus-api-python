@@ -34,21 +34,31 @@ class CampusResponse(JsonResponse):
 
     @property
     def status_code(self) -> int:
+        """HTTP status code of the underlying response."""
         return self._response.status_code
 
     @property
     def headers(self) -> dict[str, str]:
+        """Response headers as a plain dict."""
         return dict(self._response.headers)
 
     @property
     def text(self) -> str:
+        """Response body as a string."""
         return self._response.text
 
     @property
     def content(self) -> bytes:
+        """Response body as undecoded bytes (binary-safe)."""
         return self._response.content
 
     def json(self) -> Any:
+        """Parse the response body as JSON.
+
+        Raises:
+            MalformedResponseError: The body is not valid JSON
+                (instead of the transport's ValueError).
+        """
         try:
             return self._response.json()
         except ValueError:  # JSON decoding error
@@ -57,12 +67,15 @@ class CampusResponse(JsonResponse):
             ) from None
 
     def ok(self) -> bool:
+        """True when the status code is 2xx."""
         return 200 <= self.status_code < 300
 
     def is_client_error(self) -> bool:
+        """True when the status code is 4xx."""
         return 400 <= self.status_code < 500
 
     def is_server_error(self) -> bool:
+        """True when the status code is 5xx."""
         return 500 <= self.status_code < 600
 
 

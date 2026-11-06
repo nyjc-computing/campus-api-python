@@ -167,4 +167,5 @@ class Traces(ResourceCollection):
             """Single span of a trace, with full request/response detail."""
 
             def get(self) -> JsonDict:
+                """Get this span with full request/response detail."""
                 return self._get_json(self.make_path(end_slash=True))

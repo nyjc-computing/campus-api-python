@@ -19,6 +19,11 @@ class Circles(ResourceCollection):
         return Circles.Circle(circle_id, parent=self)
 
     def list(self) -> "list[campus.model.Circle]":
+        """List all circles.
+
+        Returns:
+            List of Circle objects.
+        """
         body = self._get_json(self.make_path())
         return [
             campus.model.Circle.from_resource(item)
@@ -33,6 +38,20 @@ class Circles(ResourceCollection):
             description: str = "",
             parents: dict[str, int] | None = None,
     ) -> campus.model.Circle:
+        """Create a new circle.
+
+        The server rejects a name that collides with an existing
+        circle (409).
+
+        Args:
+            name: Circle name (unique across Campus).
+            tag: Circle tag (e.g. "project").
+            description: Circle description.
+            parents: Parent circle ids mapped to access values.
+
+        Returns:
+            The created Circle.
+        """
         return campus.model.Circle.from_resource(self._post_json(
             self.make_path(),
             json=payload(name=name, tag=tag, description=description, parents=parents)
@@ -47,9 +66,15 @@ class Circles(ResourceCollection):
             return Circles.Circle.CircleMembers("members", parent=self)
 
         def delete(self) -> None:
+            """Delete this circle."""
             self._delete_json(self.make_path(end_slash=True))
 
         def get(self) -> campus.model.Circle:
+            """Get this circle.
+
+            Returns:
+                The Circle.
+            """
             body = self._get_json(self.make_path(end_slash=True))
             return campus.model.Circle.from_resource(body)
 
@@ -84,12 +109,22 @@ class Circles(ResourceCollection):
                 return self._get_json(self.make_path(end_slash=True))
 
             def add(self, member_id: str, access_value: int) -> None:
+                """Add a member with an access value.
+
+                Targets the /members/add action route; adding an
+                existing member re-errors server-side. Use set() for
+                upsert semantics.
+                """
                 self._post_json(
                     self.make_path("add"),
                     json={"member_id": member_id, "access_value": access_value}
                 )
 
             def remove(self, member_id: str) -> None:
+                """Remove a member.
+
+                Targets the /members/remove action route.
+                """
                 self._delete_json(
                     self.make_path("remove"),
                     json={"member_id": member_id}

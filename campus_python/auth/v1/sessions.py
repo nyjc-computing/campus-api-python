@@ -71,6 +71,17 @@ class CampusSessions(ResourceCollection):
             scopes: "list[str]",
             target: str | None = None,
     ) -> campus.model.AuthSession:
+        """Create a new auth session (start the OAuth authorize flow).
+
+        Args:
+            user_id: Optional user to pre-authorize.
+            redirect_uri: OAuth redirect URI.
+            scopes: Scopes to request.
+            target: Where to redirect after authorize.
+
+        Returns:
+            The created AuthSession.
+        """
         client_id = env.CLIENT_ID
         json_data: JsonDict = {
             # "expiry_seconds": expiry_seconds,
@@ -128,6 +139,14 @@ class CampusSessions(ResourceCollection):
         ]
 
     def sweep(self, at_time: datetime | str | None = None) -> int:
+        """Finalize expired auth sessions.
+
+        Args:
+            at_time: Cutoff time (defaults to now, UTC).
+
+        Returns:
+            Number of sessions swept.
+        """
         json_data: JsonDict = {}
         match at_time:
             case datetime():
@@ -146,9 +165,17 @@ class CampusSessions(ResourceCollection):
 
         @property
         def session_id(self) -> str:
+            """The auth session id embedded in this resource's path."""
             return self.path.rstrip("/").split("/")[-1]
 
         def finalize(self) -> "tuple[str, campus.model.User | None]":
+            """Finalize this session (post-authorization).
+
+            Returns:
+                (target_url, user_or_None): where to redirect the
+                browser, plus the session user when the calling client
+                owns the session; None from pre-#879 services.
+            """
             # DELETE /sessions/{provider}/{session_id} ->
             # {"target": <url>, "user": {...}|null}
             body = self._delete_json(self.make_path(end_slash=True))
@@ -159,10 +186,20 @@ class CampusSessions(ResourceCollection):
             return body["target"], user
 
         def get(self) -> campus.model.AuthSession:
+            """Get this auth session.
+
+            Returns:
+                The AuthSession.
+            """
             body = self._get_json(self.make_path(end_slash=True))
             return campus.model.AuthSession.from_resource(body)
 
         def update(self, **updates) -> None:
+            """Update this auth session.
+
+            Only user_id and authorization_code are expected by the
+            API; keyword arguments map to session fields.
+            """
             # Only user_id and authorization_code are expected by the API
             self._patch_json(self.make_path(end_slash=True), json=updates)
             return None

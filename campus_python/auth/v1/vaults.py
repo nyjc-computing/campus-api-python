@@ -34,6 +34,7 @@ class Vaults(ResourceCollection):
         """A single vault (label) exposing mapping-like access."""
 
         def keys(self) -> "list[str]":
+            """List the keys stored in this vault."""
             body = self._get_json(self.make_path(end_slash=True))
             return body["keys"]
 
