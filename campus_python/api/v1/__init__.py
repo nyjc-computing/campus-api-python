@@ -46,7 +46,7 @@ class ApiRoot(ResourceRoot):
 
     @property
     def files(self) -> files.Files:
-        """Get the files resource (by-slug consumer surface)."""
+        """Get the files resource (by-slug + id-based management)."""
         if not self._files:
             self._files = files.Files(root=self)
         return self._files
