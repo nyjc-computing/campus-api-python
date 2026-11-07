@@ -1,10 +1,11 @@
-"""Unit tests for the files resource (issue #135).
+"""Unit tests for the files resource (issues #135 by-slug, #125 id).
 
 By-slug routes are terminal upstream: the whole path tail after
 ``files/by-slug/`` is the slug, so slashes inside the slug must reach
 the wire literally (upstream's ``<path:slug>`` converter expects them
 unquoted). GET /files/ wraps records in a ``{"data": ...}`` envelope;
-content responses are raw bytes.
+content responses are raw bytes. The id-based routes (``files[id]``)
+are the management surface and never create.
 """
 
 import os
@@ -123,6 +124,63 @@ class TestFilesBySlug(unittest.TestCase):
         self.client.delete.assert_called_once_with(
             "/api/v1/files/by-slug/apps/quest-dom"
         )
+
+
+class TestFilesById(unittest.TestCase):
+    """Id-based management surface (files[id]): never creates, 404s on
+    unknown ids upstream. Collection routes keep trailing slashes to
+    match the Flask routes."""
+
+    def setUp(self):
+        self.api, self.client = make_api()
+
+    def test_get_returns_record_from_id_route(self):
+        record = {"id": "uid-file-1", "slug": "apps/quest-dom"}
+        self.client.get.return_value.json.return_value = record
+        result = self.api.files["uid-file-1"].get()
+        self.assertEqual(result, record)
+        self.client.get.assert_called_once_with("/api/v1/files/uid-file-1/")
+
+    def test_get_content_returns_undecoded_bytes(self):
+        content = b"\x89PNG-bytes"
+        self.client.get.return_value.content = content
+        self.assertEqual(
+            self.api.files["uid-file-1"].get_content(), content
+        )
+        self.client.get.assert_called_once_with(
+            "/api/v1/files/uid-file-1/content/"
+        )
+
+    def test_put_content_sends_raw_body_with_content_type(self):
+        record = {"id": "uid-file-1", "slug": "apps/quest-dom"}
+        self.client.put_data.return_value.json.return_value = record
+        result = self.api.files["uid-file-1"].put_content(
+            b"<html></html>", content_type="text/html"
+        )
+        self.assertEqual(result, record)
+        self.client.put_data.assert_called_once_with(
+            "/api/v1/files/uid-file-1/content/",
+            b"<html></html>",
+            content_type="text/html",
+            query=None,
+        )
+
+    def test_put_content_passes_display_name_as_query(self):
+        """The optional new display name rides upstream's PUT ?name=."""
+        self.client.put_data.return_value.json.return_value = {}
+        self.api.files["uid-file-1"].put_content(
+            b"<html></html>", content_type="text/html", name="Renamed"
+        )
+        self.client.put_data.assert_called_once_with(
+            "/api/v1/files/uid-file-1/content/",
+            b"<html></html>",
+            content_type="text/html",
+            query={"name": "Renamed"},
+        )
+
+    def test_delete_hits_id_route(self):
+        self.api.files["uid-file-1"].delete()
+        self.client.delete.assert_called_once_with("/api/v1/files/uid-file-1/")
 
 
 class TestPutDataRawBody(unittest.TestCase):
