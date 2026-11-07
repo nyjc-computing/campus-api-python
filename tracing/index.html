@@ -1,0 +1,1861 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python SDK for the Campus school platform API — assignments, circles, files, hosted apps, submissions, timetable, auth, audit, and the integrations registry.">
+      
+      
+      
+      
+        <link rel="prev" href="../authentication/">
+      
+      
+        <link rel="next" href="../custom-clients/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Tracing - Campus API Python</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tracing" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Campus API Python" class="md-header__button md-logo" aria-label="Campus API Python" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Campus API Python
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Tracing
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/nyjc-computing/campus-api-python" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    nyjc-computing/campus-api-python
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Campus API Python" class="md-nav__button md-logo" aria-label="Campus API Python" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Campus API Python
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/nyjc-computing/campus-api-python" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    nyjc-computing/campus-api-python
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tracing
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tracing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#in-request-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        In-request calls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#boot-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boot journeys
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instrumenting-a-custom-transport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instrumenting a custom transport
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-seam-session-ids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related seam: session ids
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#campus_python.tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tracing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="tracing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.PROCESS_JOURNEY_ENV" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PROCESS_JOURNEY_ENV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.PROCESS_DEVICE_ENV" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PROCESS_DEVICE_ENV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.set_request_context_provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set_request_context_provider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.set_process_journey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set_process_journey
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.disable_process_journey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        disable_process_journey
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.set_process_device" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set_process_device
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.process_device" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        process_device
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.propagation_headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        propagation_headers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.instrument_requests_session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        instrument_requests_session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Custom clients
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extending/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extending the SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/campus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Campus facade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Campus API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#in-request-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        In-request calls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#boot-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boot journeys
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instrumenting-a-custom-transport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instrumenting a custom transport
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-seam-session-ids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related seam: session ids
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#campus_python.tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tracing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="tracing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.PROCESS_JOURNEY_ENV" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PROCESS_JOURNEY_ENV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.PROCESS_DEVICE_ENV" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PROCESS_DEVICE_ENV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.set_request_context_provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set_request_context_provider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.set_process_journey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set_process_journey
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.disable_process_journey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        disable_process_journey
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.set_process_device" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set_process_device
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.process_device" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        process_device
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.propagation_headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        propagation_headers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#campus_python.tracing.instrument_requests_session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        instrument_requests_session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="tracing">Tracing<a class="headerlink" href="#tracing" title="Permanent link">&para;</a></h1>
+<p>Every SDK call propagates audit trace context — trace, journey, and
+device headers — so the Campus Audit waterfall shows which host route
+(or which process boot) fired each campus call. The machinery lives in
+<a href="#reference"><code>campus_python.tracing</code></a> and is on by default; hosts only
+touch it to install providers or override journey attribution.</p>
+<h2 id="in-request-calls">In-request calls<a class="headerlink" href="#in-request-calls" title="Permanent link">&para;</a></h2>
+<p>When the host application is itself traced — its Flask app wired with
+<code>campus.audit.middleware.init_app</code> — every request it handles becomes
+an audit span. SDK calls made while handling that request land as
+child spans of it: the middleware's propagation module installs a
+request-context provider via
+<a class="autorefs autorefs-internal" title="set_request_context_provider(provider: RequestContextProvider | None) -> None" href="#campus_python.tracing.set_request_context_provider"><code>set_request_context_provider()</code></a>,
+and its output (span/journey/device headers) is attached verbatim to
+outbound SDK calls.</p>
+<p>The SDK itself is framework-free: with <strong>no provider installed</strong>, calls
+are treated as out-of-request and carry only the boot journey below.</p>
+<h2 id="boot-journeys">Boot journeys<a class="headerlink" href="#boot-journeys" title="Permanent link">&para;</a></h2>
+<p>Every SDK call is a user request, whether that user is human or agent.
+Calls made outside any request context — startup, background threads —
+carry a <strong>process journey</strong> (one <code>uid-journey-...</code> per process boot)
+plus a process device tag so boot spans attribute to the deploy that
+produced them:</p>
+<ul>
+<li>Device id defaults to <code>RAILWAY_DEPLOYMENT_ID</code> when present.</li>
+<li>Inside a request, the caller's own journey always wins; the strict
+  fallback only fills the out-of-request gap.</li>
+</ul>
+<p>Overrides:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">campus_python.tracing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tracing</span>
+
+<span class="n">tracing</span><span class="o">.</span><span class="n">set_process_journey</span><span class="p">(</span><span class="s2">"uid-journey-migration-run"</span><span class="p">)</span>   <span class="c1"># attribute to a named journey</span>
+<span class="n">tracing</span><span class="o">.</span><span class="n">set_process_device</span><span class="p">(</span><span class="s2">"worker-3"</span><span class="p">)</span>                     <span class="c1"># override the device tag</span>
+<span class="n">tracing</span><span class="o">.</span><span class="n">disable_process_journey</span><span class="p">()</span>                          <span class="c1"># or suppress entirely</span>
+</code></pre></div>
+<p><code>CAMPUS_PROCESS_JOURNEY=off</code> (also <code>false</code>/<code>0</code>/<code>no</code>) suppresses the
+boot journey via the environment — useful for tests and operators.
+<a class="autorefs autorefs-internal" title="propagation_headers() -> dict[str, str]" href="#campus_python.tracing.propagation_headers"><code>propagation_headers()</code></a>
+returns what the next SDK call would send, which is handy for
+assertions in tests.</p>
+<h2 id="instrumenting-a-custom-transport">Instrumenting a custom transport<a class="headerlink" href="#instrumenting-a-custom-transport" title="Permanent link">&para;</a></h2>
+<p>The propagation headers are attached by the default
+<a class="autorefs autorefs-internal" title="campus_python.json_client.CampusRequest" href="../custom-clients/#campus_python.json_client.CampusRequest"><code>CampusRequest</code></a> transport.
+If you bring your own <a class="autorefs autorefs-internal" title="campus_python.json_client.interface.JsonClient" href="../custom-clients/#campus_python.json_client.interface.JsonClient"><code>JsonClient</code></a>
+(see <a href="../custom-clients/">Custom clients</a>), call
+<a class="autorefs autorefs-internal" title="instrument_requests_session(session: requests.Session) -> bool" href="#campus_python.tracing.instrument_requests_session"><code>instrument_requests_session(session)</code></a>
+on the underlying <code>requests.Session</code> to get the same header
+propagation, or attach <a class="autorefs autorefs-internal" title="propagation_headers() -> dict[str, str]" href="#campus_python.tracing.propagation_headers"><code>propagation_headers()</code></a>
+to each request yourself.</p>
+<h2 id="related-seam-session-ids">Related seam: session ids<a class="headerlink" href="#related-seam-session-ids" title="Permanent link">&para;</a></h2>
+<p>Session-id resolution (login/auth-session lanes) is a separate
+injectable provider — see
+<a href="../authentication/#user-sessions">Authentication › User sessions</a> and
+<a class="autorefs autorefs-internal" title="set_session_id_provider(provider: typing.Callable[[str], str | None] | None) -> None" href="../reference/auth/#campus_python.auth.v1.sessionstore.set_session_id_provider"><code>set_session_id_provider()</code></a>.</p>
+<h2 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="campus_python.tracing" class="doc doc-heading">
+            <code>campus_python.tracing</code>
+
+
+<a href="#campus_python.tracing" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>campus_python.tracing</p>
+<p>Trace-context propagation for SDK HTTP calls (campus-api-python#92,
+parent campus#816 item 1).</p>
+<p>When the host application is itself traced — its Flask app wired with
+campus.audit.middleware.init_app — every request it handles becomes an
+audit span. SDK calls made while handling that request should land as
+child spans of it, so the audit waterfall shows which host route fired
+each campus call.</p>
+<p>In-request headers come from the installed request-context provider
+(set_request_context_provider) — flask_campus installs one that reads
+the flask.g state campus.audit.middleware stashes. The SDK itself is
+framework-free: with no provider installed, calls are treated as
+out-of-request and carry only the boot journey below.</p>
+<p>Boot journeys (#114): every SDK call is a user request, whether that
+user is human or agent — so calls made outside any request context
+(startup, background threads) carry a process journey, one
+uid-journey-… per process boot, plus a process device tag (default:
+RAILWAY_DEPLOYMENT_ID) so boot spans attribute to the deploy that
+produced them. Inside a request the caller's own journey always wins;
+strict fallback only fills the out-of-request gap (campus-api-python#114
+ruling, 2026-10-21). Set CAMPUS_PROCESS_JOURNEY=off to suppress (tests,
+operators); set_process_journey()/set_process_device() override in code.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="campus_python.tracing.PROCESS_JOURNEY_ENV" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">PROCESS_JOURNEY_ENV</span> <span class="o">=</span> <span class="s1">'CAMPUS_PROCESS_JOURNEY'</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#campus_python.tracing.PROCESS_JOURNEY_ENV" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="campus_python.tracing.PROCESS_DEVICE_ENV" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">PROCESS_DEVICE_ENV</span> <span class="o">=</span> <span class="s1">'RAILWAY_DEPLOYMENT_ID'</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#campus_python.tracing.PROCESS_DEVICE_ENV" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="campus_python.tracing.set_request_context_provider" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">set_request_context_provider</span><span class="p">(</span><span class="n">provider</span><span class="p">:</span> <span class="n">RequestContextProvider</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+<a href="#campus_python.tracing.set_request_context_provider" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Install (or clear) the request-context propagation provider.</p>
+<p>When installed, propagation_headers() takes the provider's output
+verbatim for in-request calls (the provider owns the header
+contract, including device gap-fill) and applies the process boot
+journey only when the provider reports no active request context
+(returns None). Pass None to revert to the built-in flask reader.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>campus_python/tracing.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_request_context_provider</span><span class="p">(</span>
+        <span class="n">provider</span><span class="p">:</span> <span class="n">RequestContextProvider</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Install (or clear) the request-context propagation provider.</span>
+
+<span class="sd">    When installed, propagation_headers() takes the provider's output</span>
+<span class="sd">    verbatim for in-request calls (the provider owns the header</span>
+<span class="sd">    contract, including device gap-fill) and applies the process boot</span>
+<span class="sd">    journey only when the provider reports no active request context</span>
+<span class="sd">    (returns None). Pass None to revert to the built-in flask reader.</span>
+<span class="sd">    """</span>
+    <span class="k">global</span> <span class="n">_request_context_provider</span>
+    <span class="n">_request_context_provider</span> <span class="o">=</span> <span class="n">provider</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="campus_python.tracing.set_process_journey" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">set_process_journey</span><span class="p">(</span><span class="n">journey_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span></code>
+
+<a href="#campus_python.tracing.set_process_journey" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set this process's boot journey explicitly (#114).</p>
+<p>Overrides CAMPUS_PROCESS_JOURNEY and re-enables journeys after
+disable_process_journey(). Mints a uid-journey-… when journey_id is
+omitted (keeping any previously minted/explicit id on later calls);
+a name labels the journey's cards (forwarded as X-Journey-Name,
+campus#952).</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The process journey id now in effect.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>campus_python/tracing.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_process_journey</span><span class="p">(</span>
+        <span class="n">journey_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Set this process's boot journey explicitly (#114).</span>
+
+<span class="sd">    Overrides CAMPUS_PROCESS_JOURNEY and re-enables journeys after</span>
+<span class="sd">    disable_process_journey(). Mints a uid-journey-… when journey_id is</span>
+<span class="sd">    omitted (keeping any previously minted/explicit id on later calls);</span>
+<span class="sd">    a name labels the journey's cards (forwarded as X-Journey-Name,</span>
+<span class="sd">    campus#952).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The process journey id now in effect.</span>
+<span class="sd">    """</span>
+    <span class="k">with</span> <span class="n">_process_lock</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_process_state</span><span class="p">[</span><span class="s2">"initialized"</span><span class="p">]:</span>
+            <span class="n">_init_process_state</span><span class="p">()</span>
+        <span class="n">_process_state</span><span class="p">[</span><span class="s2">"disabled"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">_process_state</span><span class="p">[</span><span class="s2">"journey_id"</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_process_state</span><span class="p">[</span><span class="s2">"journey_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">journey_id</span> <span class="ow">or</span> <span class="n">_mint_journey_id</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">journey_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_process_state</span><span class="p">[</span><span class="s2">"journey_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">journey_id</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_process_state</span><span class="p">[</span><span class="s2">"journey_name"</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">return</span> <span class="n">_process_state</span><span class="p">[</span><span class="s2">"journey_id"</span><span class="p">]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="campus_python.tracing.disable_process_journey" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">disable_process_journey</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+<a href="#campus_python.tracing.disable_process_journey" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Suppress the boot journey on out-of-request calls (#114).</p>
+<p>For tests and operators who don't want the correlation; the process
+device tag is unaffected. set_process_journey() re-enables.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>campus_python/tracing.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">disable_process_journey</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Suppress the boot journey on out-of-request calls (#114).</span>
+
+<span class="sd">    For tests and operators who don't want the correlation; the process</span>
+<span class="sd">    device tag is unaffected. set_process_journey() re-enables.</span>
+<span class="sd">    """</span>
+    <span class="k">with</span> <span class="n">_process_lock</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_process_state</span><span class="p">[</span><span class="s2">"initialized"</span><span class="p">]:</span>
+            <span class="n">_init_process_state</span><span class="p">()</span>
+        <span class="n">_process_state</span><span class="p">[</span><span class="s2">"disabled"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="campus_python.tracing.set_process_device" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">set_process_device</span><span class="p">(</span><span class="n">device_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+<a href="#campus_python.tracing.set_process_device" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Override this process's device tag (default: RAILWAY_DEPLOYMENT_ID).</p>
+<p>Used as a fallback only — a request context with its own stashed
+device keeps it (campus#825/#837 semantics are unchanged).</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>campus_python/tracing.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_process_device</span><span class="p">(</span><span class="n">device_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Override this process's device tag (default: RAILWAY_DEPLOYMENT_ID).</span>
+
+<span class="sd">    Used as a fallback only — a request context with its own stashed</span>
+<span class="sd">    device keeps it (campus#825/#837 semantics are unchanged).</span>
+<span class="sd">    """</span>
+    <span class="k">with</span> <span class="n">_process_lock</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_process_state</span><span class="p">[</span><span class="s2">"initialized"</span><span class="p">]:</span>
+            <span class="n">_init_process_state</span><span class="p">()</span>
+        <span class="n">_process_state</span><span class="p">[</span><span class="s2">"device_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">device_id</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="campus_python.tracing.process_device" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">process_device</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span></code>
+
+<a href="#campus_python.tracing.process_device" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>This process's device tag (default: RAILWAY_DEPLOYMENT_ID).</p>
+<p>Public accessor for propagation hosts (flask_campus) implementing
+device gap-fill: a request that stashed no device of its own may
+present the process device. Never mints a journey (#114).</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>campus_python/tracing.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">process_device</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""This process's device tag (default: RAILWAY_DEPLOYMENT_ID).</span>
+
+<span class="sd">    Public accessor for propagation hosts (flask_campus) implementing</span>
+<span class="sd">    device gap-fill: a request that stashed no device of its own may</span>
+<span class="sd">    present the process device. Never mints a journey (#114).</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">_process_device</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="campus_python.tracing.propagation_headers" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">propagation_headers</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span></code>
+
+<a href="#campus_python.tracing.propagation_headers" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Headers to attach to an outbound SDK call from the active context.</p>
+<p>Empty outside a request context until #114 — now: out-of-request
+calls carry the process boot journey (X-Journey-ID/X-Journey-Name)
+and the process device (X-Campus-Device, default RAILWAY_DEPLOYMENT_ID),
+so startup and background calls correlate under one journey per boot.
+Inside a request, the caller's own journey always wins — a journey-less
+request stays unjourneyed (strict MVP: the trace waterfall already
+correlates the chain) — and the process device only fills the gap
+when the request stashed none. The receiving campus service's
+tracing middleware turns the trace headers into a child span of the
+caller's span (#794, campus#816); the journeys middleware adopts
+X-Journey-ID so the child span joins the caller's action journey
+(campus#828), with X-Journey-Name carrying its human label
+(campus#952); the tracing middleware adopts X-Campus-Device for the
+child span's device tag when it knows nothing better (campus#837).</p>
+<p>The in-request half resolves from the installed request-context
+provider (set_request_context_provider); with no provider there is
+no request-context half — every call is treated as out-of-request
+and carries only the boot journey (the former built-in flask
+reader was removed in 0.5.0; flask_campus installs the provider).</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>campus_python/tracing.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">propagation_headers</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Headers to attach to an outbound SDK call from the active context.</span>
+
+<span class="sd">    Empty outside a request context until #114 — now: out-of-request</span>
+<span class="sd">    calls carry the process boot journey (X-Journey-ID/X-Journey-Name)</span>
+<span class="sd">    and the process device (X-Campus-Device, default RAILWAY_DEPLOYMENT_ID),</span>
+<span class="sd">    so startup and background calls correlate under one journey per boot.</span>
+<span class="sd">    Inside a request, the caller's own journey always wins — a journey-less</span>
+<span class="sd">    request stays unjourneyed (strict MVP: the trace waterfall already</span>
+<span class="sd">    correlates the chain) — and the process device only fills the gap</span>
+<span class="sd">    when the request stashed none. The receiving campus service's</span>
+<span class="sd">    tracing middleware turns the trace headers into a child span of the</span>
+<span class="sd">    caller's span (#794, campus#816); the journeys middleware adopts</span>
+<span class="sd">    X-Journey-ID so the child span joins the caller's action journey</span>
+<span class="sd">    (campus#828), with X-Journey-Name carrying its human label</span>
+<span class="sd">    (campus#952); the tracing middleware adopts X-Campus-Device for the</span>
+<span class="sd">    child span's device tag when it knows nothing better (campus#837).</span>
+
+<span class="sd">    The in-request half resolves from the installed request-context</span>
+<span class="sd">    provider (set_request_context_provider); with no provider there is</span>
+<span class="sd">    no request-context half — every call is treated as out-of-request</span>
+<span class="sd">    and carries only the boot journey (the former built-in flask</span>
+<span class="sd">    reader was removed in 0.5.0; flask_campus installs the provider).</span>
+<span class="sd">    """</span>
+    <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">request_headers</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_request_context_provider</span><span class="p">()</span> <span class="k">if</span> <span class="n">_request_context_provider</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">request_headers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Out of any request context (startup, background threads): the</span>
+        <span class="c1"># boot journey and process device are the only correlation there is.</span>
+        <span class="n">journey_id</span><span class="p">,</span> <span class="n">journey_name</span><span class="p">,</span> <span class="n">device_id</span> <span class="o">=</span> <span class="n">_process_snapshot</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">journey_id</span><span class="p">:</span>
+            <span class="n">headers</span><span class="p">[</span><span class="n">JOURNEY_ID_HEADER</span><span class="p">]</span> <span class="o">=</span> <span class="n">journey_id</span>
+        <span class="k">if</span> <span class="n">journey_name</span><span class="p">:</span>
+            <span class="n">headers</span><span class="p">[</span><span class="n">JOURNEY_NAME_HEADER</span><span class="p">]</span> <span class="o">=</span> <span class="n">journey_name</span>
+        <span class="k">if</span> <span class="n">device_id</span><span class="p">:</span>
+            <span class="n">headers</span><span class="p">[</span><span class="n">DEVICE_ID_HEADER</span><span class="p">]</span> <span class="o">=</span> <span class="n">device_id</span>
+        <span class="k">return</span> <span class="n">headers</span>
+
+    <span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">request_headers</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">headers</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="campus_python.tracing.instrument_requests_session" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">instrument_requests_session</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span></code>
+
+<a href="#campus_python.tracing.instrument_requests_session" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Wrap a requests.Session so its calls carry campus trace context.</p>
+<p>Headers are computed at call time from the host's active request
+context, so a shared session stays correct under concurrent requests.
+Calls outside a request context (startup, background threads) carry
+the process boot journey and device (#114); calls inside a request
+never inherit it (the caller's journey, or none, wins).</p>
+<p>Idempotent: re-instrumenting a session is a no-op.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>session</code>
+            </td>
+            <td>
+                  <code><span title="requests.Session">Session</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The requests.Session to instrument.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>True if the session was instrumented now, False if already done.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>campus_python/tracing.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">instrument_requests_session</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Wrap a requests.Session so its calls carry campus trace context.</span>
+
+<span class="sd">    Headers are computed at call time from the host's active request</span>
+<span class="sd">    context, so a shared session stays correct under concurrent requests.</span>
+<span class="sd">    Calls outside a request context (startup, background threads) carry</span>
+<span class="sd">    the process boot journey and device (#114); calls inside a request</span>
+<span class="sd">    never inherit it (the caller's journey, or none, wins).</span>
+
+<span class="sd">    Idempotent: re-instrumenting a session is a no-op.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        session: The requests.Session to instrument.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if the session was instrumented now, False if already done.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">_INSTRUMENTED_ATTR</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="n">original_request</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">request</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">extra</span> <span class="o">=</span> <span class="n">propagation_headers</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
+            <span class="n">headers</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"headers"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">extra</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">headers</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">"headers"</span><span class="p">]</span> <span class="o">=</span> <span class="n">headers</span>
+        <span class="k">return</span> <span class="n">original_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="c1"># Instance-level override of the bound method: every requests verb</span>
+    <span class="c1"># funnels through Session.request, so one wrap covers all calls.</span>
+    <span class="n">typing</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span><span class="o">.</span><span class="n">request</span> <span class="o">=</span> <span class="n">request</span>
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">_INSTRUMENTED_ATTR</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.sections", "navigation.top", "search.highlight", "toc.follow"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>
