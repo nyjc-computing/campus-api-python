@@ -197,6 +197,18 @@ class Timetables(ResourceCollection):
             """Get the metadata resource for this timetable."""
             return Timetables.Timetable.Metadata("metadata", parent=self)
 
+        def delete(self) -> None:
+            """Delete this timetable version and all of its rows (#1088).
+
+            DELETE /timetable/<id>/ cascades the version's entries, group
+            members and lessongroup rows, then the version row itself.
+            The API refuses the version the current or next pointer
+            names with a 409 — move/cancel the pointer first. This is
+            the cleanup surface for the label-drift create 409.
+            """
+            self._delete_json(self.make_path(end_slash=True))
+            return None
+
         def get(self) -> campus.model.Timetable:
             """Get this timetable (metadata and labeled entries).
 
