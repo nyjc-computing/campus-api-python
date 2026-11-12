@@ -51,6 +51,7 @@ WEEKDAYS = [
 
 class Timetables(ResourceCollection):
     """Campus API Timetable resource."""
+
     path = "timetable"
     # hardcoded enums
     timeslots = TIMESLOTS
@@ -180,8 +181,7 @@ class Timetables(ResourceCollection):
             self.make_path("metadata"), query=filters if filters else None
         )
         return [
-            campus.model.TimetableMetadata.from_resource(item)
-            for item in body["data"]
+            campus.model.TimetableMetadata.from_resource(item) for item in body["data"]
         ]
 
     class Timetable(Resource):
@@ -196,6 +196,11 @@ class Timetables(ResourceCollection):
         def metadata(self) -> "Timetables.Timetable.Metadata":
             """Get the metadata resource for this timetable."""
             return Timetables.Timetable.Metadata("metadata", parent=self)
+
+        @property
+        def attachments(self) -> "Timetables.Timetable.Attachments":
+            """Get the attachments resource for this timetable."""
+            return Timetables.Timetable.Attachments("attachments", parent=self)
 
         def delete(self) -> None:
             """Delete this timetable version and all of its rows (#1088).
@@ -240,17 +245,127 @@ class Timetables(ResourceCollection):
                 body = self._get_json(self.make_path())
                 return campus.model.TimetableMetadata.from_resource(body)
 
-            def update(self, *, start_date: str, end_date: str) -> None:
-                """Update the metadata for this timetable.
+            def update(
+                self,
+                *,
+                label: str | None = None,
+                start_date: str | None = None,
+                end_date: str | None = None,
+            ) -> campus.model.TimetableMetadata:
+                """Update metadata fields for this timetable (subset).
 
-                The API replaces both dates together: each is required.
+                Only the fields explicitly passed change; call with at
+                least one. `label` is the committee's display name —
+                to unset it use clear_label() (the API distinguishes
+                an absent field from a null one, so this method cannot
+                express clearing).
 
                 Args:
-                    start_date: New start date (schema.DateTime-compatible)
-                    end_date: New end date (schema.DateTime-compatible)
+                    label: The new display name (omit to leave alone).
+                    start_date: New start date (omit to leave alone).
+                    end_date: New end date (omit to leave alone).
+
+                Returns:
+                    The updated metadata resource.
                 """
-                self._patch_json(self.make_path(), json={
-                    "start_date": start_date,
-                    "end_date": end_date,
-                })
+                body: dict = {}
+                if label is not None:
+                    body["label"] = label
+                if start_date is not None:
+                    body["start_date"] = start_date
+                if end_date is not None:
+                    body["end_date"] = end_date
+                if not body:
+                    raise ValueError(
+                        "Update at least one field: pass label=, "
+                        "start_date= or end_date= (use clear_label() "
+                        "to unset the label)"
+                    )
+                response = self._patch_json(self.make_path(), json=body)
+                return campus.model.TimetableMetadata.from_resource(response)
+
+            def clear_label(self) -> campus.model.TimetableMetadata:
+                """Clear the timetable's display label (label = null).
+
+                Returns:
+                    The updated metadata resource.
+                """
+                response = self._patch_json(self.make_path(), json={"label": None})
+                return campus.model.TimetableMetadata.from_resource(response)
+
+        class Attachments(Resource):
+            """Attachments for a single timetable (files-backed).
+
+            Each attachment is a files-backend record under the
+            version's attachments namespace; the committee's original
+            filename rides as the record's display name. Records are
+            plain dicts (the files surface's shape), not campus.model
+            classes.
+            """
+
+            def list(self) -> list[dict]:
+                """List this timetable's attachments, newest first.
+
+                Returns:
+                    Attachment records (files-backend records); the
+                    attachment id is each record's "id".
+                """
+                body = self._get_json(self.make_path(end_slash=True))
+                return list(body["data"])
+
+            def upload(
+                self,
+                data: bytes,
+                filename: str,
+                content_type: str | None = None,
+            ) -> dict:
+                """Attach a file (raw bytes) to this timetable.
+
+                Each upload mints a new attachment — re-uploading the
+                same filename adds a second copy (removal is explicit).
+
+                Args:
+                    data: Raw file content (the request body).
+                    filename: The attachment's display filename (the
+                        committee's original filename).
+                    content_type: MIME type to store and serve back
+                        (e.g. "application/pdf"); the transport
+                        default applies when omitted.
+
+                Returns:
+                    The created attachment record.
+                """
+                query = {"filename": filename}
+                resp = self.client.post_data(
+                    self.make_path(end_slash=True),
+                    data,
+                    content_type=content_type,
+                    query=query,
+                )
+                resp.raise_for_status()
+                return resp.json()
+
+            def get_content(self, attachment_id: str) -> bytes:
+                """Get an attachment's bytes — the stored version.
+
+                Args:
+                    attachment_id: The attachment id (the record's
+                        "id").
+
+                Returns:
+                    The content, as stored.
+                """
+                resp = self.client.get(
+                    self.make_path(f"{attachment_id}/content", end_slash=True)
+                )
+                resp.raise_for_status()
+                return resp.content
+
+            def delete(self, attachment_id: str) -> None:
+                """Remove an attachment (its record and content).
+
+                Args:
+                    attachment_id: The attachment id to remove.
+                """
+                self._delete_json(self.make_path(attachment_id, end_slash=True))
                 return None
