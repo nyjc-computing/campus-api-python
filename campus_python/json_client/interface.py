@@ -217,6 +217,24 @@ class JsonClient(ABC):
         """
 
     @abstractmethod
+    def post_data(
+            self: Self,
+            path: str,
+            data: bytes | str,
+            content_type: str | None = None,
+            query: JsonDict | None = None
+    ) -> JsonResponse:
+        """Sends a POST request with a raw (non-JSON) body.
+
+        Symmetric with put_data(): the body is sent verbatim, with no
+        JSON encoding; the Content-Type header is caller-controlled.
+        Used by raw-content create routes that mint server-side ids
+        (campus.api timetable attachment uploads), which carry raw
+        bytes with an explicit Content-Type. `query` carries URL
+        query parameters (e.g. the attachment's original filename).
+        """
+
+    @abstractmethod
     def delete(
             self: Self,
             path: str,

@@ -291,6 +291,31 @@ class CampusRequest(JsonClient):
         return self._send("PUT", url, data=data, headers=headers,
                           params=query)
 
+    def post_data(
+            self: Self,
+            path: str,
+            data: bytes | str,
+            content_type: str | None = None,
+            query: JsonDict | None = None
+    ) -> JsonResponse:
+        """Sends a POST request with a raw body (e.g. file bytes).
+
+        Unlike post(), the body is sent verbatim with no JSON encoding;
+        Content-Type is caller-controlled (requests' own default
+        applies when omitted).
+
+        Args:
+            path: Request path.
+            data: Raw request body.
+            content_type: Content-Type header for the body, or None to
+                leave it to the transport default.
+            query: Optional URL query parameters.
+        """
+        url = self._build_url(path)
+        headers = {"Content-Type": content_type} if content_type else None
+        return self._send("POST", url, data=data, headers=headers,
+                          params=query)
+
     def delete(
             self: Self,
             path: str,
