@@ -30,7 +30,9 @@ class Subjcombi(ResourceCollection):
 
         Args:
             user_id: The user's campus account email.
-            lessongroup_id: The lessongroup to map the user to.
+            lessongroup_id: The lessongroup label to map the user to
+                (the v1 ttcode, e.g. "2601-H1/P" or a bare class code).
+                Stored verbatim; it need not exist in any timetable yet.
             effective_from: When it applies (ISO datetime, or
                 YYYY-MM-DD for 07:00 school time). Absent = immediate.
             reason: Optional change note, preserved on the trail.
@@ -43,6 +45,16 @@ class Subjcombi(ResourceCollection):
         return self._put_json(
             self.make_path(user_id, end_slash=False), json=body
         )
+
+    def list(self) -> "list[dict]":
+        """Every user's current effective mapping, one record per user.
+
+        The bulk read for version-switch checking: scheduled (pending)
+        switches are not included (pending()); mutation trails stay on
+        the per-user history. Sorted by user_id.
+        """
+        body = self._get_json(self.make_path())
+        return body["data"]
 
     def pending(self) -> "list[dict]":
         """Scheduled mappings not yet effective (soonest first)."""
