@@ -76,6 +76,12 @@ class TestSubjcombiViews(unittest.TestCase):
         )
         self.assertEqual(history, [{"id": "r1"}])
 
+    def test_list_unwraps_data_envelope(self):
+        self.client.get.return_value.json.return_value = {"data": [{"id": "r3"}]}
+        listed = self.api.subjcombi.list()
+        self.client.get.assert_called_once_with("/api/v1/subjcombi/")
+        self.assertEqual(listed, [{"id": "r3"}])
+
     def test_pending_unwraps_data_envelope(self):
         self.client.get.return_value.json.return_value = {"data": [{"id": "r2"}]}
         pending = self.api.subjcombi.pending()
