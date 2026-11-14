@@ -10,8 +10,9 @@ campus-suite routes on branch ``weekly``.
 import unittest
 
 import campus.model
-from tests.support import make_api
 
+from campus_python import errors
+from tests.support import json_response, make_api
 
 CIRCLE_RESOURCE = {
     "id": "circle_ab12cd34",
@@ -81,6 +82,41 @@ class TestCirclesNew(unittest.TestCase):
                 "description": "",
             },
         )
+
+
+class TestCircleMembersGet(unittest.TestCase):
+    """CircleMembers.get(): the single-membership probe (None on 404)."""
+
+    def setUp(self):
+        self.api, self.client = make_api()
+
+    def test_get_returns_access_value(self):
+        self.client.get.return_value = json_response(
+            {"member_id": "teacher@campus.test", "access_value": 15}
+        )
+        access = self.api.circles["circle_ab12cd34"].members.get(
+            "teacher@campus.test"
+        )
+        self.client.get.assert_called_once_with(
+            "/api/v1/circles/circle_ab12cd34/members/teacher@campus.test/"
+        )
+        self.assertEqual(access, 15)
+
+    def test_get_returns_none_when_member_absent(self):
+        """404 is the probe's expected negative answer, not an error."""
+        self.client.get.return_value = json_response(None, status_code=404)
+        access = self.api.circles["circle_ab12cd34"].members.get(
+            "ghost@campus.test"
+        )
+        self.assertIsNone(access)
+
+    def test_get_raises_for_missing_circle(self):
+        """A missing circle (409) still raises, per the circles contract."""
+        self.client.get.return_value = json_response(None, status_code=409)
+        with self.assertRaises(errors.APIError):
+            self.api.circles["circle_ab12cd34"].members.get(
+                "teacher@campus.test"
+            )
 
 
 if __name__ == "__main__":
