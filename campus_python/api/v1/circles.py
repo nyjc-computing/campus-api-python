@@ -108,6 +108,26 @@ class Circles(ResourceCollection):
                 """Return the circle's {member_id: access_value} mapping."""
                 return self._get_json(self.make_path(end_slash=True))
 
+            def get(self, member_id: str) -> int | None:
+                """Probe one membership; None when the member is absent.
+
+                The cheap, fail-closed role check behind gates like
+                flask-campus's circle_admin_required: 404 is the
+                expected negative answer (absent member), not an
+                error. A missing circle still raises (409 ConflictError,
+                per the circles family contract); any other non-2XX
+                raises as usual.
+
+                Returns:
+                    The member's access value in the circle, or None if
+                    the circle has no such member.
+                """
+                resp = self.client.get(self.make_path(member_id, end_slash=True))
+                if resp.status_code == 404:
+                    return None
+                resp.raise_for_status()
+                return resp.json()["access_value"]
+
             def add(self, member_id: str, access_value: int) -> None:
                 """Add a member with an access value.
 
