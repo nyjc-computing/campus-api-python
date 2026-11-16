@@ -13,6 +13,7 @@ from . import (
     subjcombi,
     submissions,
     timetable,
+    venues,
 )
 
 class ApiRoot(ResourceRoot):
@@ -29,6 +30,7 @@ class ApiRoot(ResourceRoot):
         self._submissions = None
         self._subjcombi = None
         self._timetables = None
+        self._venues = None
 
     @property
     def assignments(self) -> assignments.Assignments:
@@ -78,3 +80,10 @@ class ApiRoot(ResourceRoot):
         if not self._timetables:
             self._timetables = timetable.Timetables(root=self)
         return self._timetables
+
+    @property
+    def venues(self) -> venues.Venues:
+        """Get the venues resource (documents-backed venue CRUD)."""
+        if not self._venues:
+            self._venues = venues.Venues(root=self)
+        return self._venues
