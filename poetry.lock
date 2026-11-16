@@ -132,13 +132,13 @@ url = "https://github.com/nyjc-computing/campus-common/releases/download/v0.3.1/
 
 [[package]]
 name = "campus-model"
-version = "0.1.7"
+version = "0.2.0"
 description = "Campus domain models: dataclass entities under campus/model - PEP 420 namespace portion"
 optional = false
 python-versions = ">=3.11.0,<3.15"
 groups = ["main"]
 files = [
-    {file = "campus_model-0.1.7-py3-none-any.whl", hash = "sha256:b9cd5e1d7f49778e2937a87f4e4529ac500ff7b06f5ec6baeed7c55bf4759561"},
+    {file = "campus_model-0.2.0-py3-none-any.whl", hash = "sha256:ef881d0f53ac875c9259211bbdc2787c344da77313fbb2e47948599deed113fb"},
 ]
 
 [package.dependencies]
@@ -146,7 +146,7 @@ campus_common = {url = "https://github.com/nyjc-computing/campus-common/releases
 
 [package.source]
 type = "url"
-url = "https://github.com/nyjc-computing/campus-model/releases/download/v0.1.7/campus_model-0.1.7-py3-none-any.whl"
+url = "https://github.com/nyjc-computing/campus-model/releases/download/v0.2.0/campus_model-0.2.0-py3-none-any.whl"
 
 [[package]]
 name = "certifi"
@@ -1184,4 +1184,4 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "419b3e80236c1d96afcca4b89e2704b6f37a83355656bdef9be468ae6c625483"
+content-hash = "68e44cbb22a839fa34142c2008d780efcec2a4606da57367aa1fda4e3b74fe82"
