@@ -47,6 +47,8 @@ class APIKeys(ResourceCollection):
             role: "str | None" = None,
             rate_limit: "int | None" = None,
             expires_at: "str | None" = None,
+            trace_user_id: "str | None" = None,
+            trace_client_id: "str | None" = None,
     ) -> JsonDict:
         """Create an API key.
 
@@ -58,6 +60,15 @@ class APIKeys(ResourceCollection):
         roles that exist — the catalogue is the service's, so it is not
         duplicated here.
 
+        Trace-read scoping (#944): a key that grants trace reads
+        without apikeys:write must be minted with a bind — an opaque
+        match-value the service enforces server-side on every read
+        surface. Both are plain strings (the service matches them
+        against span identity attributes verbatim; it never resolves
+        them against campus.auth). Operator/admin keys (apikeys:write)
+        omit both and read unscoped. Binds are mint-time only and
+        cannot be changed later.
+
         Args:
             name: Key name
             owner_id: Owner user ID
@@ -65,6 +76,10 @@ class APIKeys(ResourceCollection):
             role: A named role the service resolves to a scope list
             rate_limit: Requests per minute (optional)
             expires_at: ISO 8601 expiry (optional)
+            trace_user_id: Bind trace reads to this user exactly
+                (optional; required for read-scoped keys, #944)
+            trace_client_id: Bind trace reads to this client exactly
+                (optional; required for read-scoped keys, #944)
 
         Returns:
             The created key record; its plaintext `api_key` value is
@@ -77,6 +92,8 @@ class APIKeys(ResourceCollection):
             role=role,
             rate_limit=rate_limit,
             expires_at=expires_at,
+            trace_user_id=trace_user_id,
+            trace_client_id=trace_client_id,
         ))
 
     def list(
