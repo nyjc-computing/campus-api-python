@@ -14,14 +14,29 @@ Issue: #699, flask-campus#31
 
 import os
 import unittest
+from typing import cast
 
 from campus_python.audit.client import AuditClient
 
 
 def _set_env(test: unittest.TestCase, name: str, value: str) -> None:
-    """Set an env var for the duration of a test."""
+    """Set an env var for the duration of a test, restoring any prior
+    value afterwards.
+
+    The restore must preserve a pre-existing value: other test modules
+    in this suite seed CLIENT_ID/CLIENT_SECRET at import time and
+    depend on it for the rest of the run.
+    """
+    saved = os.environ.get(name)
     os.environ[name] = value
-    test.addCleanup(os.environ.pop, name, None)
+
+    def restore():
+        if saved is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = saved
+
+    test.addCleanup(restore)
 
 
 def _del_env(test: unittest.TestCase, name: str) -> None:
@@ -50,8 +65,7 @@ class TestCreateHttpClientAuth(unittest.TestCase):
         from campus_python.audit.http import DefaultClient
 
         _set_env(self, "AUDIT_API_KEY", "audit_v1_abcdefghijklmnopqrstuvwxyz")
-        client = _create_http_client("https://audit.test")
-        self.assertIsInstance(client, DefaultClient)
+        client = cast(DefaultClient, _create_http_client("https://audit.test"))
         self.assertEqual(
             client.headers["Authorization"],
             "Bearer audit_v1_abcdefghijklmnopqrstuvwxyz"
@@ -64,12 +78,13 @@ class TestCreateHttpClientAuth(unittest.TestCase):
         credentials used by other DefaultClient consumers (#699).
         """
         from campus_python.audit.client import _create_http_client
+        from campus_python.audit.http import DefaultClient
 
         _set_env(self, "AUDIT_API_KEY", "audit_v1_abcdefghijklmnopqrstuvwxyz")
         _set_env(self, "ACCESS_TOKEN", "ambient-access-token")
         _set_env(self, "CLIENT_ID", "uid-client-ambient")
         _set_env(self, "CLIENT_SECRET", "ambient-secret")
-        client = _create_http_client("https://audit.test")
+        client = cast(DefaultClient, _create_http_client("https://audit.test"))
         self.assertEqual(
             client.headers["Authorization"],
             "Bearer audit_v1_abcdefghijklmnopqrstuvwxyz"
@@ -84,8 +99,7 @@ class TestCreateHttpClientAuth(unittest.TestCase):
         _del_env(self, "ACCESS_TOKEN")
         _set_env(self, "CLIENT_ID", "uid-client-legacy")
         _set_env(self, "CLIENT_SECRET", "legacy-secret")
-        client = _create_http_client("https://audit.test")
-        self.assertIsInstance(client, DefaultClient)
+        client = cast(DefaultClient, _create_http_client("https://audit.test"))
         self.assertTrue(client.headers["Authorization"].startswith("Basic "))
 
     def test_json_client_class_takes_priority(self):

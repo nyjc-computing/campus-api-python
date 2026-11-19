@@ -13,6 +13,7 @@ File: tests/unit/test_audit_resources.py (ported from flask-campus, flask-campus
 """
 
 import unittest
+from typing import Any, cast
 
 from campus_python.audit.client import AuditClient
 
@@ -35,7 +36,7 @@ class RecordingClient:
     """JsonClient double that records calls and returns a canned body."""
 
     def __init__(self, body=None):
-        self.calls: list[tuple[str, str, object]] = []
+        self.calls: list[tuple[str, str, dict | None, dict | None]] = []
         self._response = StubResponse(body if body is not None else {})
 
     def _record(self, method, path, params=None, json=None):
@@ -61,7 +62,8 @@ class RecordingClient:
 def _client_with_recorder(body=None):
     """An AuditClient backed by a RecordingClient; returns both."""
     recorder = RecordingClient(body)
-    return AuditClient(http_client=recorder), recorder
+    client = AuditClient(http_client=cast(Any, recorder))
+    return client, recorder
 
 
 class TestTracesSearchClient(unittest.TestCase):
@@ -107,11 +109,11 @@ class TestTracesSearchClient(unittest.TestCase):
         """events rides as 1/0; absent (None) sends nothing."""
         client, recorder = _client_with_recorder()
         client.traces.search(events=False)
-        self.assertEqual(recorder.calls[0][2]["events"], "0")
+        self.assertEqual((recorder.calls[0][2] or {})["events"], "0")
         client.traces.search(events=True)
-        self.assertEqual(recorder.calls[1][2]["events"], "1")
+        self.assertEqual((recorder.calls[1][2] or {})["events"], "1")
         client.traces.search()
-        self.assertNotIn("events", recorder.calls[2][2])
+        self.assertNotIn("events", recorder.calls[2][2] or {})
 
 
 class TestJourneysClient(unittest.TestCase):
