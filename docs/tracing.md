@@ -9,7 +9,7 @@ touch it to install providers or override journey attribution.
 ## In-request calls
 
 When the host application is itself traced — its Flask app wired with
-`campus.audit.middleware.init_app` — every request it handles becomes
+`campus.flask_campus.audit.init_tracing` — every request it handles becomes
 an audit span. SDK calls made while handling that request land as
 child spans of it: the middleware's propagation module installs a
 request-context provider via

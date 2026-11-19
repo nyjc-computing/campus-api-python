@@ -12,7 +12,7 @@ How it fits together:
   token bucket and returns 429 with a Retry-After header and the
   tripped bucket key in error.details.bucket.
 - The producers' ingest responses are fed to the module-level `breaker`
-  (see Traces.ingest here, and campus.audit.client's Traces.new — the
+  (see Traces.ingest here, and audit.v1's Traces.new — the
   two clients that POST spans). A 429 trips the bucket; a 2xx clears
   trips whose cooldown has expired; any other outcome (timeout,
   connection refused, 5xx) is neutral — an audit outage must not take

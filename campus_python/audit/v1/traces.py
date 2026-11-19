@@ -1,171 +1,351 @@
-"""campus.python.audit.v1.traces
+"""campus_python.audit.v1.traces
 
-Campus Audit traces resource (v1).
+Traces resource for audit v1 API client.
 
-Span ingestion and trace queries. Traces are addressed by their 32-char
-hex trace ID and spans by their 16-char hex span ID.
+Provides methods to ingest and query trace spans.
+
+URL path mapping:
+    /audit/v1/traces/               → Traces (list, new)
+    /audit/v1/traces/{trace_id}/    → Trace (get_tree, spans sub-resource)
+    /audit/v1/traces/search         → Search traces
 """
 
 import contextlib
-from typing import Any
+from typing import Any, Optional
 
-from ...interface import JsonDict, Resource, ResourceCollection
 from .. import ratelimit
+from ..http.interface import JsonClient, JsonResponse
+
+from ..interface import SLASH, Resource, ResourceCollection, ResourceRoot
 
 
-def _safe_json(resp: Any) -> Any:
+def _safe_json(response: JsonResponse) -> Any:
     """Best-effort JSON parse for breaker observation."""
     try:
-        return resp.json()
+        return response.json()
     except Exception:
         return None
 
 
 class Traces(ResourceCollection):
-    """Campus Audit traces resource."""
-    path = "traces"
+    """Resource for trace spans collection.
 
-    def __getitem__(self, trace_id: str) -> "Traces.Trace":
-        """Get a specific trace resource by ID."""
-        return Traces.Trace(trace_id, parent=self)
+    URL path: /audit/v1/traces/
 
-    def ingest(self, spans: "list[dict[str, Any]]") -> JsonDict:
-        """Ingest a batch of trace spans.
+    Supports:
+    - POST: Ingest spans (single or batch)
+    - GET: List recent traces
+    - GET /search: Filter/search traces
+    """
+
+    path = "traces/"
+
+    def __init__(self, client: Optional[JsonClient] = None, *, root: ResourceRoot):
+        """Initialize the traces resource.
 
         Args:
-            spans: Span dicts shaped like the server's TraceSpan
-                resource (trace_id, span_id, method, path, ...)
+            client: The HTTP client to use for requests.
+            root: The root resource.
+        """
+        self._client = client
+        self.root = root
+
+    @property
+    def client(self) -> JsonClient:
+        """Get the JsonClient associated with this resource."""
+        if self._client:
+            return self._client
+        if self.root.client:
+            return self.root.client
+        raise AttributeError("No client defined for Traces")
+
+    def __getitem__(self, trace_id: str) -> "Trace":
+        """Get a specific trace resource by ID.
+
+        Args:
+            trace_id: The trace identifier.
 
         Returns:
-            201 full success: {"created": [...]}; 207 partial failure
-            adds {"failed": [...]} with per-span statuses.
+            A Trace resource for the specific trace.
         """
-        resp = self.client.post(self.make_path(), json={"spans": spans})
-        # Feed the ingest circuit breaker before raising: 429 trips the
-        # bucket (Retry-After + tripped key from the body), 2xx clears
-        # expired trips (#831). The error still raises as normal, and a
-        # breaker failure must never break ingestion.
+        return Traces.Trace(trace_id, parent=self)
+
+    def new(self, *spans: dict) -> JsonResponse:
+        """Ingest trace spans (single or batch).
+
+        Args:
+            *spans: One or more span data dictionaries matching TraceSpan schema.
+
+        Returns:
+            Response with created span data (201 on success, 207 on partial failure).
+
+        Raises:
+            NetworkError: If the HTTP request fails.
+
+        Examples:
+            # Single span
+            client.traces.new(span_data)
+
+            # Batch
+            client.traces.new(span1, span2, span3)
+        """
+        response = self.client.post(self.make_path(), json={"spans": list(spans)})
+        # Feed the ingest circuit breaker before raising (#831): audit
+        # 429s trip the bucket (Retry-After + tripped key from the
+        # body), 2xx clears expired trips. Observation is guarded — a
+        # breaker failure can never break ingestion.
         with contextlib.suppress(Exception):
-            ratelimit.breaker.observe(resp.status_code, resp.headers, _safe_json(resp))
-        resp.raise_for_status()
-        return resp.json()
+            ratelimit.breaker.observe(
+                response.status_code,
+                response.headers,
+                _safe_json(response),
+            )
+        response.raise_for_status()
+        return response
 
     def list(
-            self,
-            *,
-            since: "str | None" = None,
-            until: "str | None" = None,
-            limit: "int | None" = None,
-            cursor: "str | None" = None,
-    ) -> JsonDict:
+        self,
+        *,
+        since: str | None = None,
+        until: str | None = None,
+        limit: int = 50,
+    ) -> JsonResponse:
         """List recent traces, newest first.
 
         Args:
-            since: ISO 8601 lower bound
-            until: ISO 8601 upper bound
-            limit: Page size (server clamps to its max)
-            cursor: Opaque token from a previous page's cursor.next
+            since: ISO 8601 timestamp (optional).
+            until: ISO 8601 timestamp (optional).
+            limit: Maximum number of traces to return (default: 50).
 
         Returns:
-            {"traces": [...], "cursor": {"next": ..., "has_more": bool}}
+            Response with list of TraceSummary objects.
+
+        Raises:
+            NetworkError: If the HTTP request fails.
         """
-        query: JsonDict = {}
+        params: dict[str, Any] = {"limit": limit}
         if since is not None:
-            query["since"] = since
+            params["since"] = since
         if until is not None:
-            query["until"] = until
-        if limit is not None:
-            query["limit"] = limit
-        if cursor is not None:
-            query["cursor"] = cursor
-        return self._get_json(self.make_path(), query=query or None)
+            params["until"] = until
+
+        response = self.client.get(self.make_path(), params=params)
+        response.raise_for_status()
+        return response
 
     def search(
-            self,
-            *,
-            path: "str | None" = None,
-            status: "int | str | None" = None,
-            api_key_id: "str | None" = None,
-            client_id: "str | None" = None,
-            user_id: "str | None" = None,
-            journey_id: "str | None" = None,
-            since: "str | None" = None,
-            until: "str | None" = None,
-            limit: "int | None" = None,
-            cursor: "str | None" = None,
-    ) -> JsonDict:
+        self,
+        *,
+        path: str | None = None,
+        status: int | None = None,
+        api_key_id: str | None = None,
+        client_id: str | None = None,
+        user_id: str | None = None,
+        journey_id: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        limit: int = 50,
+        cursor: str | None = None,
+        events: bool | None = None,
+    ) -> JsonResponse:
         """Filter and search traces.
 
         Args:
-            path: Filter by endpoint path
-            status: Filter by HTTP status code
-            api_key_id: Filter by audit API key
-            client_id: Filter by OAuth client
-            user_id: Filter by user
-            journey_id: Filter by login-journey tag (campus#803)
-            since: ISO 8601 lower bound (as in list())
-            until: ISO 8601 upper bound (as in list())
-            limit: Page size (as in list())
-            cursor: Page token (as in list())
+            path: Filter by endpoint path.
+            status: Filter by HTTP status code.
+            api_key_id: Filter by API key.
+            client_id: Filter by OAuth client.
+            user_id: Filter by user.
+            journey_id: Filter by login-journey tag (#803).
+            since: ISO 8601 timestamp (optional).
+            until: ISO 8601 timestamp (optional).
+            limit: Maximum number of traces to return (default: 50).
+            cursor: Opaque token from a previous page's cursor.next.
+            events: Include audit-event traces (#941). None leaves the
+                API's default (include); False asks for the viewer's
+                request-only list.
 
         Returns:
-            {"traces": [...], "cursor": {"next": ..., "has_more": bool}}
+            Response with filtered trace list matching criteria.
+
+        Raises:
+            NetworkError: If the HTTP request fails.
         """
-        query: JsonDict = {}
+        params: dict[str, Any] = {"limit": limit}
         if path is not None:
-            query["path"] = path
+            params["path"] = path
         if status is not None:
-            query["status"] = status
+            params["status"] = status
         if api_key_id is not None:
-            query["api_key_id"] = api_key_id
+            params["api_key_id"] = api_key_id
         if client_id is not None:
-            query["client_id"] = client_id
+            params["client_id"] = client_id
         if user_id is not None:
-            query["user_id"] = user_id
+            params["user_id"] = user_id
         if journey_id is not None:
-            query["journey_id"] = journey_id
+            params["journey_id"] = journey_id
         if since is not None:
-            query["since"] = since
+            params["since"] = since
         if until is not None:
-            query["until"] = until
-        if limit is not None:
-            query["limit"] = limit
+            params["until"] = until
         if cursor is not None:
-            query["cursor"] = cursor
-        return self._get_json(
-            self.make_path("search", end_slash=False), query=query or None
-        )
+            params["cursor"] = cursor
+        if events is not None:
+            params["events"] = "1" if events else "0"
+
+        response = self.client.get(self.make_path("search"), params=params)
+        response.raise_for_status()
+        return response
 
     class Trace(Resource):
-        """Single campus audit trace resource."""
+        """Single trace resource.
+
+        URL path: /audit/v1/traces/{trace_id}/
+
+        Supports:
+        - GET: Get trace tree (all spans in hierarchy)
+        """
+
+        def __init__(self, trace_id: str, parent: ResourceCollection):
+            """Initialize the trace resource.
+
+            Args:
+                trace_id: The trace identifier.
+                parent: The parent traces resource.
+            """
+            super().__init__(trace_id, parent=parent, root=parent.root)
+            self.trace_id = trace_id
 
         @property
-        def spans(self) -> "Traces.Trace.Spans":
-            """Get the spans resource for this trace."""
-            return Traces.Trace.Spans("spans", parent=self)
+        def client(self) -> JsonClient:
+            """Get the JsonClient associated with this resource."""
+            return self.parent.client
 
-        def get(self) -> JsonDict:
-            """Get the full trace tree.
+        def get_tree(self) -> JsonResponse:
+            """Get the trace tree with hierarchical span structure.
 
             Returns:
-                {"trace_id": ..., "root_span": <nested span tree>}
+                Response with TraceTree containing root span and nested children.
+
+            Raises:
+                NetworkError: If the HTTP request fails.
             """
-            return self._get_json(self.make_path(end_slash=True))
+            response = self.client.get(self.make_path(end_slash=True))
+            response.raise_for_status()
+            return response
 
-        class Spans(Resource):
-            """Spans of a single trace."""
+        @property
+        def spans(self) -> "Traces.Spans":
+            """Get the spans sub-resource for this trace.
 
-            def __getitem__(self, span_id: str) -> "Traces.Trace.Span":
-                """Get a specific span resource by ID."""
-                return Traces.Trace.Span(span_id, parent=self)
+            Returns:
+                A Spans collection resource for this trace.
+            """
+            return Traces.Spans(trace_id=self.trace_id, parent=self)
 
-            def list(self) -> "list[JsonDict]":
-                """List all spans in this trace (flat)."""
-                return self._get_json(self.make_path(end_slash=True))["spans"]
+    class Spans(ResourceCollection):
+        """Resource for spans within a trace.
+
+        URL path: /audit/v1/traces/{trace_id}/spans/
+
+        Supports:
+        - GET: List all spans in trace (flat list)
+        """
+
+        trace_id: str
+
+        def __init__(self, *, trace_id: str, parent: Resource):
+            """Initialize the trace spans resource.
+
+            Args:
+                trace_id: The trace identifier.
+                parent: The parent trace resource.
+            """
+            self._client = None  # Will use parent's client
+            # ResourceCollection requires root and path to be set
+            self.root = parent.root
+            self.path = "spans/"
+            self.parent = parent
+            self.trace_id = trace_id
+
+        @property
+        def client(self) -> JsonClient:
+            """Get the JsonClient associated with this resource."""
+            return self.parent.client
+
+        def make_path(self, part: str | None = None) -> str:
+            """Create a full path for a sub-resource or action.
+
+            Override because Spans is nested under Trace (not directly under root).
+            """
+            if part:
+                return (
+                    f"{self.parent.path.rstrip(SLASH)}"
+                    f"/{self.path.lstrip(SLASH).rstrip(SLASH)}"
+                    f"/{part.lstrip(SLASH)}"
+                )
+            return (
+                f"{self.parent.path.rstrip(SLASH)}"
+                f"/{self.path.lstrip(SLASH)}"
+            )
+
+        def list(self) -> JsonResponse:
+            """List all spans in the trace (flat list).
+
+            Returns:
+                Response with list of TraceSpan objects.
+
+            Raises:
+                NetworkError: If the HTTP request fails.
+            """
+            response = self.client.get(self.make_path())
+            response.raise_for_status()
+            return response
+
+        def __getitem__(self, span_id: str) -> "Traces.Spans.Span":
+            """Get a specific span resource by ID.
+
+            Args:
+                span_id: The span identifier.
+
+            Returns:
+                A Span resource for the specific span.
+            """
+            return Traces.Spans.Span(span_id=span_id, parent=self)
 
         class Span(Resource):
-            """Single span of a trace, with full request/response detail."""
+            """Single span resource.
 
-            def get(self) -> JsonDict:
-                """Get this span with full request/response detail."""
-                return self._get_json(self.make_path(end_slash=True))
+            URL path: /audit/v1/traces/{trace_id}/spans/{span_id}/
+
+            Supports:
+            - GET: Get individual span details
+            """
+
+            def __init__(self, span_id: str, parent: "Traces.Spans"):
+                """Initialize the span resource.
+
+                Args:
+                    span_id: The span identifier.
+                    parent: The parent spans resource.
+                """
+                super().__init__(span_id, parent=parent, root=parent.root)
+                self.span_id = span_id
+
+            @property
+            def client(self) -> JsonClient:
+                """Get the JsonClient associated with this resource."""
+                return self.parent.client
+
+            def get(self) -> JsonResponse:
+                """Get the span details.
+
+                Returns:
+                    Response with TraceSpan object.
+
+                Raises:
+                    NetworkError: If the HTTP request fails.
+                """
+                response = self.client.get(self.make_path(end_slash=True))
+                response.raise_for_status()
+                return response

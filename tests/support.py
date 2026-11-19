@@ -16,7 +16,6 @@ from unittest.mock import Mock
 
 from campus_python import errors
 from campus_python.api.v1 import ApiRoot
-from campus_python.audit.v1 import AuditRoot
 from campus_python.auth.v1 import AuthRoot
 from campus_python.integrations.v1 import IntegrationsRoot
 
@@ -36,12 +35,6 @@ def make_auth() -> "tuple[AuthRoot, Mock]":
     """Create an AuthRoot backed by a mock JSON client."""
     client = make_client()
     return AuthRoot(json_client=client), client
-
-
-def make_audit() -> "tuple[AuditRoot, Mock]":
-    """Create an AuditRoot backed by a mock JSON client."""
-    client = make_client()
-    return AuditRoot(json_client=client), client
 
 
 def make_integrations() -> "tuple[IntegrationsRoot, Mock]":

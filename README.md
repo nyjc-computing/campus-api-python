@@ -203,7 +203,7 @@ tokens. The two layers join through two injectable providers:
 |---|---|---|
 | Login flow (authorize / code exchange / logout) | `campus.flask_campus.context` | orchestrates this SDK's pure API calls (`sessions.new`, `exchange_code_for_token`, `logins.new`, …) |
 | Session-id storage (browser session keys) | `campus.flask_campus.context` | `set_session_id_provider` — ids resolve **explicit argument > provider**; with neither, resource methods raise `AuthenticationError` naming the seam |
-| Request-context trace headers (span/journey/device) | `campus.flask_campus.propagation` (installed by `campus.audit.middleware.init_app`) | `tracing.set_request_context_provider` — provider output is attached verbatim to outbound calls; with no provider, calls carry only the process boot journey |
+| Request-context trace headers (span/journey/device) | `campus.flask_campus.propagation` (installed by `campus.flask_campus.audit.init_tracing`) | `tracing.set_request_context_provider` — provider output is attached verbatim to outbound calls; with no provider, calls carry only the process boot journey |
 | User-session token lane (`with_user_session` / `get_token`) | this SDK | pure API orchestration (bearer setup, 401 auto-refresh); the session id arrives via the provider above |
 
 Non-Flask hosts need none of this: the CLI authenticates via device

@@ -3,7 +3,7 @@
 Verifies trip/check semantics (floor, backoff, cap), two-stage
 retraction (cooldown expiry opens the gate, 2xx clears), availability
 error neutrality, fallback-key learning, and the observe hook on
-Traces.ingest.
+Traces.new.
 """
 
 import unittest
@@ -136,7 +136,7 @@ class TestCheckRequest(unittest.TestCase):
 
 
 class TestIngestHook(unittest.TestCase):
-    """Traces.ingest feeds the module breaker before raising."""
+    """Traces.new feeds the module breaker before raising."""
 
     def setUp(self):
         ratelimit.breaker.reset()
@@ -161,14 +161,14 @@ class TestIngestHook(unittest.TestCase):
             429, _body("client=c1;user=u1"), raises=True
         )
         with self.assertRaises(RuntimeError):
-            traces.ingest([{"span_id": "s1"}])
+            traces.new({"span_id": "s1"})
         self.assertIsNotNone(
             ratelimit.breaker.check_request(client_id="c1", user_id="u1")
         )
 
     def test_201_ingest_does_not_trip(self):
         traces = self._ingest_with_response(201, {"created": ["s1"]}, raises=False)
-        traces.ingest([{"span_id": "s1"}])
+        traces.new({"span_id": "s1"})
         self.assertEqual(ratelimit.breaker._tripped, {})
 
 
