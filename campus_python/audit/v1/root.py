@@ -3,6 +3,7 @@
 Root resource for audit v1 API.
 """
 
+from ..http.interface import JsonClient
 from ..interface import ResourceRoot
 from .apikeys import ApiKeys
 from .journeys import Journeys
@@ -17,7 +18,7 @@ class AuditRoot(ResourceRoot):
 
     url_prefix: str = "audit/v1"
 
-    def __init__(self, json_client=None):
+    def __init__(self, json_client: JsonClient | None = None):
         """Initialize the audit root.
 
         Args:
