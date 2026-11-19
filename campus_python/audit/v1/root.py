@@ -3,7 +3,8 @@
 Root resource for audit v1 API.
 """
 
-from ..http.interface import JsonClient
+from typing import Any
+
 from ..interface import ResourceRoot
 from .apikeys import ApiKeys
 from .journeys import Journeys
@@ -18,11 +19,14 @@ class AuditRoot(ResourceRoot):
 
     url_prefix: str = "audit/v1"
 
-    def __init__(self, json_client: JsonClient | None = None):
+    def __init__(self, json_client: Any = None):
         """Initialize the audit root.
 
         Args:
-            json_client: The HTTP client to use for requests.
+            json_client: The HTTP client to use for requests. Accepts
+                any client speaking the audit http.JsonClient protocol
+                (campus_python.audit.http.DefaultClient in production;
+                the SDK's CampusRequest also satisfies it at runtime).
         """
         super().__init__(json_client=json_client)
 
