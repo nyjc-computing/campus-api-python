@@ -1,183 +1,234 @@
-"""campus.python.audit.v1.apikeys
+"""campus_python.audit.v1.apikeys
 
-Campus Audit API keys resource (v1).
+API-keys resource for audit v1 API client.
 
-API keys are the audit service's own auth material (audit_v1_...),
-managed here: create, list, inspect, update, revoke, regenerate.
-Plaintext key values are returned exactly once, at creation and at
-regeneration.
+Mirrors /audit/v1/apikeys: mint, list, inspect, re-scope, revoke, and
+rotate audit API keys. Mutations demand the apikeys:write scope and
+reads apikeys:read — the caller's key must already hold them (in
+practice the operator key or a key minted from it).
 
-A key's privilege set may be given as a scope list or as a named role
-the service resolves to one (the catalogue is the service's, so it is
-not duplicated here).
-
-The service's catalogue (campus#918) currently holds:
-
-    traces-viewer    traces:read
-    traces-searcher  traces:read, traces:search
-    traces-producer  traces:read, traces:search, traces:write
-    key-operator     apikeys:read, apikeys:write
-
-That list is quoted here for orientation, not as a contract: the
-service is the authority, and it refuses an unknown role with the
-names of the roles it does have. No role resolves to a wildcard.
+URL path mapping:
+    /audit/v1/apikeys/                     → ApiKeys (new, list)
+    /audit/v1/apikeys/{api_key_id}/        → ApiKey (get, update, revoke)
+    /audit/v1/apikeys/{api_key_id}/regenerate → ApiKey (rotate)
 """
 
-from ...interface import JsonDict, Resource, ResourceCollection, payload, updates
+from typing import Any, Optional
+
+from ..http.interface import JsonClient, JsonResponse
+
+from ..interface import Resource, ResourceCollection, ResourceRoot
 
 
-class APIKeys(ResourceCollection):
-    """Campus Audit API keys resource.
+class ApiKeys(ResourceCollection):
+    """Resource for audit API keys.
 
-    Every write takes a privilege set: either a scope list or a named
-    role the service resolves to one.
+    URL path: /audit/v1/apikeys/
+
+    Supports:
+    - POST: Mint a key (plaintext shown once, in the response)
+    - GET: List keys
     """
-    path = "apikeys"
 
-    def __getitem__(self, api_key_id: str) -> "APIKeys.APIKey":
-        """Get a specific API key resource by ID."""
-        return APIKeys.APIKey(api_key_id, parent=self)
+    path = "apikeys/"
+
+    def __init__(self, client: Optional[JsonClient] = None, *, root: ResourceRoot):
+        """Initialize the apikeys resource.
+
+        Args:
+            client: The HTTP client to use for requests.
+            root: The root resource.
+        """
+        self._client = client
+        self.root = root
+
+    @property
+    def client(self) -> JsonClient:
+        """Get the JsonClient associated with this resource."""
+        if self._client:
+            return self._client
+        if self.root.client:
+            return self.root.client
+        raise AttributeError("No client defined for ApiKeys")
+
+    def __getitem__(self, api_key_id: str) -> "ApiKeys.ApiKey":
+        """Get a specific key resource by id.
+
+        Args:
+            api_key_id: The API key identifier.
+
+        Returns:
+            An ApiKey resource for the specific key.
+        """
+        return ApiKeys.ApiKey(api_key_id, parent=self)
 
     def new(
-            self,
-            *,
-            name: str,
-            owner_id: str,
-            scopes: "list[str] | None" = None,
-            role: "str | None" = None,
-            rate_limit: "int | None" = None,
-            expires_at: "str | None" = None,
-            trace_user_id: "str | None" = None,
-            trace_client_id: "str | None" = None,
-    ) -> JsonDict:
-        """Create an API key.
+        self,
+        *,
+        name: str,
+        owner_id: str,
+        scopes: list[str] | None = None,
+        role: str | None = None,
+        rate_limit: int | None = None,
+        expires_at: str | None = None,
+        trace_user_id: str | None = None,
+        trace_client_id: str | None = None,
+    ) -> JsonResponse:
+        """Mint a new API key.
 
-        Give either `scopes` or a named `role` — the service resolves a
-        role to exactly one scope list. The two are mutually exclusive
-        server-side: sending both is refused (422) rather than one
-        silently winning, so this method does not pre-judge them. An
-        unknown role is likewise refused, with the server naming the
-        roles that exist — the catalogue is the service's, so it is not
-        duplicated here.
+        Give either a role (a named scope bundle) or a raw scope list,
+        not both. The plaintext appears once, in the response's
+        ``api_key`` field, and is never stored server-side.
 
-        Trace-read scoping (#944): a key that grants trace reads
-        without apikeys:write must be minted with a bind — an opaque
-        match-value the service enforces server-side on every read
-        surface. Both are plain strings (the service matches them
-        against span identity attributes verbatim; it never resolves
-        them against campus.auth). Operator/admin keys (apikeys:write)
-        omit both and read unscoped. Binds are mint-time only and
-        cannot be changed later.
-
-        Args:
-            name: Key name
-            owner_id: Owner user ID
-            scopes: Scope strings the key grants (e.g. ["traces:read"])
-            role: A named role the service resolves to a scope list
-            rate_limit: Requests per minute (optional)
-            expires_at: ISO 8601 expiry (optional)
-            trace_user_id: Bind trace reads to this user exactly
-                (optional; required for read-scoped keys, #944)
-            trace_client_id: Bind trace reads to this client exactly
-                (optional; required for read-scoped keys, #944)
+        Trace-read scoping (#944): pass ``trace_user_id`` and/or
+        ``trace_client_id`` to bind the key's trace reads to those
+        opaque match-values — the service enforces them server-side on
+        every read surface and refuses (422) a mint that grants trace
+        reads without apikeys:write/traces:write unless at least one
+        bind is present. Binds are mint-time only; update() does not
+        accept them.
 
         Returns:
-            The created key record; its plaintext `api_key` value is
-            shown only here.
+            Response with the key record plus the plaintext.
+
+        Raises:
+            NetworkError: If the HTTP request fails.
         """
-        return self._post_json(self.make_path(), json=payload(
-            name=name,
-            owner_id=owner_id,
-            scopes=scopes,
-            role=role,
-            rate_limit=rate_limit,
-            expires_at=expires_at,
-            trace_user_id=trace_user_id,
-            trace_client_id=trace_client_id,
-        ))
+        body: dict[str, Any] = {"name": name, "owner_id": owner_id}
+        if scopes is not None:
+            body["scopes"] = scopes
+        if role is not None:
+            body["role"] = role
+        if rate_limit is not None:
+            body["rate_limit"] = rate_limit
+        if expires_at is not None:
+            body["expires_at"] = expires_at
+        if trace_user_id is not None:
+            body["trace_user_id"] = trace_user_id
+        if trace_client_id is not None:
+            body["trace_client_id"] = trace_client_id
+        response = self.client.post(self.make_path(), json=body)
+        response.raise_for_status()
+        return response
 
     def list(
-            self,
-            *,
-            owner_id: "str | None" = None,
-            active_only: bool = True,
-            limit: "int | None" = None,
-    ) -> JsonDict:
-        """List API keys with optional filtering.
+        self,
+        *,
+        owner_id: str | None = None,
+        active_only: bool | None = None,
+        limit: int | None = None,
+    ) -> JsonResponse:
+        """List API keys.
 
         Args:
-            owner_id: Filter by owner user ID
-            active_only: Only non-expired, non-revoked keys (default True)
-            limit: Page size (server default 50)
+            owner_id: Filter by owner (optional).
+            active_only: Only non-expired, non-revoked keys. The API
+                defaults to true; pass False to include revoked and
+                expired keys (e.g. for a management view).
+            limit: Maximum number of keys to return.
 
         Returns:
-            {"api_keys": [...], "count": int}
+            Response with {"api_keys": [...], "count": N}.
+
+        Raises:
+            NetworkError: If the HTTP request fails.
         """
-        query: JsonDict = {}
+        params: dict[str, Any] = {}
         if owner_id is not None:
-            query["owner_id"] = owner_id
-        # The server parses bool query values from the lowercase
-        # literals true/false (flask_campus _BOOL_LITERALS); Python's
-        # str(True) capitalization would 422.
-        query["active_only"] = str(active_only).lower()
+            params["owner_id"] = owner_id
+        if active_only is not None:
+            params["active_only"] = "true" if active_only else "false"
         if limit is not None:
-            query["limit"] = limit
-        return self._get_json(self.make_path(), query=query)
+            params["limit"] = limit
+        response = self.client.get(self.make_path(), params=params)
+        response.raise_for_status()
+        return response
 
-    class APIKey(Resource):
-        """Single campus audit API key resource.
+    class ApiKey(Resource):
+        """Single API key resource.
 
-        update() takes a privilege set too: a scope list or a named
-        role.
+        URL path: /audit/v1/apikeys/{api_key_id}/
+
+        Supports:
+        - GET: Key details (never the plaintext or its hash)
+        - PATCH: Update mutable fields (name, scopes, rate_limit)
+        - DELETE: Revoke the key
+        - POST regenerate: Rotate (new plaintext, same key id)
         """
 
-        def get(self) -> JsonDict:
-            """Get this API key's record (no key hash or plaintext)."""
-            return self._get_json(self.make_path(end_slash=True))
+        def __init__(self, api_key_id: str, parent: "ApiKeys"):
+            """Initialize the key resource.
+
+            Args:
+                api_key_id: The API key identifier.
+                parent: The parent apikeys resource.
+            """
+            super().__init__(api_key_id, parent=parent, root=parent.root)
+            self.api_key_id = api_key_id
+
+        @property
+        def client(self) -> JsonClient:
+            """Get the JsonClient associated with this resource."""
+            return self.parent.client
+
+        def get(self) -> JsonResponse:
+            """Get the key's details (excluding key_hash).
+
+            Raises:
+                NetworkError: If the HTTP request fails.
+            """
+            response = self.client.get(self.make_path(end_slash=True))
+            response.raise_for_status()
+            return response
 
         def update(
-                self,
-                *,
-                name: "str | None" = None,
-                scopes: "list[str] | None" = None,
-                role: "str | None" = None,
-                rate_limit: "int | None" = None,
-        ) -> JsonDict:
-            """Update this API key's mutable fields.
+            self,
+            *,
+            name: str | None = None,
+            scopes: list[str] | None = None,
+            role: str | None = None,
+            rate_limit: int | None = None,
+        ) -> JsonResponse:
+            """Update mutable fields of the key.
 
-            Only name, scopes, and rate_limit are mutable; use
-            revoke() to disable the key. The server rejects an empty
-            update, so at least one field must be provided.
+            Give either a role or a scope list, not both. Only name,
+            scopes, and rate_limit are mutable; revocation is DELETE.
 
-            A `role` re-scopes the key to the scope list the service
-            resolves that role to. It is mutually exclusive with
-            `scopes` server-side: sending both is refused (422) rather
-            than one silently winning, so this method does not
-            pre-judge them.
-
-            Returns:
-                The updated key record
+            Raises:
+                NetworkError: If the HTTP request fails.
             """
-            return self._patch_json(self.make_path(end_slash=True), json=updates(
-                name=name,
-                scopes=scopes,
-                role=role,
-                rate_limit=rate_limit,
-            ))
+            body: dict[str, Any] = {}
+            if name is not None:
+                body["name"] = name
+            if role is not None:
+                body["role"] = role
+            if scopes is not None:
+                body["scopes"] = scopes
+            if rate_limit is not None:
+                body["rate_limit"] = rate_limit
+            response = self.client.patch(self.make_path(end_slash=True), json=body)
+            response.raise_for_status()
+            return response
 
-        def revoke(self) -> None:
-            """Revoke this API key (the record is kept for audit)."""
-            self._delete_json(self.make_path(end_slash=True))
-            return None
+        def revoke(self) -> JsonResponse:
+            """Revoke the key (204 on success). The record is kept for
+            audit purposes; the key stops authenticating immediately.
 
-        def regenerate(self) -> str:
-            """Regenerate this API key's value.
-
-            The old value stops working immediately.
-
-            Returns:
-                The new plaintext key value, shown only here.
+            Raises:
+                NetworkError: If the HTTP request fails.
             """
-            return self._post_json(
-                self.make_path("regenerate", end_slash=False)
-            )["key"]
+            response = self.client.delete(self.make_path(end_slash=True))
+            response.raise_for_status()
+            return response
+
+        def regenerate(self) -> JsonResponse:
+            """Rotate the key: a new plaintext (response's ``key``
+            field, shown once), the same key id. The old plaintext
+            stops working immediately.
+
+            Raises:
+                NetworkError: If the HTTP request fails.
+            """
+            response = self.client.post(self.make_path("regenerate"))
+            response.raise_for_status()
+            return response
