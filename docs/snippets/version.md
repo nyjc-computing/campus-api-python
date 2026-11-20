@@ -2,5 +2,5 @@
      Run `python scripts/sync_docs_version.py` after a version bump;
      CI regenerates this file and fails on drift. -->
 
-**Current release: [v0.10.9](https://github.com/nyjc-computing/campus-api-python/releases/tag/v0.10.9)**
+**Current release: [v0.10.10](https://github.com/nyjc-computing/campus-api-python/releases/tag/v0.10.10)**
 · release notes on the [releases page](https://github.com/nyjc-computing/campus-api-python/releases).

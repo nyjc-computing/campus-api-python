@@ -33,18 +33,25 @@ class StubResponse:
 
 
 class RecordingClient:
-    """JsonClient double that records calls and returns a canned body."""
+    """JsonClient double that records calls and returns a canned body.
+
+    Mirrors the production CampusRequest.get signature (query=, not
+    requests-style params=) — the resources under test are injected
+    with a CampusRequest (AuditRoot.json_client) in production, and a
+    double that drifts from that interface hides kwarg mismatches the
+    way the v0.10.9 params= crash did.
+    """
 
     def __init__(self, body=None):
         self.calls: list[tuple[str, str, dict | None, dict | None]] = []
         self._response = StubResponse(body if body is not None else {})
 
-    def _record(self, method, path, params=None, json=None):
-        self.calls.append((method, path, params, json))
+    def _record(self, method, path, query=None, json=None):
+        self.calls.append((method, path, query, json))
         return self._response
 
-    def get(self, path, params=None):
-        return self._record("GET", path, params)
+    def get(self, path, query=None):
+        return self._record("GET", path, query)
 
     def post(self, path, json=None):
         return self._record("POST", path, None, json)
