@@ -6,6 +6,8 @@ timetable), Campus Auth (OAuth, login sessions, clients, grants,
 vaults), Campus Audit (traces, API keys), and the first-party
 integrations registry.
 
+--8<-- "snippets/version.md"
+
 ```python
 from campus_python import Campus
 

@@ -96,6 +96,15 @@ jobs:
       - name: Install dependencies (incl. docs group)
         run: poetry install --with docs
 
+      - name: Regenerate version stamp
+        run: poetry run python scripts/sync_docs_version.py
+
+      # Every version bump must ship with up-to-date docs: the stamp is
+      # derived from pyproject.toml, so bumping the version without
+      # regenerating fails here before anything merges.
+      - name: Fail on stale version stamp
+        run: git diff --exit-code -- docs/
+
       - name: Build documentation (strict)
         run: poetry run mkdocs build --strict
 

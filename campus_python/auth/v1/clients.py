@@ -74,6 +74,7 @@ class Clients(ResourceCollection):
 
         @property
         def access(self) -> "Clients.Client.ClientAccess":
+            """Vault-access management subresource for this client."""
             return Clients.Client.ClientAccess("access", parent=self)
 
         @property
