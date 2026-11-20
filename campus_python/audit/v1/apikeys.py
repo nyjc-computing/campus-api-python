@@ -140,7 +140,7 @@ class ApiKeys(ResourceCollection):
             params["active_only"] = "true" if active_only else "false"
         if limit is not None:
             params["limit"] = limit
-        response = self.client.get(self.make_path(), params=params)
+        response = self.client.get(self.make_path(), query=params)
         response.raise_for_status()
         return response
 

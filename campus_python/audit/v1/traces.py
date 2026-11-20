@@ -129,7 +129,7 @@ class Traces(ResourceCollection):
         if until is not None:
             params["until"] = until
 
-        response = self.client.get(self.make_path(), params=params)
+        response = self.client.get(self.make_path(), query=params)
         response.raise_for_status()
         return response
 
@@ -193,7 +193,7 @@ class Traces(ResourceCollection):
         if events is not None:
             params["events"] = "1" if events else "0"
 
-        response = self.client.get(self.make_path("search"), params=params)
+        response = self.client.get(self.make_path("search"), query=params)
         response.raise_for_status()
         return response
 
