@@ -157,7 +157,7 @@ class DefaultClient(JsonClient):
             self,
             method: str,
             path: str,
-            params: Any = None,
+            query: Any = None,
             json: Any = None,
     ) -> DefaultResponse:
         """
@@ -189,7 +189,7 @@ class DefaultClient(JsonClient):
             response = self._session.request(
                 method=method,
                 url=url,
-                params=params,
+                params=query,
                 json=json,
                 timeout=30
             )
@@ -217,9 +217,9 @@ class DefaultClient(JsonClient):
         else:
             return DefaultResponse(response)
 
-    def get(self: Self, path: str, params: JsonDict | None = None) -> JsonResponse:
+    def get(self: Self, path: str, query: JsonDict | None = None) -> JsonResponse:
         """Send a GET request to path (joined with the base URL)."""
-        return self._make_request("GET", path, params=params)
+        return self._make_request("GET", path, query=query)
 
     def post(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
         """Send a POST request to path with an optional JSON body."""
