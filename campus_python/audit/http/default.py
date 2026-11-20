@@ -73,25 +73,28 @@ def check_env_var(var_name: str) -> str:
 
 class DefaultResponse(JsonResponse):
     """Default response wrapper, using `requests` package."""
-    # pylint: disable=missing-function-docstring
 
     def __init__(self, response: requests.Response):
         self._response = response
 
     @property
     def status_code(self) -> int:
+        """HTTP status code of the response."""
         return self._response.status_code
 
     @property
     def headers(self) -> dict[str, str]:
+        """Response headers, as a plain dict[str, str]."""
         # Convert to plain dict[str, str]
         return dict(self._response.headers.items())
 
     @property
     def text(self) -> str:
+        """Raw response body, as text."""
         return self._response.text
 
     def json(self):
+        """Parse the response body as JSON."""
         return self._response.json()
 
 
@@ -147,6 +150,7 @@ class DefaultClient(JsonClient):
 
     @property
     def headers(self):
+        """Live session headers (authentication and content type)."""
         return self._session.headers
 
     def _make_request(
@@ -214,16 +218,21 @@ class DefaultClient(JsonClient):
             return DefaultResponse(response)
 
     def get(self: Self, path: str, params: JsonDict | None = None) -> JsonResponse:
+        """Send a GET request to path (joined with the base URL)."""
         return self._make_request("GET", path, params=params)
 
     def post(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
+        """Send a POST request to path with an optional JSON body."""
         return self._make_request("POST", path, json=json)
 
     def put(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
+        """Send a PUT request to path with an optional JSON body."""
         return self._make_request("PUT", path, json=json)
 
     def patch(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
+        """Send a PATCH request to path with an optional JSON body."""
         return self._make_request("PATCH", path, json=json)
 
     def delete(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
+        """Send a DELETE request to path."""
         return self._make_request("DELETE", path, json=json)
