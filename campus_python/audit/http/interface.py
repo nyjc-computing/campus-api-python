@@ -135,8 +135,8 @@ class JsonClient(Protocol):
             "Subclasses must override __init__()"
         )
 
-    def get(self: Self, path: str, params: JsonDict | None = None) -> JsonResponse:
-        """Sends a GET request."""
+    def get(self: Self, path: str, query: JsonDict | None = None) -> JsonResponse:
+        """Sends a GET request with optional URL query parameters."""
         ...
 
     def post(self: Self, path: str, json: JsonDict | None = None) -> JsonResponse:
