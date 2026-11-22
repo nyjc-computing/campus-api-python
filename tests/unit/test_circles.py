@@ -98,7 +98,8 @@ class TestCircleMembersGet(unittest.TestCase):
             "teacher@campus.test"
         )
         self.client.get.assert_called_once_with(
-            "/api/v1/circles/circle_ab12cd34/members/teacher@campus.test/"
+            "/api/v1/circles/circle_ab12cd34/members/teacher@campus.test/",
+            query={"resolve": "direct"},
         )
         self.assertEqual(access, 15)
 
@@ -143,8 +144,8 @@ class TestCircleMembersResolve(unittest.TestCase):
         )
         self.assertEqual(result, resolution)
 
-    def test_resolve_direct_mode_sends_no_query(self):
-        """transitive=False relies on the server's direct default."""
+    def test_resolve_direct_mode_sends_explicit_query(self):
+        """transitive=False pins ?resolve=direct (campus#1207-safe)."""
         resolution = {
             "member_id": "teacher@campus.test",
             "access_value": 15,
@@ -157,7 +158,7 @@ class TestCircleMembersResolve(unittest.TestCase):
         )
         self.client.get.assert_called_once_with(
             "/api/v1/circles/circle_ab12cd34/members/teacher@campus.test/",
-            query=None,
+            query={"resolve": "direct"},
         )
         self.assertEqual(result, resolution)
 

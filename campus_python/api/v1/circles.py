@@ -122,11 +122,20 @@ class Circles(ResourceCollection):
                 member reachable only through group circles. Use
                 resolve() to ask the gate's question (campus#1202).
 
+                The ?resolve=direct query is always sent explicitly,
+                so the answer is invariant across the server's
+                default-flip switchover (campus#1207/sdk#182): the
+                unparameterized probe means transitive once the
+                default flips.
+
                 Returns:
                     The member's direct access value in the circle, or
                     None if the circle has no such member.
                 """
-                resp = self.client.get(self.make_path(member_id, end_slash=True))
+                resp = self.client.get(
+                    self.make_path(member_id, end_slash=True),
+                    query={"resolve": "direct"},
+                )
                 if resp.status_code == 404:
                     return None
                 resp.raise_for_status()
@@ -149,6 +158,10 @@ class Circles(ResourceCollection):
                 expected negative answer, not an error; a missing
                 circle still raises (409 ConflictError).
 
+                The ?resolve= query is always sent explicitly, so
+                both modes are invariant across the server's
+                default-flip switchover (campus#1207/sdk#182).
+
                 Args:
                     member_id: The member identifier as stored (a
                         circle UID or the email name of a user circle).
@@ -168,7 +181,9 @@ class Circles(ResourceCollection):
                             "via": list[str],     # containment chain
                         }
                 """
-                query = {"resolve": "transitive"} if transitive else None
+                query = {
+                    "resolve": "transitive" if transitive else "direct"
+                }
                 resp = self.client.get(
                     self.make_path(member_id, end_slash=True), query=query
                 )
