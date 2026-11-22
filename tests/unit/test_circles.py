@@ -119,5 +119,64 @@ class TestCircleMembersGet(unittest.TestCase):
             )
 
 
+class TestCircleMembersResolve(unittest.TestCase):
+    """CircleMembers.resolve(): the gate-parity check (campus#1202)."""
+
+    def setUp(self):
+        self.api, self.client = make_api()
+
+    def test_resolve_defaults_to_transitive(self):
+        """resolve() sends ?resolve=transitive and returns the dict."""
+        resolution = {
+            "member_id": "teacher@campus.test",
+            "access_value": 15,
+            "direct": False,
+            "via": ["students"],
+        }
+        self.client.get.return_value = json_response(dict(resolution))
+        result = self.api.circles["circle_ab12cd34"].members.resolve(
+            "teacher@campus.test"
+        )
+        self.client.get.assert_called_once_with(
+            "/api/v1/circles/circle_ab12cd34/members/teacher@campus.test/",
+            query={"resolve": "transitive"},
+        )
+        self.assertEqual(result, resolution)
+
+    def test_resolve_direct_mode_sends_no_query(self):
+        """transitive=False relies on the server's direct default."""
+        resolution = {
+            "member_id": "teacher@campus.test",
+            "access_value": 15,
+            "direct": True,
+            "via": [],
+        }
+        self.client.get.return_value = json_response(dict(resolution))
+        result = self.api.circles["circle_ab12cd34"].members.resolve(
+            "teacher@campus.test", transitive=False
+        )
+        self.client.get.assert_called_once_with(
+            "/api/v1/circles/circle_ab12cd34/members/teacher@campus.test/",
+            query=None,
+        )
+        self.assertEqual(result, resolution)
+
+    def test_resolve_returns_none_when_unreachable(self):
+        """404 is the expected negative answer, not an error."""
+        self.client.get.return_value = json_response(None, status_code=404)
+        result = self.api.circles["circle_ab12cd34"].members.resolve(
+            "ghost@campus.test"
+        )
+        self.assertIsNone(result)
+
+    def test_resolve_raises_for_missing_circle(self):
+        """A missing circle (409) still raises, per the circles contract."""
+        self.client.get.return_value = json_response(None, status_code=409)
+        with self.assertRaises(errors.APIError):
+            self.api.circles["circle_ab12cd34"].members.resolve(
+                "teacher@campus.test"
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

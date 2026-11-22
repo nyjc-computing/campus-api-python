@@ -13,6 +13,7 @@ from . import (
     subjcombi,
     submissions,
     timetable,
+    users,
     venues,
 )
 
@@ -30,6 +31,7 @@ class ApiRoot(ResourceRoot):
         self._submissions = None
         self._subjcombi = None
         self._timetables = None
+        self._users = None
         self._venues = None
 
     @property
@@ -80,6 +82,13 @@ class ApiRoot(ResourceRoot):
         if not self._timetables:
             self._timetables = timetable.Timetables(root=self)
         return self._timetables
+
+    @property
+    def users(self) -> users.Users:
+        """Get the users resource (inverted membership queries)."""
+        if not self._users:
+            self._users = users.Users(root=self)
+        return self._users
 
     @property
     def venues(self) -> venues.Venues:
