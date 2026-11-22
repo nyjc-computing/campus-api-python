@@ -2,7 +2,7 @@
 
 Python SDK for the NYJC Campus school platform: one client for the
 Campus API (assignments, circles, files, hosted apps, submissions,
-timetable), Campus Auth (OAuth, login sessions, clients, grants,
+timetable, users — the inverted membership check), Campus Auth (OAuth, login sessions, clients, grants,
 vaults), Campus Audit (traces, API keys), and the first-party
 integrations registry.
 
