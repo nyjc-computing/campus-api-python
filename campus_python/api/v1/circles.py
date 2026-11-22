@@ -109,24 +109,73 @@ class Circles(ResourceCollection):
                 return self._get_json(self.make_path(end_slash=True))
 
             def get(self, member_id: str) -> int | None:
-                """Probe one membership; None when the member is absent.
+                """Probe one direct membership; None when absent.
 
-                The cheap, fail-closed role check behind gates like
-                flask-campus's circle_admin_required: 404 is the
-                expected negative answer (absent member), not an
-                error. A missing circle still raises (409 ConflictError,
-                per the circles family contract); any other non-2XX
+                The direct-only membership probe: 404 is the expected
+                negative answer (absent member), not an error. A
+                missing circle still raises (409 ConflictError, per
+                the circles family contract); any other non-2XX
                 raises as usual.
 
+                This answers the direct members dict only — it can
+                disagree with campus.api's enforcement gate for a
+                member reachable only through group circles. Use
+                resolve() to ask the gate's question (campus#1202).
+
                 Returns:
-                    The member's access value in the circle, or None if
-                    the circle has no such member.
+                    The member's direct access value in the circle, or
+                    None if the circle has no such member.
                 """
                 resp = self.client.get(self.make_path(member_id, end_slash=True))
                 if resp.status_code == 404:
                     return None
                 resp.raise_for_status()
                 return resp.json()["access_value"]
+
+            def resolve(
+                    self,
+                    member_id: str,
+                    *,
+                    transitive: bool = True,
+            ) -> "dict | None":
+                """Resolve one membership through the server's shared
+                resolver; None when unreachable.
+
+                The gate-parity membership check (campus#1202): the
+                same question campus.api's enforcement gate answers,
+                through the same server implementation — the resolver
+                walk is cycle-safe and stale keys fail closed per key.
+                404 (unreachable under the requested mode) is the
+                expected negative answer, not an error; a missing
+                circle still raises (409 ConflictError).
+
+                Args:
+                    member_id: The member identifier as stored (a
+                        circle UID or the email name of a user circle).
+                    transitive: Follow member group circles beyond the
+                        direct members dict (the default — the gate's
+                        semantics). False answers the direct-only
+                        question.
+
+                Returns:
+                    None if the member is not reachable, otherwise the
+                    server's resolution dict:
+
+                        {
+                            "member_id": str,
+                            "access_value": int,  # max across paths
+                            "direct": bool,
+                            "via": list[str],     # containment chain
+                        }
+                """
+                query = {"resolve": "transitive"} if transitive else None
+                resp = self.client.get(
+                    self.make_path(member_id, end_slash=True), query=query
+                )
+                if resp.status_code == 404:
+                    return None
+                resp.raise_for_status()
+                return resp.json()
 
             def add(self, member_id: str, access_value: int) -> None:
                 """Add a member with an access value.

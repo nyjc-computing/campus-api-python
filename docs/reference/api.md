@@ -64,6 +64,16 @@ given.
 
 ::: campus_python.api.v1.timetable.Timetables
 
+## Users
+
+Membership queries only — no users resource family exists in
+campus.api. `campus.api.users.roles(user_id)` is the inverted
+membership check (campus#1202): every role circle the user holds,
+resolved transitively through member group circles, via the same
+shared resolver the enforcement gate answers through.
+
+::: campus_python.api.v1.users.Users
+
 ## ApiRoot
 
 ::: campus_python.api.v1.ApiRoot
