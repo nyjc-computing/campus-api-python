@@ -17,3 +17,33 @@ for integration in campus.integrations.list():
 ```
 
 ::: campus_python.integrations.v1.IntegrationsRoot
+
+## Integration action proxies (#1221)
+
+Admin-authorized verbs campus.auth performs on a **target user's**
+stored integration credential — the backfill path for user-bound
+upstream actions (e.g. Classroom `turnIn`) that can only run on the
+owning student's OAuth token. The provider's tokens never cross the
+service boundary: responses carry action outcomes only.
+
+Requires a caller token holding the per-integration management scope
+(`integrations.<provider>:admin`) plus vault access to the
+integration's label; see the campus repo's
+`docs/integration-actions.md` for the full gate and the operator
+bootstrap.
+
+```python
+actions = campus.integrations["google.classroom"].with_user(
+    "student@nyjc.edu.sg"
+)
+actions.turn_in(course_id="828477607889", coursework_id="891474284211")
+actions.reclaim(course_id="...", coursework_id="...")
+actions.modify_attachments(
+    course_id="...", coursework_id="...", submission_id="...",
+    attachments=[{"link": {"url": "https://..."}}],
+)
+actions.get_submission(course_id="...", coursework_id="...")
+```
+
+::: campus_python.integrations.v1.IntegrationActions
+::: campus_python.integrations.v1.IntegrationUserActions
