@@ -85,7 +85,7 @@ class ApiRoot(ResourceRoot):
 
     @property
     def users(self) -> users.Users:
-        """Get the users resource (inverted membership queries)."""
+        """Get the users resource (directory facade + roles query)."""
         if not self._users:
             self._users = users.Users(root=self)
         return self._users
