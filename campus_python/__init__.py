@@ -8,7 +8,6 @@ __all__ = (
     "errors",
 )
 
-import base64
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -21,7 +20,7 @@ from .api.v1 import ApiRoot
 from .audit.v1 import AuditRoot
 from .auth.v1 import AuthRoot
 from .integrations.v1 import IntegrationsRoot
-from .json_client import CampusRequest
+from .json_client import CampusRequest, _bearer_override, _session_hook
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -233,15 +232,19 @@ class Campus:
 
         Yields:
             CampusRequest: JSON client with app credentials set.
+
+        Context-local (#189): the minted bearer rides a ContextVar
+        consulted per request, never the shared session headers — a
+        concurrent thread on the same instance keeps presenting the
+        client credentials for its own ambient calls.
         """
+        token = self.auth.token(grant_type="client_credentials")
+        prior_bearer = _bearer_override.get()
+        _bearer_override.set(token.access_token)
         try:
-            token = self.auth.token(grant_type="client_credentials")
-            self.use_token(token)
             yield self
-        except Exception:
-            raise
         finally:
-            self.revoke_session()
+            _bearer_override.set(prior_bearer)
 
     @contextmanager
     def with_user_session(
@@ -255,97 +258,78 @@ class Campus:
             with campus.with_user_session() as client:
                 # use client for requests
 
-        By default a 401 auto-refresh hook is installed on the auth and
-        api clients for the duration of the session (issue #89): when a
-        request comes back 401 because the bearer expired after the
-        re-acquisition below, the token is re-acquired once via the
-        login-session token route (campus#964) and the request retried
-        with the new Authorization header. The retry cannot
-        double-execute work — Campus services reject unauthenticated
-        requests in a before_request authenticator before any handler
-        runs. If the re-acquisition itself fails, the original 401
-        response surfaces to the caller as before. Pass
-        refresh_on_401=False for the old behaviour.
+        By default a 401 auto-refresh hook is active for the duration
+        of the session (issue #89): when a request comes back 401
+        because the bearer expired after the re-acquisition below, the
+        token is re-acquired once via the login-session token route
+        (campus#964) and the request retried with the new Authorization
+        header. The retry cannot double-execute work — Campus services
+        reject unauthenticated requests in a before_request
+        authenticator before any handler runs. If the re-acquisition
+        itself fails, the original 401 response surfaces to the caller
+        as before. Pass refresh_on_401=False for the old behaviour.
 
         Yields:
             Campus: JSON client with user credentials set.
 
-        Nesting-safe (#159): an inner with_user_session opened on the
-        same Campus instance while an outer one is still active (e.g.
-        an auth-broker release reached from a route that already holds
-        the user session) restores the outer session's authorization
-        and 401 hook at its exit instead of resetting the shared
-        clients to app credentials mid-block.
+        Context-local (#189): both the bearer and the 401 hook ride
+        ContextVars consulted per request, never the shared session
+        headers or hook slots. A gthread Flask host driving one Campus
+        from many request threads therefore cannot leak one request's
+        user bearer into another request's ambient calls — the failure
+        that made campus.auth deny session-flow routes (#854/#1055) and
+        loop browsers into /login (classroom#153). The mint at entry
+        and inside refresh_bearer now runs with no override active, so
+        it always authenticates as the client (Basic) — the A10
+        requirement the old instance-mutation dance could only attempt
+        to maintain.
+
+        Nesting-safe (#159): an inner session on the same instance
+        saves the outer override and restores it at exit, so calls
+        after the inner block carry the outer session's credential
+        again.
         """
         token = self._get_token_from_session()
-        # Capture the entry authorization so the teardown restores it:
-        # unconditional revoke_session() here strips an OUTER session's
-        # user bearer when this block is nested (#159).
-        prior_authorization = {
-            client: client.authorization
-            for client in (self.api.client, self.auth.client)
-        }
-        self.use_token(token)
+        prior_bearer = _bearer_override.get()
+        prior_hook = _session_hook.get()
+        _bearer_override.set(token.access_token)
+        refreshing = False
 
-        hooked_clients = []
-        if refresh_on_401:
-            refreshing = False
+        def refresh_bearer() -> str | None:
+            """Re-acquire the session token once.
 
-            def refresh_bearer() -> str | None:
-                """Re-acquire the session token once.
+            Returns the new bearer token for the client to retry
+            with, or None on failure (the original 401 then
+            surfaces). Re-entrant calls (the re-acquisition
+            round-trip itself hitting a 401) bail out immediately.
 
-                Returns the new bearer token for the client to retry
-                with, or None on failure (the original 401 then
-                surfaces). Re-entrant calls (the re-acquisition
-                round-trip itself hitting a 401) bail out immediately.
-
-                The round-trip authenticates as the client (Basic):
-                the login-session token route denies user principals
-                outright (campus#964/A10), so the session's stale
-                bearer must not be presented mid-rotation.
-                """
-                nonlocal refreshing
-                if refreshing:
-                    return None
-                refreshing = True
+            The round-trip authenticates as the client (Basic): the
+            override is suspended so the mint presents Basic, never
+            the session's stale bearer — the login-session token
+            route denies user principals outright (campus#964/A10).
+            """
+            nonlocal refreshing
+            if refreshing:
+                return None
+            refreshing = True
+            try:
+                suspended = _bearer_override.set(None)
                 try:
-                    self.revoke_session()
                     refreshed = self._get_token_from_session()
-                except errors.APIError:
-                    self.use_token(token)
-                    return None
                 finally:
-                    refreshing = False
-                self.use_token(refreshed)
-                return refreshed.access_token
+                    _bearer_override.reset(suspended)
+            except errors.APIError:
+                return None
+            finally:
+                refreshing = False
+            _bearer_override.set(refreshed.access_token)
+            return refreshed.access_token
 
-            for client in (self.api.client, self.auth.client):
-                # The 401 hook is an optional JsonClient capability
-                # (see json_client.interface) — feature-detect it.
-                if isinstance(client, CampusRequest):
-                    prior_hook = client._unauthorized_hook
-                    client.set_unauthorized_hook(refresh_bearer)
-                    hooked_clients.append((client, prior_hook))
-
+        if refresh_on_401:
+            _session_hook.set(refresh_bearer)
         try:
             yield self
-        except Exception:
-            raise
         finally:
-            # Restore rather than clear: an enclosing session's hook
-            # must survive this block (#159). Top-level sessions had no
-            # prior hook, so this is equivalent to clearing.
-            for client, prior_hook in hooked_clients:
-                client.set_unauthorized_hook(prior_hook)
-            for client, prior in prior_authorization.items():
-                if prior is None:
-                    client.reset_authorization()
-                elif prior.startswith("Bearer "):
-                    client.set_bearer_authorization(prior[len("Bearer "):])
-                elif prior.startswith("Basic "):
-                    decoded = base64.b64decode(
-                        prior[len("Basic "):]).decode("utf-8")
-                    client_id, _, secret = decoded.partition(":")
-                    client.set_basic_authorization(client_id, secret)
-                else:
-                    client.reset_authorization()
+            if refresh_on_401:
+                _session_hook.set(prior_hook)
+            _bearer_override.set(prior_bearer)
