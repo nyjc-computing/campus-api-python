@@ -148,8 +148,11 @@ class TestUnauthorizedHook(unittest.TestCase):
 
 
 class TestWithUserSessionWiring(unittest.TestCase):
-    """with_user_session() installs a token re-acquisition hook on
-    both service clients and removes it when the session closes."""
+    """with_user_session() publishes its bearer and re-acquisition hook
+    as CONTEXT-LOCAL state (#189), never the shared session headers or
+    hook slots: a gthread host driving one Campus from many threads must
+    not leak one request's user bearer into another's ambient calls.
+    """
 
     def setUp(self):
         self.campus = Campus.__new__(Campus)
@@ -182,8 +185,19 @@ class TestWithUserSessionWiring(unittest.TestCase):
         token1 = Mock(access_token="tok1")
         self.get_token.return_value = token1
 
+    def sent_authorization(self) -> str | None:
+        """The Authorization header of the most recent request."""
+        calls = cast(MagicMock, self.api_client._session).request.call_args_list
+        if not calls:
+            return None
+        headers = calls[-1].kwargs.get("headers") or {}
+        return headers.get(
+            "Authorization", self.api_client._session.headers.get("Authorization")
+        )
+
     def test_401_mid_session_reacquires_and_retries(self):
-        cast(MagicMock, self.api_client._session).request.side_effect = [
+        session_mock = cast(MagicMock, self.api_client._session)
+        session_mock.request.side_effect = [
             raw_response(401, {}), raw_response(200, {"ok": True}),
         ]
         token2 = Mock(access_token="tok2")
@@ -191,15 +205,11 @@ class TestWithUserSessionWiring(unittest.TestCase):
 
         with self.campus.with_user_session():
             resp = self.campus.api.client.get("/things")
-            # The new bearer is live on BOTH service clients mid-session
-            self.assertEqual(
-                self.api_client._session.headers["Authorization"],
-                "Bearer tok2",
-            )
-            self.assertEqual(
-                self.auth_client._session.headers["Authorization"],
-                "Bearer tok2",
-            )
+            # The refreshed bearer rides the context override — in-block
+            # requests carry it; the shared session headers do not.
+            self.assertEqual(self.sent_authorization(), "Bearer tok2")
+            session_headers = self.api_client._session.headers.get("Authorization", "")
+            self.assertNotIn("Bearer", session_headers)
 
         self.assertEqual(resp.status_code, 200)
         # Second call is the hook's re-acquisition — same one-endpoint
@@ -208,7 +218,8 @@ class TestWithUserSessionWiring(unittest.TestCase):
         self.assertEqual(self.get_token.call_args.kwargs, {})
 
     def test_refresh_failure_surfaces_original_401(self):
-        cast(MagicMock, self.api_client._session).request.side_effect = [raw_response(401, {})]
+        session_mock = cast(MagicMock, self.api_client._session)
+        session_mock.request.side_effect = [raw_response(401, {})]
         self.get_token.side_effect = [
             Mock(access_token="tok1"),
             errors.AuthenticationError(error_description="session gone"),
@@ -216,28 +227,57 @@ class TestWithUserSessionWiring(unittest.TestCase):
 
         with self.campus.with_user_session():
             resp = self.campus.api.client.get("/things")
-            # Pre-hook bearer state restored after the failed refresh
-            self.assertEqual(
-                self.api_client._session.headers["Authorization"],
-                "Bearer tok1",
-            )
+            # Refresh failed: the session's original bearer still rides
+            # the override; the 401 surfaces to the caller.
+            self.assertEqual(self.sent_authorization(), "Bearer tok1")
 
         self.assertEqual(resp.status_code, 401)
-        self.assertEqual(cast(MagicMock, self.api_client._session).request.call_count, 1)
+        session_mock = cast(MagicMock, self.api_client._session)
+        self.assertEqual(session_mock.request.call_count, 1)
 
     def test_hooks_cleared_after_session(self):
-        with self.campus.with_user_session():
-            self.assertIsNotNone(self.api_client._unauthorized_hook)
-            self.assertIsNotNone(self.auth_client._unauthorized_hook)
+        from campus_python.json_client import _session_hook
 
-        self.assertIsNone(self.api_client._unauthorized_hook)
-        self.assertIsNone(self.auth_client._unauthorized_hook)
+        with self.campus.with_user_session():
+            self.assertIsNotNone(_session_hook.get())
+
+        self.assertIsNone(_session_hook.get())
+
+    def test_refresh_mint_authenticates_as_client(self):
+        """The re-acquisition round-trip suspends the override (#964/A10):
+        the mint must run with no session bearer active — Basic client
+        credentials — never the session's stale bearer."""
+        from campus_python.json_client import _bearer_override
+
+        seen_override_during_mint: list[str | None] = []
+
+        def fake_get_token():
+            seen_override_during_mint.append(_bearer_override.get())
+            tokens = [Mock(access_token="tok1"), Mock(access_token="tok2")]
+            return tokens[min(len(seen_override_during_mint) - 1, 1)]
+
+        session_mock = cast(MagicMock, self.api_client._session)
+        session_mock.request.side_effect = [
+            raw_response(401, {}), raw_response(200, {"ok": True}),
+        ]
+        self.get_token.side_effect = fake_get_token
+
+        with self.campus.with_user_session():
+            resp = self.campus.api.client.get("/things")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(self.get_token.call_count, 2)
+        # Entry mint: no override yet. Refresh mint: override suspended.
+        self.assertIsNone(seen_override_during_mint[0])
+        self.assertIsNone(seen_override_during_mint[1])
 
     def test_refresh_on_401_false_keeps_old_behaviour(self):
-        cast(MagicMock, self.api_client._session).request.side_effect = [raw_response(401, {})]
+        session_mock = cast(MagicMock, self.api_client._session)
+        session_mock.request.side_effect = [raw_response(401, {})]
 
         with self.campus.with_user_session(refresh_on_401=False):
-            self.assertIsNone(self.api_client._unauthorized_hook)
+            from campus_python.json_client import _session_hook
+            self.assertIsNone(_session_hook.get())
             resp = self.campus.api.client.get("/things")
 
         self.assertEqual(resp.status_code, 401)

@@ -11,6 +11,7 @@ __all__ = [
 
 import base64
 from collections.abc import Callable
+from contextvars import ContextVar
 from typing import Any, Mapping, Self, cast
 
 import requests
@@ -19,6 +20,29 @@ from campus.model import HttpHeader
 
 from .. import errors
 from .interface import JsonClient, JsonDict, JsonResponse
+
+# Context-local session credentials (campus-api-python#189).
+#
+# with_user_session()/with_app_session() publish their bearer here for
+# the duration of their block instead of mutating the shared session
+# headers, which are instance-global. A gthread Flask host drives one
+# Campus from many request threads: with the old set-on-the-instance
+# behavior, a thread inside a session block left its USER bearer where
+# an interleaving thread's ambient call (e.g. flask_campus's
+# push_context resolution) would present it — and campus.auth denies
+# user principals on session-flow routes (#854/#1055), bricking that
+# request into the /login loop. The override is consulted per request
+# in _send() and always wins over the session headers; each thread's
+# block sees only its own credential.
+_bearer_override: ContextVar[str | None] = ContextVar(
+    "campus_bearer_override", default=None
+)
+# The 401 auto-refresh hook is scoped the same way: an in-context
+# session's hook must not fire for another context's 401 (it would
+# refresh a foreign session and hand this context its token).
+_session_hook: ContextVar[Callable[[], str | None] | None] = ContextVar(
+    "campus_session_hook", default=None
+)
 
 
 class CampusResponse(JsonResponse):
@@ -216,23 +240,43 @@ class CampusRequest(JsonClient):
         before dispatching, so a 401 response is produced by the auth
         layer before any handler runs — there is no partial work to
         replay.
+
+        When a context-local session override is active (#189) it wins
+        over the session headers and is applied per request, so a
+        session block never leaks its bearer onto the shared client.
         """
+        override = _bearer_override.get()
+        if override is not None:
+            kwargs["headers"] = {
+                **(kwargs.get("headers") or {}),
+                "Authorization": f"Bearer {override}",
+            }
         try:
             resp = self._session.request(
                 method, url, timeout=self._timeout, **kwargs
             )
+            hook = _session_hook.get() or self._unauthorized_hook
             if (
                     resp.status_code == 401
-                    and self._unauthorized_hook is not None
+                    and hook is not None
                     and not self._in_unauthorized_hook
             ):
                 self._in_unauthorized_hook = True
                 try:
-                    token = self._unauthorized_hook()
+                    token = hook()
                 finally:
                     self._in_unauthorized_hook = False
                 if token:
-                    self.set_bearer_authorization(token)
+                    if override is not None:
+                        _bearer_override.set(token)
+                    else:
+                        self.set_bearer_authorization(token)
+                    retry_override = _bearer_override.get()
+                    if retry_override is not None:
+                        kwargs["headers"] = {
+                            **(kwargs.get("headers") or {}),
+                            "Authorization": f"Bearer {retry_override}",
+                        }
                     resp = self._session.request(
                         method, url, timeout=self._timeout, **kwargs
                     )
