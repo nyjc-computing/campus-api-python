@@ -122,13 +122,15 @@ class TestConcurrentSessions(unittest.TestCase):
 
         headers = [auth for _, auth in self.recorded_calls()]
         self.assertEqual(headers[0], "Bearer user-token")
-        self.assertTrue(headers[1].startswith("Basic "))
+        self.assertEqual(headers[1], BASIC_AUTH)
 
     def test_nested_app_session_restores_user_bearer(self):
         """An inner with_app_session inside with_user_session: the inner
         block carries the app bearer, and the outer user bearer resumes
         after it (#159 semantics, now override-based)."""
-        self.campus._auth.token.return_value = mock.Mock(access_token="app-token")
+        cast(Mock, self.campus._auth).configure_mock(**{
+            "token.return_value": mock.Mock(access_token="app-token"),
+        })
         with self.campus.with_user_session():
             self.campus.api.client.get("/outer-1")
             with self.campus.with_app_session():

@@ -12,6 +12,7 @@ These tests pin that contract via the Authorization header each request
 actually carried (a recording MagicMock session — no network).
 """
 
+import base64
 import json
 import os
 import unittest
@@ -27,6 +28,10 @@ os.environ.setdefault("CLIENT_SECRET", "test-client-secret")
 
 from campus_python import Campus
 from campus_python.json_client import CampusRequest
+
+BASIC_AUTH = "Basic " + base64.b64encode(
+    b"test-client-id:test-client-secret"
+).decode("ascii")
 
 
 def raw_response(status_code: int, payload: dict | None = None) -> requests.Response:
@@ -97,7 +102,7 @@ class TestNestedUserSessions(unittest.TestCase):
                 self.assertEqual(
                     self.auth_for("/after-inner"), "Bearer tok-outer")
             self.campus.api.client.get("/after-outer")
-            self.assertTrue(self.auth_for("/after-outer").startswith("Basic "))
+            self.assertEqual(self.auth_for("/after-outer"), BASIC_AUTH)
 
     def test_inner_teardown_restores_outer_refresh_hook(self):
         from campus_python.json_client import _session_hook
@@ -121,12 +126,12 @@ class TestNestedUserSessions(unittest.TestCase):
         get_token, app_token = self.token_patch("inner")
         with get_token, app_token:
             before = self.campus.api.client.authorization
+            self.assertEqual(before, BASIC_AUTH)
             with self.campus.with_user_session(refresh_on_401=False):
                 self.campus.api.client.get("/during")
                 self.assertEqual(
                     self.campus.api.client.authorization, before)
             self.assertEqual(self.campus.api.client.authorization, before)
-            self.assertTrue(before.startswith("Basic "))
             self.assertEqual(self.auth_for("/during"), "Bearer tok-inner")
 
     def test_prior_instance_bearer_left_alone(self):
