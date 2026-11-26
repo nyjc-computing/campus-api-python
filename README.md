@@ -234,6 +234,20 @@ An unconfigured service raises `ValueError` naming the variables to
 set. (The former ENV-tier fallback table and the HOSTNAME-derived
 URLs were removed in #127 — issue #52's migration is complete.)
 
+### The SDK never speaks browser namespaces
+
+The campus gateway's consumer namespaces (`/timetable/`, `/apps/`, …)
+are a **browser-surface** construct. SDK clients take a service origin
+— a gateway origin such as `https://nyjc-campus.up.railway.app`, or a
+per-service domain — plus the services' **unprefixed** paths
+(`/auth/v1/…`, `/api/v1/…`, `/audit/v1/…`). `X-Forwarded-Prefix`,
+`SCRIPT_NAME`, and `PUBLIC_URL` (a deployer-side environment variable
+that only shapes browser-facing URL generation inside the services)
+never appear in SDK calls, configuration, or generated URLs.
+Normative spec:
+[URL namespacing](https://github.com/nyjc-computing/campus/blob/weekly/docs/url-namespacing.md)
+in the campus repo.
+
 ## Environment Variables
 
 | Variable | Required | Mode | Description |
