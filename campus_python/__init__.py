@@ -279,17 +279,29 @@ class Campus:
         user bearer into another request's ambient calls — the failure
         that made campus.auth deny session-flow routes (#854/#1055) and
         loop browsers into /login (classroom#153). The mint at entry
-        and inside refresh_bearer now runs with no override active, so
-        it always authenticates as the client (Basic) — the A10
+        and inside refresh_bearer runs with no override active, so it
+        always authenticates as the client (Basic) — the A10
         requirement the old instance-mutation dance could only attempt
-        to maintain.
+        to maintain (#193: at entry too, not just in the refresh hook;
+        without it a session nested inside another one minted with the
+        outer user's bearer and campus.auth denied it — observed as
+        campus-classroom#168).
 
         Nesting-safe (#159): an inner session on the same instance
         saves the outer override and restores it at exit, so calls
         after the inner block carry the outer session's credential
         again.
         """
-        token = self._get_token_from_session()
+        # Entry mint authenticates as the client (Basic): the override
+        # is suspended so a session entered while an outer session is
+        # active (#193) cannot present that user's bearer — the
+        # login-session token route denies user principals outright
+        # (campus#963/A10).
+        suspended = _bearer_override.set(None)
+        try:
+            token = self._get_token_from_session()
+        finally:
+            _bearer_override.reset(suspended)
         prior_bearer = _bearer_override.get()
         prior_hook = _session_hook.get()
         _bearer_override.set(token.access_token)

@@ -150,6 +150,51 @@ class TestNestedUserSessions(unittest.TestCase):
             self.campus.api.client.get("/after")
             self.assertEqual(self.auth_for("/after"), "Bearer tok-prior")
 
+    def test_nested_entry_mint_authenticates_as_client(self):
+        """A session's ENTRY mint must present Basic (#193), never the
+        outer session's bearer.
+
+        The mint goes through _send, so whatever the context's bearer
+        override holds at that moment becomes the request's
+        Authorization header — the login-session token route denies
+        user principals outright (campus#963/A10), which surfaced as
+        campus-classroom#168 (nested broker releases 403ing). The fake
+        mint below issues a real request through the transport, the
+        only way to observe the header the mint actually carried.
+        """
+
+        def _mint(campus_self):
+            campus_self.auth.client.post("/logins/session/token")
+            return SimpleNamespace(access_token="tok-mint")
+
+        with (mock.patch.object(Campus, "_get_token_from_session", _mint),
+              self.campus.with_user_session(refresh_on_401=False)):
+            self.campus.api.client.get("/outer")
+            with self.campus.with_user_session(refresh_on_401=False):
+                self.campus.api.client.get("/inner")
+            self.campus.api.client.get("/after-inner")
+
+        mints = [auth for path, auth in self.request_log() if path == "token"]
+        self.assertEqual(len(mints), 2)
+        self.assertEqual(mints[0], BASIC_AUTH, "outer entry mint")
+        self.assertEqual(mints[1], BASIC_AUTH, "nested entry mint (#193)")
+        self.assertEqual(self.auth_for("/outer"), "Bearer tok-mint")
+        self.assertEqual(self.auth_for("/inner"), "Bearer tok-mint")
+        self.assertEqual(self.auth_for("/after-inner"), "Bearer tok-mint")
+
+    def request_log(self) -> list[tuple[str, str | None]]:
+        """(last path segment, Authorization) per transport call, in order."""
+        calls = cast(MagicMock, self.client._session).request.call_args_list
+        out = []
+        for call in calls:
+            url = call.args[1] if len(call.args) > 1 else ""
+            headers = call.kwargs.get("headers") or {}
+            auth = headers.get(
+                "Authorization", self.client._session.headers.get("Authorization")
+            )
+            out.append((url.rsplit("/", 1)[-1], auth))
+        return out
+
 
 if __name__ == "__main__":
     unittest.main()
